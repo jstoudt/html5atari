@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<title>Web Audio API Tryouts</title>
+	<link rel="stylesheet" href="/css/sample.css">
+</head>
+<body>
+<!--
+	<div id="output"></div>
+-->
+	<fieldset id="sqr-1">
+		<legend>Square Channel 1</legend>
+		<input id="sqr-1-freq-slider" type="range" class="frequency" min="54.6" max="12400" value="1000" disabled>
+		<script>
+		(function() {
+			var s = document.getElementById('sqr-1-freq-slider'),
+				max = parseFloat(s.getAttribute('max')),
+				min = parseFloat(s.getAttribute('min')),
+				step = (max - min) / 16;
+			s.setAttribute('step', step);
+		})();
+		</script>
+		<input id="sqr-1-freq-text" class="freq" readonly disabled><span>Hz</span>
+		<button id="sqr-1-play" disabled>Play Sample</button>
+		<button id="sqr-1-stop" style="display:none" disabled>Stop Sample</button>
+		<label for="sqr-1-gain-text">Gain:</label>
+		<input id="sqr-1-gain-slider" type="range" class="gain" min="0" max="1" value="1" step="0.01" step="10" disabled>
+		<input id="sqr-1-gain-text" class="gain-text" readonly disabled>
+	</fieldset>
+	<fieldset id="sqr-2">
+		<legend>Square Channel 2</legend>
+		<input id="sqr-2-freq-slider" type="range" class="frequency" min="54.6" max="12400" value="1000" step="10" disabled>
+		<input id="sqr-2-freq-text" class="freq" readonly disabled><span>Hz</span>
+		<button id="sqr-2-play" disabled>Play Sample</button>
+		<button id="sqr-2-stop" style="display:none" disabled>Stop Sample</button>
+		<label for="sqr-2-gain-text">Gain:</label>
+		<input id="sqr-2-gain-slider" type="range" class="gain" min="0" max="1" value="1" step="0.01" disabled>
+		<input id="sqr-2-gain-text" class="gain-text" readonly disabled>
+	</fieldset>
+	<fieldset id="tri">
+		<legend>Triangle Channel</legend>
+		<input id="tri-freq-slider" type="range" class="frequency" min="27.3" max="55900" value="1000" disabled>
+		<script>
+		(function() {
+			var s = document.getElementById('tri-freq-slider'),
+				max = parseFloat(s.getAttribute('max')),
+				min = parseFloat(s.getAttribute('min')),
+				step = (max - min) / 16;
+			step *= 100;
+			step = Math.round(step);
+			step /= 100;
+			s.setAttribute('step', step);
+		})();
+		</script>
+		<input id="tri-freq-text" class="freq" readonly disabled><span>Hz</span>
+		<button id="tri-play" disabled>Play Sample</button>
+		<button id="tri-stop" style="display:none" disabled>Stop Sample</button>
+	</fieldset>
+	<fieldset>
+		<legend>Noise Channel</legend>
+		<input id="noise-freq-slider" type="range" class="frequency" min="20" max="20000" value="1000" step="20" disabled>
+		<input id="noise-freq-text" class="freq" readonly disabled><span>Hz</span>
+		<button id="noise-play" disabled>Play Sample</button>
+		<button id="noise-stop" style="display:none" disabled>Stop Sample</button>
+		<label>Gain:</label>
+		<input id="noise-gain-slider" type="range" class="gain" min="0" max="1" value="1" step="0.01" disabled>
+		<input id="noise-gain-text" class="gain-text" readonly disabled>
+	</fieldset>
+
+	<div id="output"></div>
+
+	<script src="/js/output.js"></script>
+	<script src="/js/nsf.js"></script>
+
+	<script src="/js/sample.js"></script>
+	<script src="/js/6502.js"></script>
+
+</body>
+</html>

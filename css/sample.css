@@ -1,0 +1,37 @@
+body {
+	background-color: #ccc;
+}
+
+#output {
+	width: 560px;
+	height: 530px;
+	overflow: auto;
+	color: #333;
+	background: #fff;
+	border: 1px solid #aaa;
+	box-shadow: rgba(34, 34, 34, 0.8) 5px 5px 3px;
+	font: 14px/1.5 monospace, monospace;
+	padding: 10px 20px;
+	margin: 0 auto;
+}
+
+#output span {
+	display: block;
+}
+
+fieldset {
+	margin: 0 auto;
+	width: 960px;
+}
+
+.frequency {
+	width: 450px;
+}
+
+.freq {
+	width: 50px;
+}
+
+.gain-text {
+	width: 50px;
+}
