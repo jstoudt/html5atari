@@ -24,15 +24,9 @@ var CPU6507 = (function() {
 			sp: 0,    // Stack Pointer
 			pc: 0     // Program Counter
 		},
-		mmap = new MemoryMap(1 << 16),
-		clockSpeed = 1.19, // speed of 6507 (Atari 2600)
-		cyclesPerMs,       // the numbr of cycles per millisecond -- determined from clockSpeed
+		mmap = null, // a reference to the memory map to be passed in by TIA
 		cycleCount = 0, // number of CPU cycles executed -- for timing purposes
 
-		breakFlag = true,  // set to halt execution of CPU
-
-		startHandlers = [], // an array of functions to call before the CPU is started
-		stopHandlers = [], // an array of functions to call after the CPU is stopped
 		execloopHandlers = [], // an array of functions to call after each exec loop
 
 		// retrieve the byte in memory at the address specified by the
@@ -1704,7 +1698,8 @@ var CPU6507 = (function() {
 			var fAddr, inst,
 				opcode = fetchInstruction(),
 				handlerLength = execloopHandlers.length,
-				i = 0;
+				i = 0,
+				cycleCount0 = cycleCount;
 
 			inst = instruction[opcode];
 
@@ -1720,79 +1715,28 @@ var CPU6507 = (function() {
 			for (; i < handlerLength; i++) {
 				execloopHandlers[i](opcode, getAddressString(inst.addressing));
 			}
-		},
 
-		execProcessorLoop = function() {
-			var fAddr,
-				opcode,
-				i,
-				handlerLength = execloopHandlers.length,
-				inst,
-				cycles = 0;
-			
-			while (cycles < 100000) {
-				opcode = fetchInstruction();
-				inst = instruction[opcode];
-
-				if (inst.addressing in addrMode) {
-					fAddr = addrMode[inst.addressing];
-					inst.op(fAddr);
-				} else {
-					inst.op();
-				}
-
-				cycles += inst.cycles;
-				cycleCount += inst.cycles;
-
-				for (i = 0; i < handlerLength; i++) {
-					execloopHandlers[i](opcode);
-				}
-			}
-
-			if (breakFlag === false) {
-				setTimeout(execProcessorLoop, 0);
-			} else {
-				handlerLength = stopHandlers.length;
-				for (i = 0; i < handlerLength; i++) {
-					stopHandlers[i]();
-				}
-			}
+			return cycleCount - cycleCount0;
 		};
 
 	return {
 
-		init: function() {
+		init: function(memoryMap) {
+			mmap = memoryMap;
 
 			// reset the cycle counter
 			cycleCount = 0;
-
-			// calculate how many calculations to perform before throttling
-			// the proc loop to emulate the actual clock speed of the 2A03
-			cyclesPerMs = clockSpeed * 1e+9;
-
-			breakFlag = true;
 		},
 
-		start: function() {
-			var i = 0,
-				len = startHandlers.length;
+		// ask the CPU to read the next instruction without changing the PC
+		queryNextInstruction: function() {
+			var opcode = mmap.readByte(regSet.pc);
 
-			for (; i < len; i++) {
-				startHandlers[i]();
-			}
-
-			breakFlag = false;
-			execProcessorLoop();
-		},
-
-		stop: function() {
-			breakFlag = true;
+			return instruction[opcode];
 		},
 
 		step: function() {
-			if (breakFlag === true) {
-				execProcessorOnce();
-			}
+			execProcessorOnce();
 		},
 
 		addEventListener: function(type, handler) {
@@ -1802,10 +1746,6 @@ var CPU6507 = (function() {
 
 			if (type === 'execloop') {
 				execloopHandlers.push(handler);
-			} else if (type === 'start') {
-				startHandlers.push(handler);
-			} else if (type === 'stop') {
-				stopHandlers.push(handler);
 			} else {
 				throw new Error('Event type is invalid.');
 			}
@@ -1823,12 +1763,20 @@ var CPU6507 = (function() {
 				len = program.length;
 			}
 
+			if (!(mmap instanceof MemoryMap)) {
+				throw new Error('The TIA must be initialized prior to loading a program.');
+			}
+
+			console.log('memSize: ' + memSize);
+
 			for (; i < len; i++) {
 				if (i + offset >= memSize) {
 					throw new Error('Program size is larger than memory size');
 				}
 				mmap.writeByte(program[i], i + offset);
 			}
+
+			console.log(mmap);
 
 			regSet.pc = offset;
 		},
@@ -1859,10 +1807,7 @@ var CPU6507 = (function() {
 			}
 
 			throw new Error('Illegal opcode has been specified.');
-		},
-
-		memory: mmap
-
+		}
 	};
 
 })();

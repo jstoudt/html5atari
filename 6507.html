@@ -60,7 +60,6 @@
 		<div class="controls">
 			<button id="start" disabled>Start</button>
 			<button id="stop" disabled>Stop</button>
-			<button id="step" disabled>Step</button>
 			<button id="reset" disabled>Reset</button>
 		</div>
 		<table id="memory">
@@ -275,7 +274,7 @@
 
 		document.addEventListener('DOMContentLoaded', function() {
 
-			CPU6507.init();
+			TIA.init();
 
 			var xhr = new XMLHttpRequest();
 			xhr.open('GET', '/pf1.bin', true);
@@ -290,7 +289,6 @@
 				var prog = new Uint8Array(xhr.response),
 					startBtn = document.getElementById('start'),
 					stopBtn = document.getElementById('stop'),
-					stepBtn = document.getElementById('step'),
 					resetBtn = document.getElementById('reset'),
 					t0 = Date.now(),
 					c0 = CPU6507.getCycleCount(),
@@ -303,17 +301,16 @@
 				startBtn.addEventListener('click', function() {
 					startBtn.setAttribute('disabled', 'disabled');
 					stopBtn.removeAttribute('disabled');
-					stepBtn.setAttribute('disabled', 'disabled');
 					resetBtn.setAttribute('disabled', 'disabled');
 
-					CPU6507.start();
+					TIA.start();
 
 					breakFlag = false;
 
 					(function showInfo() {
 						var i = 0,
 							status = CPU6507.getRegister('sr'),
-							mem = CPU6507.memory.getCopy(0x80, 128);
+							mem = 	TIA.getCopy(0x80, 128);
 							len = mem.length,
 							twoHex = function(hex) {
 								hex = hex.toString(16);
@@ -367,20 +364,16 @@
 				}, false);
 
 				stopBtn.addEventListener('click', function() {
-					CPU6507.stop();
+					TIA.stop();
 					stopBtn.setAttribute('disabled', 'disabled');
 					startBtn.removeAttribute('disabled');
-					stepBtn.removeAttribute('disabled');
 					resetBtn.removeAttribute('disabled');
 					breakFlag = true;
 				}, false);
 
-				stepBtn.removeAttribute('disabled');
-				stepBtn.addEventListener('click', CPU6507.step, false);
-
 				resetBtn.removeAttribute('disabled');
 				resetBtn.addEventListener('click', function() {
-					CPU6507.init();
+					TIA.init();
 					CPU6507.loadProgram(prog, 0xf000);
 					showInfo();
 				}, false);

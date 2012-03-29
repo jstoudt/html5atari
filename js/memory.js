@@ -18,53 +18,58 @@ function MemoryMap(size) {
 	if (size < 1) {
 		throw new Error('Memory size must be a positive integer.');
 	}
+	if (size > (1 << 16)) {
+		throw new Error('Memory size cannot be greater than 64k');
+	}
 
-	this._badAddrMsg = 'Illegal memory address specified.';
 	this.__buf = new ArrayBuffer(size);
 	this._memory = new Uint8Array(this.__buf);
-	this.length = this.__buf.length;
+	this.strobes = [];
+	this.length = this._memory.length;
 }
 
-MemoryMap.prototype.writeByte = function(val, addr) {
+MemoryMap.prototype._isAddressValid = function(addr) {
 	if (addr >= this.length || addr < 0) {
-		throw new Error(this._badAddrMsg);
+		throw new Error('Illegal memory address specified');
 	}
+};
+
+MemoryMap.prototype.writeByte = function(val, addr) {
+	var i = 0,
+		len = this.strobes.length;
+
+	this._isAddressValid(addr);
 
 	val &= 0xff;
 	this._memory[addr] = val;
+
+	for (; i < len; i++) {
+		if (this.strobes[i].address === addr) {
+			this.strobes[i].active = true;
+		}
+	}
+
 };
 
 MemoryMap.prototype.writeWord = function(val, addr) {
 	var lo = val & 0xff,
 		hi = (val >>> 8) & 0xff;
 
-	if (addr >= this.length || addr < 0) {
-		throw new Error(this._badAddrMsg);
-	}
-
-	this._memory[addr] = lo;
-	addr = (addr + 1) & 0xffff;
-	this._memory[addr] = hi;
+	this.writeByte(lo, addr);
+	this.writeByte(hi, (addr + 1) & 0xffff);
 };
 
 MemoryMap.prototype.readByte = function(addr) {
-	if (addr >= this.length || addr < 0) {
-		throw new Error(this._badAddrMsg);
-	}
+	this._isAddressValid(addr);
 
 	return this._memory[addr];
 };
 
 MemoryMap.prototype.readWord = function(addr) {
-	var hi, lo;
-
-	if (addr >= this.length || addr < 0) {
-		throw new Error(this._badAddrMsg);
-	}
-
-	lo = this._memory[addr];
-	addr = (addr + 1) & 0xffff;
-	hi = this._memory[addr];
+	var lo, hi;
+	
+	lo = this.readByte(addr);
+	hi = this.readByte((addr + 1) & 0xffff);
 
 	return (hi << 8) | lo;
 };
@@ -89,4 +94,41 @@ MemoryMap.prototype.getCopy = function(offset, len) {
 	}
 
 	return copy;
+};
+
+MemoryMap.prototype.addStrobe = function(addr) {
+	this._isAddressValid(addr);
+
+	this.strobes.push({
+		address: addr,
+		active: false
+	});
+};
+
+MemoryMap.prototype.checkStrobe = function(addr) {
+	var i = 0,
+		len = this.strobes.length;
+
+	this._isAddressValid(addr);
+
+	for (; i < len; i++) {
+		if (this.strobes[i].address === addr) {
+			return this.strobes[i].active;
+		}
+	}
+
+	return false;
+
+};
+
+MemoryMap.prototype.resetStrobe = function(addr) {
+	var i = 0,
+		len = this.strobes.length;
+
+	this._isAddressValid(addr);
+
+	for (; i < len; i++) {
+		this.strobes[i].active = false;
+	}
+
 };

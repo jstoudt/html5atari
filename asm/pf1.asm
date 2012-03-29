@@ -66,8 +66,8 @@ StartOfFrame
                 ldx #0
 VerticalBlank   sta WSYNC
 
-		lda #0
-		sta PF1
+		            lda #0
+		            sta PF1
 
                 inx
                 cpx #37
