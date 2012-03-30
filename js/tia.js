@@ -188,7 +188,7 @@ var TIA = (function() {
 
 					// if the beam is out of vertical and horizontal blank,
 					// write a pixel at the beam's position to the video buffer
-					if (x > 68 && y > 37) {
+					if (x >= 68 && y >= 37) {
 						writePixel(x - 68, y - 37);
 					}
 
