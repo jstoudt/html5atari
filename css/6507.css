@@ -2,6 +2,13 @@ body {
 	font: 16px/1.5 sans-serif;
 }
 
+canvas {
+	display: block;
+	border: 1px solid #606060;
+	margin: 15px auto 0;
+	padding: 0;
+}
+
 #main {
 	width: 960px;
 	margin: 0 auto;
@@ -41,7 +48,8 @@ label {
 	margin-right: 25px;
 }
 
-#frequency {
+#tia-frequency,
+#frame-rate {
 	width: 6em;
 	margin-right: 0.5em;
 }

@@ -12,7 +12,7 @@
 			<label>Accumulator</label>
 			<div id="ac" class="register"></div>
 
-			<label>X</label>
+			<label>X</label>;
 			<div id="x" class="register"></div>
 
 			<label>Y</label>
@@ -53,9 +53,14 @@
 		</table>
 
 		<div class="frequency-wrapper">
-			<label>Clock Frequency:</label>
-			<div id="frequency" class="register"></div><span>MHz</span>
+			<label>TIA Clock Frequency</label>
+			<div id="tia-frequency" class="register"></div><span>MHz</span>
+			<br><br>
+			<label>Frame Rate</label>
+			<div id="frame-rate" class="register"></div><span>frames/sec</span>
 		</div>
+
+		<canvas id="television" width="640" height="384"></canvas>
 
 		<div class="controls">
 			<button id="start" disabled>Start</button>
@@ -253,6 +258,7 @@
 			instructions = document.getElementById('instructions'),
 			memTable = document.getElementById('memory'),
 			cells = memTable.getElementsByTagName('td'),
+			television = document.getElementById('television'),
 			memCells = [],
 			i,
 
@@ -274,7 +280,7 @@
 
 		document.addEventListener('DOMContentLoaded', function() {
 
-			TIA.init();
+			TIA.init(television);
 
 			var xhr = new XMLHttpRequest();
 			xhr.open('GET', '/pf1.bin', true);
@@ -290,9 +296,11 @@
 					startBtn = document.getElementById('start'),
 					stopBtn = document.getElementById('stop'),
 					resetBtn = document.getElementById('reset'),
-					t0 = Date.now(),
-					c0 = CPU6507.getCycleCount(),
-					frequency = document.getElementById('frequency'),
+					tiaTime0 = Date.now(),
+					tiaCycles0 = TIA.getCycleCount(),
+					tiaFrames0 = TIA.getNumFrames(),
+					tiaFrequency = document.getElementById('tia-frequency'),
+					frameRate = document.getElementById('frame-rate'),
 					breakFlag = false;
 
 				CPU6507.loadProgram(prog, 0xf000);
@@ -310,7 +318,7 @@
 					(function showInfo() {
 						var i = 0,
 							status = CPU6507.getRegister('sr'),
-							mem = 	TIA.getCopy(0x80, 128);
+							mem = 	TIA.getMemoryCopy(0x80, 128),
 							len = mem.length,
 							twoHex = function(hex) {
 								hex = hex.toString(16);
@@ -347,13 +355,17 @@
 					})();
 
 					(function calcCycleRate() {
-						var t1 = Date.now(),
-							c1 = CPU6507.getCycleCount();
+						var tiaTime1 = Date.now(),
+							tiaCycles1 = TIA.getCycleCount(),
+							tiaFrames1 = TIA.getNumFrames();
 
-						frequency.innerHTML = Math.round((c1 - c0) / (t1 - t0)) / 1000;
+						tiaFrequency.innerHTML = Math.round((tiaCycles1 - tiaCycles0) / (tiaTime1 - tiaTime0)) / 1000;
 
-						t0 = t1;
-						c0 = c1;
+						frameRate.innerHTML = Math.round((tiaFrames1 - tiaFrames0) / (tiaTime1 - tiaTime0) * 1e6) / 1000;
+
+						tiaCycles0 = tiaCycles1;
+						tiaTime0 = tiaTime1;
+						tiaFrames0 = tiaFrames1;
 
 						if (breakFlag !== true) {
 							setTimeout(calcCycleRate, 1000);
@@ -373,9 +385,8 @@
 
 				resetBtn.removeAttribute('disabled');
 				resetBtn.addEventListener('click', function() {
-					TIA.init();
+					TIA.init(television);
 					CPU6507.loadProgram(prog, 0xf000);
-					showInfo();
 				}, false);
 			};
 
@@ -386,5 +397,28 @@
 	})();
 
 	</script>
+<!--
+	<script>
+		window.onload = function() {
+			var iframe = document.createElement('iframe');
+			iframe.width = '1';
+			iframe.height = '1';
+			iframe.src = 'about:blank';
+			document.body.appendChild(iframe);
+			
+			setTimeout(function() {
+				var innerWindow = iframe.contentWindow;
+
+				for (var attr in self) {
+					if (attr in innerWindow) {
+						continue;
+					}
+					console.log('Added ' + attr);
+				}
+
+			}, 3000);
+		};
+	</script>
+-->
 </body>
 </html>

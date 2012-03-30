@@ -86,8 +86,8 @@ VerticalBlank   sta WSYNC
                 inc PATTERN            ; switch to next pattern
 notyet
 
-                lda PATTERN            ; use our saved pattern
-                sta PF1                ; as the playfield shape
+;                lda PATTERN            ; use our saved pattern
+;                sta PF1                ; as the playfield shape
 
        ;------------------------------------------------
        ; Do 192 scanlines of colour-changing (our picture)
@@ -96,26 +96,7 @@ notyet
 
 Picture         stx COLUBK             ; change background colour (rainbow effect)
 
-		stx $81
-    stx $82
-    stx $83
-    stx $84
-    stx $85
-    stx $86
-    stx $87
-    stx $88
-    stx $89
-    stx $8a
-    stx $8b
-    stx $8c
-
-		lda #0
-		sta PF1
-
                 sta WSYNC              ; wait till end of scanline
-
-		lda PATTERN
-		sta PF1
 
                 inx
                 cpx #192

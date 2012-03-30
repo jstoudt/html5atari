@@ -24,7 +24,7 @@ var CPU6507 = (function() {
 			sp: 0,    // Stack Pointer
 			pc: 0     // Program Counter
 		},
-		mmap = null, // a reference to the memory map to be passed in by TIA
+		mmap, // a reference to the memory map to be passed in by TIA
 		cycleCount = 0, // number of CPU cycles executed -- for timing purposes
 
 		execloopHandlers = [], // an array of functions to call after each exec loop
@@ -38,11 +38,6 @@ var CPU6507 = (function() {
 		},
 
 		addrMode = {
-
-			// #
-			immediate: function() {
-				return fetchInstruction();
-			},
 
 			// abs
 			absolute: function() {
@@ -291,6 +286,37 @@ var CPU6507 = (function() {
 			return val;
 		},
 
+		addWithCarry = function(val) {
+			var	v = regSet.ac & 0x80;
+
+			val += regSet.ac + (status.isSet('C') ? 1 : 0);
+
+			status.set('C', val > 0xff);
+
+			status.setFlagsNZ(val);
+
+			status.set('V', v !== (val & 0x80));
+
+			regSet.ac = val & 0xff;
+		},
+
+		subtractWithCarry = function(val) {
+			var valNegative = val & 0x80;
+
+			if (!status.isSet('C')) {
+				val++;
+			}
+
+			val = regSet.ac - val;
+
+			status.setFlagsNZ(val);
+
+			status.set('C', val >= 0);
+			status.set('V', val < 0);
+
+			regSet.ac = val & 0xff;
+		},
+
 		operation = {
 
 			AND: function(fAddr) {
@@ -345,36 +371,11 @@ var CPU6507 = (function() {
 			},
 
 			ADC: function(fAddr) {
-				var val = mmap.readByte(fAddr()),
-					v = regSet.ac & 0x80;
-
-				val += regSet.ac + (status.isSet('C') ? 1 : 0);
-
-				status.set('C', val > 0xff);
-
-				status.setFlagsNZ(val);
-
-				status.set('V', v !== (val & 0x80));
-
-				regSet.ac = val & 0xff;
+				addWithCarry(mmap.readByte(fAddr()));
 			},
 
 			SBC: function(fAddr) {
-				var val = mmap.readByte(fAddr()),
-					valNegative = val & 0x80;
-
-				if (!status.isSet('C')) {
-					val++;
-				}
-
-				val = regSet.ac - val;
-
-				status.setFlagsNZ(val);
-
-				status.set('C', val >= 0);
-				status.set('V', val < 0);
-
-				regSet.ac = val & 0xff;
+				subtractWithCarry(mmap.readByte(fAddr()));
 			},
 
 			CMP: function(fAddr) {
@@ -933,7 +934,9 @@ var CPU6507 = (function() {
 			},
 
 			0x69: { // ADC #
-				op: operation.ADC,
+				op: function() {
+					addWithCarry(fetchInstruction());
+				},
 				addressing: 'immediate',
 				cycles: 2,
 				abbr: 'ADC'
@@ -1180,7 +1183,10 @@ var CPU6507 = (function() {
 			},
 
 			0xa0: { // LDY #
-				op: operation.LDY,
+				op: function() {
+					regSet.y = fetchInstruction();
+					status.setFlagsNZ(regSet.y);
+				},
 				addressing: 'immediate',
 				cycles: 2,
 				abbr: 'LDY'
@@ -1194,7 +1200,10 @@ var CPU6507 = (function() {
 			},
 
 			0xa2: { // LDX #
-				op: operation.LDX,
+				op: function() {
+					regSet.x = fetchInstruction();
+					status.setFlagsNZ(regSet.x);
+				},
 				addressing: 'immediate',
 				cycles: 2,
 				abbr: 'LDX'
@@ -1232,7 +1241,10 @@ var CPU6507 = (function() {
 			},
 
 			0xa9: { // LDA #
-				op: operation.LDA,
+				op: function() {
+					regSet.ac = fetchInstruction();
+					status.setFlagsNZ(regSet.ac);
+				},
 				addressing: 'immediate',
 				cycles: 2,
 				abbr: 'LDA'
@@ -1359,7 +1371,13 @@ var CPU6507 = (function() {
 			},
 
 			0xc0: { // CPY #
-				op: operation.CPY,
+				op: function() {
+					var val = fetchInstruction();
+
+					status.set('Z', regSet.y === val);
+					status.set('C', regSet.y >= val);
+					status.set('N', regSet.y < val);
+				},
 				addressing: 'immediate',
 				cycles: 2,
 				abbr: 'CPY'
@@ -1404,7 +1422,13 @@ var CPU6507 = (function() {
 			},
 
 			0xc9: { // CMP #
-				op: operation.CMP,
+				op: function() {
+					var val = fetchInstruction();
+
+					status.set('Z', regSet.ac === val);
+					status.set('C', regSet.ac >= val);
+					status.set('N', regSet.ac < val);
+				},
 				addressing: 'immediate',
 				cycles: 2,
 				abbr: 'CMP'
@@ -1506,7 +1530,13 @@ var CPU6507 = (function() {
 			},
 
 			0xe0: { // CPX #
-				op: operation.CPX,
+				op: function() {
+					var val = fetchInstruction();
+
+					status.set('Z', regSet.x === val);
+					status.set('C', regSet.x >= val);
+					status.set('N', regSet.x < val);
+				},
 				addressing: 'immediate',
 				cycles: 2,
 				abbr: 'CPX'
@@ -1551,7 +1581,9 @@ var CPU6507 = (function() {
 			},
 
 			0xe9: { // SBC #
-				op: operation.SBC,
+				op: function() {
+					subtractWithCarry(fetchInstruction());
+				},
 				addressing: 'immediate',
 				cycles: 2,
 				abbr: 'SBC'
@@ -1649,8 +1681,8 @@ var CPU6507 = (function() {
 				abbr: 'INC'
 			}
 
-		},
-
+		};
+/*
 		getAddressString = function(addressing) {
 			var ll = mmap.readByte(regSet.pc),
 				hh = mmap.readByte((regSet.pc + 1) & 0xffff);
@@ -1693,35 +1725,12 @@ var CPU6507 = (function() {
 					throw new Error('Illegal addressing mode detected.');
 			}
 		},
-
-		execProcessorOnce = function() {
-			var fAddr, inst,
-				opcode = fetchInstruction(),
-				handlerLength = execloopHandlers.length,
-				i = 0,
-				cycleCount0 = cycleCount;
-
-			inst = instruction[opcode];
-
-			if (inst.addressing in addrMode) {
-				fAddr = addrMode[inst.addressing];
-				inst.op(fAddr);
-			} else {
-				inst.op();
-			}
-
-			cycleCount += inst.cycles;
-
-			for (; i < handlerLength; i++) {
-				execloopHandlers[i](opcode, getAddressString(inst.addressing));
-			}
-
-			return cycleCount - cycleCount0;
-		};
+*/
 
 	return {
 
 		init: function(memoryMap) {
+			// use the memory map we are sharing with the TIA
 			mmap = memoryMap;
 
 			// reset the cycle counter
@@ -1730,13 +1739,23 @@ var CPU6507 = (function() {
 
 		// ask the CPU to read the next instruction without changing the PC
 		queryNextInstruction: function() {
-			var opcode = mmap.readByte(regSet.pc);
-
-			return instruction[opcode];
+			return instruction[mmap.readByte(regSet.pc)];
 		},
 
 		step: function() {
-			execProcessorOnce();
+			var opcode = fetchInstruction(),
+				handlerLength = execloopHandlers.length,
+				i = 0,
+				inst = instruction[opcode],
+				addressing = inst.addressing;
+
+			inst.op((addressing in addrMode) ? addrMode[addressing] : null);
+
+			cycleCount += inst.cycles;
+
+			for (; i < handlerLength; i++) {
+				execloopHandlers[i](opcode, getAddressString(inst.addressing));
+			}
 		},
 
 		addEventListener: function(type, handler) {
@@ -1752,8 +1771,7 @@ var CPU6507 = (function() {
 		},
 
 		loadProgram: function(program, offset, len) {
-			var i = 0,
-				memSize = mmap.length;
+			var i = 0;
 
 			if (typeof offset === 'undefined') {
 				offset = 0;
@@ -1767,17 +1785,12 @@ var CPU6507 = (function() {
 				throw new Error('The TIA must be initialized prior to loading a program.');
 			}
 
-			console.log('memSize: ' + memSize);
-
 			for (; i < len; i++) {
-				if (i + offset >= memSize) {
-					throw new Error('Program size is larger than memory size');
-				}
-				mmap.writeByte(program[i], i + offset);
+				mmap.writeByte(program[i], (i + offset) & 0xffff);
 			}
 
-			console.log(mmap);
-
+			// this is incorrect... supposed to get PC value from reset
+			// value at the end of the ROM
 			regSet.pc = offset;
 		},
 
