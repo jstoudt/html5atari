@@ -36,35 +36,29 @@ function MemoryMap(bitWidth) {
 	buf = new ArrayBuffer(1 << bitWidth);
 	this._memory = new Uint8Array(buf);
 	this._strobes = [];
+	this._journal = [];
 	this._bitmask = mask;
 
 	// the only public property of a MemoryMap object created in this constructor
 	this.length = this._memory.length;
 }
 
-MemoryMap.prototype._isAddressValid = function(addr) {
-	addr &= this._bitmask;
-	if (addr >= this.length || addr < 0) {
-		throw new Error('Illegal memory address specified');
-	}
-};
-
 MemoryMap.prototype.writeByte = function(val, addr) {
 	var i = 0,
 		len = this._strobes.length;
 
 	addr &= this._bitmask;
-	this._isAddressValid(addr);
 
 	val &= 0xff;
-
-	this._memory[addr] = val;
 
 	for (; i < len; i++) {
 		if (this._strobes[i].address === addr) {
 			this._strobes[i].active = true;
+			return;
 		}
 	}
+
+	this._memory[addr] = val;
 };
 
 MemoryMap.prototype.writeWord = function(val, addr) {
@@ -78,14 +72,16 @@ MemoryMap.prototype.writeWord = function(val, addr) {
 MemoryMap.prototype.readByte = function(addr) {
 	addr &= this._bitmask;
 
-	this._isAddressValid(addr);
-
 	return this._memory[addr];
 };
 
 MemoryMap.prototype.readWord = function(addr) {
-	var lo = this.readByte(addr),
-		hi = this.readByte((addr + 1) & 0xffff);
+	var lo, hi;
+
+	addr &= this._bitmask;
+
+	lo = this._memory[addr];
+	hi = this._memory[(addr + 1) & 0xffff];
 
 	return (hi << 8) | lo;
 };
@@ -113,7 +109,7 @@ MemoryMap.prototype.getCopy = function(offset, len) {
 };
 
 MemoryMap.prototype.addStrobe = function(addr) {
-	this._isAddressValid(addr);
+	addr &= this._bitmask;
 
 	this._strobes.push({
 		address: addr,
@@ -125,6 +121,8 @@ MemoryMap.prototype.isStrobeActive = function(addr) {
 	var i = 0,
 		strobes = this._strobes,
 		len = strobes.length;
+
+	addr &= this._bitmask;
 
 	for (; i < len; i++) {
 		if (strobes[i].address === addr) {
@@ -140,6 +138,8 @@ MemoryMap.prototype.resetStrobe = function(addr) {
 		strobes = this._strobes,
 		len = strobes.length;
 
+	addr &= this._bitmask;
+
 	for (; i < len; i++) {
 		if (strobes[i].address === addr) {
 			strobes[i].active = false;
@@ -150,6 +150,45 @@ MemoryMap.prototype.resetStrobe = function(addr) {
 	throw new Error('The address specified has not been added as a strobe');
 };
 
+MemoryMap.prototype.journalAddByte = function(addr, val) {
+	this._journal.push({
+		addr: addr,
+		val: val
+	});
+};
+
+MemoryMap.prototype.journalAddWord = function(addr, val) {
+	addr &= this._bitmask;
+
+	this._journal.push({
+		addr: addr,
+		val: val & 0xff
+	});
+
+	this._journal.push({
+		addr: (addr + 1) & 0xffff,
+		val: (val >>> 8) & 0xff
+	});
+};
+
+MemoryMap.prototype.journalGet = function() {
+	return this._journal;
+};
+
+MemoryMap.prototype.journalCommit = function() {
+	var i = 0,
+		l = this._journal.length;
+
+	for (; i < l; i++) {
+		this.writeByte(this._journal[i].addr, this._journal[i].val);
+	}
+
+	this._journal = [];
+};
+
+
+// "static" function to create the Atari memory map with it's less than
+// subtle quirks and irregularities
 MemoryMap.createAtariMemoryMap = function() {
 	var mmap = new MemoryMap(13);
 	

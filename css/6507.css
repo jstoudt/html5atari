@@ -32,6 +32,9 @@ canvas {
 label {
 	vertical-align: middle;
 }
+label:after {
+	content: ":";
+}
 
 .register-wrapper {
 	margin-bottom: 40px;

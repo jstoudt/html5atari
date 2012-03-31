@@ -108,16 +108,13 @@ var TIA = (function() {
 		],
 
 		isPlayfieldAt = function(x) {
-			var ctrlpf;
-
 			if (x >= 20) {
-				ctrlpf = mmap.readByte(MEM_LOCATIONS.CTRLPF);
-				x = (ctrlpf & 0x01) ? 40 - x : x - 20;
+				x = (mmap.readByte(MEM_LOCATIONS.CTRLPF) & 0x01) ? 40 - x : x - 20;
 			}
 
-			return x < 4 ? (mmap.readByte(MEM_LOCATIONS.PF0) >>> 4) & (1 << x) :
-				x < 12 ? mmap.readByte(MEM_LOCATIONS.PF1) & (0x80 >> (x - 4)) :
-				mmap.readByte(MEM_LOCATIONS.PF2) & (1 << (x - 12));
+			return x >= 12 ? mmap.readByte(MEM_LOCATIONS.PF2) & (1 << (x - 12)) :
+				x >= 4 ? mmap.readByte(MEM_LOCATIONS.PF1) & (0x80 >> (x - 4)) :
+				(mmap.readByte(MEM_LOCATIONS.PF0) >>> 4) & (1 << x);
 		},
 
 		writePixel = function(x, y) {
@@ -169,11 +166,11 @@ var TIA = (function() {
 
 		lastTime = 0,
 		lastCycleCount = 0,
+		cpuWaitCycles = 0,    // countdown until next CPU step
 
 		execClockCycle = function() {
 			var x,
 				y = 0,             // the coordinates of the beam
-				cpuWaitCycles = 0, // countdown until next CPU step
 				vsync = 0,         // has the beam been reset to the top?
 				wsync = false,     // should we lock the CPU until hblank?
 				vblank = 0,        // has the beam been turned off for v reset?
@@ -188,17 +185,20 @@ var TIA = (function() {
 				// clear the wsync flag to start running CPU instructions again
 				wsync = false;
 				for (x = 0; x < 228; x++) {
+
+					console.log('(x, y): ' + '(' + x + ', ' + y + ')');
+
 					// if we're waiting for the CPU, decrement the counter
 					if (!wsync) {
 						if (cpuWaitCycles > 0) {
 							cpuWaitCycles--;
 						} else {
-							// tell the CPU to execute the next instruction
-							CPU6507.step();
+							// commit any changes to memory which occurred from
+							// the execution of last CPU instruction
+							mmap.journalCommit();
 
-							// calculate how long we need to wait to execute
-							// the next CPU instruction
-							cpuWaitCycles = CPU6507.queryNextInstruction().cycles * 3;
+							// tell the CPU to execute the next instruction
+							cpuWaitCycles = CPU6507.step() * 3;
 
 							// check if the vsync was enabled
 							vsync = mmap.readByte(MEM_LOCATIONS.VSYNC) & 0x02;
@@ -209,10 +209,9 @@ var TIA = (function() {
 								mmap.resetStrobe(MEM_LOCATIONS.WSYNC);
 							}
 
+							// check if vblank is enabled
 							vblank = mmap.readByte(MEM_LOCATIONS.VBLANK) & 0x02;
 						}
-					} else {
-						cpuWaitCycles = 0;
 					}
 
 					// if the beam is out of vertical and horizontal blank,
@@ -225,7 +224,7 @@ var TIA = (function() {
 				}
 				y++;
 			}
-
+			
 			if (!breakFlag) {
 
 //				TARGET_CYCLE_RATE: 3579.545 kHz
@@ -287,7 +286,7 @@ var TIA = (function() {
 			}
 
 			drawCanvas();
-			execClockCycle();
+			setTimeout(execClockCycle, 0);
 		},
 
 		stop: function() {

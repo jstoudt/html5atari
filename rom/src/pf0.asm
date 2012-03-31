@@ -53,7 +53,7 @@ StartOfFrame
                 lda #2
                 sta VSYNC
 
-                sta WSYNC
+;                sta WSYNC
                 sta WSYNC
                 sta WSYNC               ; 3 scanlines of VSYNC signal
 
@@ -77,20 +77,17 @@ VerticalBlank   sta WSYNC
        ; Handle a change in the pattern once every 20 frames
        ; and write the pattern to the PF1 register
 
-                iny                    ; increment speed count by one
-                cpy #TIMETOCHANGE      ; has it reached our "change point"?
-                bne notyet             ; no, so branch past
+;                iny                    ; increment speed count by one
+;                cpy #TIMETOCHANGE      ; has it reached our "change point"?
+;                bne notyet             ; no, so branch past
 
-                ldy #0                 ; reset speed count
+;                ldy #0                 ; reset speed count
 
-                inc PATTERN            ; switch to next pattern
+;                inc PATTERN            ; switch to next pattern
 notyet
 
 ;                lda PATTERN            ; use our saved pattern
 ;                sta PF1                ; as the playfield shape
-
-       ;------------------------------------------------
-       ; Do 192 scanlines of colour-changing (our picture)
 
                 lda #$af
                 sta PF0
@@ -100,6 +97,9 @@ notyet
 
                 lda #$aa
                 sta PF2
+
+       ;------------------------------------------------
+       ; Do 192 scanlines of colour-changing (our picture)
 
                 ldx #0                 ; this counts our scanline number
 

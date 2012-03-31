@@ -149,13 +149,13 @@ var CPU6507 = (function() {
 		stack = {
 
 			pushByte: function(val) {
-				mmap.writeByte(val, 0x0100 | regSet.sp);
+				mmap.journalAddByte(val, regSet.sp);
 				regSet.sp = (regSet.sp - 1) & 0xff;
 			},
 
 			popByte: function() {
 				regSet = (regSet + 1) & 0xff;
-				return mmap.readByte(0x0100 | regSet.sp);
+				return mmap.readByte(regSet.sp);
 			},
 
 			pushWord: function(val) {
@@ -339,28 +339,28 @@ var CPU6507 = (function() {
 				var addr = fAddr(),
 					result = arithmeticShiftLeft(mmap.readByte(addr));
 
-				mmap.writeByte(result, addr);
+				mmap.journalAddByte(result, addr);
 			},
 
 			LSR: function(fAddr) {
 				var addr = fAddr(),
 					result = logicalShiftRight(mmap.readByte(fAddr()));
 
-				mmap.writeByte(result, addr);
+				mmap.journalAddByte(result, addr);
 			},
 
 			ROL: function(fAddr) {
 				var addr = fAddr().
 					result = rotateLeft(mmap.readByte(addr));
 
-				mmap.writeByte(result, addr);
+				mmap.journalAddByte(result, addr);
 			},
 
 			ROR: function(fAddr) {
 				var addr = fAddr(),
 					result = rotateRight(mmap.readByte(addr));
 
-				mmap.writeByte(result, addr);
+				mmap.journalAddByte(result, addr);
 			},
 
 			BIT: function(fAddr) {
@@ -419,15 +419,15 @@ var CPU6507 = (function() {
 			},
 
 			STA: function(fAddr) {
-				mmap.writeByte(regSet.ac, fAddr());
+				mmap.journalAddByte(regSet.ac, fAddr());
 			},
 
 			STX: function(fAddr) {
-				mmap.writeByte(regSet.x, fAddr());
+				mmap.journalAddByte(regSet.x, fAddr());
 			},
 
 			STY: function(fAddr) {
-				mmap.writeByte(regSet.y, fAddr());
+				mmap.journalAddByte(regSet.y, fAddr());
 			},
 
 			DEC: function(fAddr) {
@@ -436,7 +436,7 @@ var CPU6507 = (function() {
 
 				status.setFlagsNZ(val);
 
-				mmap.writeByte(val, addr);
+				mmap.journalAddByte(val, addr);
 			},
 
 			INC: function(fAddr) {
@@ -445,11 +445,11 @@ var CPU6507 = (function() {
 
 				status.setFlagsNZ(val);
 
-				mmap.writeByte(val, addr);
+				mmap.journalAddByte(val, addr);
 			},
 
 			JSR: function(fAddr) {
-				stack.pushWord(regSet.pc);
+				stack.pushWord((regSet.pc - 1) & 0xffff);
 				regSet.pc = fAddr();
 			}
 
@@ -599,11 +599,7 @@ var CPU6507 = (function() {
 			},
 
 			0x20: { // JSR abs
-				op: function() {
-					var pc = (regSet.pc + 1) & 0xffff;
-					stack.pushWord(pc);
-					regSet.pc = mmap.readWord(regSet.pc);
-				},
+				op: operation.JSR,
 				addressing: 'absolute',
 				cycles: 6,
 				abbr: 'JSR'
@@ -897,7 +893,7 @@ var CPU6507 = (function() {
 
 			0x60: { // RTS impl
 				op: function() {
-					regSet.pc = stack.popWord();
+					regSet.pc = (stack.popWord() + 1) & 0xffff;
 				},
 				addressing: 'implied',
 				cycles: 6,
@@ -1738,25 +1734,29 @@ var CPU6507 = (function() {
 			cycleCount = 0;
 		},
 
-		// ask the CPU to read the next instruction without changing the PC
-		queryNextInstruction: function() {
-			return instruction[mmap.readByte(regSet.pc)];
-		},
-
+		// execute the next instruction at the program counter
 		step: function() {
-			var opcode = fetchInstruction(),
-				handlerLength = execloopHandlers.length,
+			var handlerLength = execloopHandlers.length,
 				i = 0,
-				inst = instruction[opcode],
-				addressing = inst.addressing;
+				inst = instruction[fetchInstruction()],
+				addressing = inst.addressing,
+				cycles0 = cycleCount;
 
 			inst.op((addressing in addrMode) ? addrMode[addressing] : null);
 
 			cycleCount += inst.cycles;
 
-			for (; i < handlerLength; i++) {
-				execloopHandlers[i](opcode, getAddressString(inst.addressing));
+			if (handlerLength > 0) {
+				arg = {
+				}
+				for (; i < handlerLength; i++) {
+					execloopHandlers[i]();
+				}
 			}
+
+			// return the number of cycles this operation truly took
+			return cycleCount - cycles0;
+
 		},
 
 		addEventListener: function(type, handler) {
@@ -1774,13 +1774,8 @@ var CPU6507 = (function() {
 		loadProgram: function(program, offset, len) {
 			var i = 0;
 
-			if (typeof offset === 'undefined') {
-				offset = 0;
-			}
-
-			if (typeof len === 'undefined') {
-				len = program.length;
-			}
+			offset = offset || 0;
+			len = len || program.length;
 
 			if (!(mmap instanceof MemoryMap)) {
 				throw new Error('The TIA must be initialized prior to loading a program.');
@@ -1796,13 +1791,7 @@ var CPU6507 = (function() {
 		},
 
 		getRegister: function(name) {
-			name = name.toLowerCase();
-
-			if (name in regSet) {
-				return regSet[name];
-			}
-			
-			throw new Error('The specified register does not exist.');
+			return regSet[name];
 		},
 
 		getCycleCount: function() {

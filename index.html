@@ -12,7 +12,7 @@
 			<label>Accumulator</label>
 			<div id="ac" class="register"></div>
 
-			<label>X</label>;
+			<label>X</label>
 			<div id="x" class="register"></div>
 
 			<label>Y</label>
@@ -283,7 +283,7 @@
 			TIA.init(television);
 
 			var xhr = new XMLHttpRequest();
-			xhr.open('GET', 'rom/pf0.bin', true);
+			xhr.open('GET', 'rom/bin/Boxing.bin', true);
 			xhr.responseType = 'arraybuffer';
 
 			xhr.onerror = function() {
@@ -372,6 +372,10 @@
 						}
 
 					})();
+
+					CPU6507.addEventListener('execloop', function(inst) {
+						console.log(inst.abbr + '\t' + inst.addressing + '\t' + inst.cycles);
+					});
 
 				}, false);
 
