@@ -25,6 +25,7 @@ var CPU6507 = (function() {
 			pc: 0     // Program Counter
 		},
 		mmap, // a reference to the memory map to be passed in by TIA
+		
 		cycleCount = 0, // number of CPU cycles executed -- for timing purposes
 
 		execloopHandlers = [], // an array of functions to call after each exec loop

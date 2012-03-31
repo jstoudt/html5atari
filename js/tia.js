@@ -10,7 +10,10 @@
 var TIA = (function() {
 
 	var mmap,        // the memory map to be shared between TIA & CPU
+
 		videoBuffer, // the array of pixel colors representing the video output
+
+		canvasElement, // a reference to the canvas element for video output
 
 		canvasContext, // the context of the canvas element for video output
 
@@ -26,17 +29,19 @@ var TIA = (function() {
 			window.webkitRequestAnimationFrame ||
 			window.mozRequestAnimationFrame,
 
-		tiaCycles = 0, // the number of cycles executed by the TIA
+		tiaCycles, // the number of cycles executed by the TIA
 
-		numFrames = 0, // the number of frames written to the canvas
+		numFrames, // the number of frames written to the canvas
+
+		breakFlag = true, // set to stop the TIA execution loop
 
 		TARGET_CYCLE_RATE = 3579.545, // frequency of the TIA clock in kHz
 
 		VIDEO_BUFFER_WIDTH  = 160,
 		VIDEO_BUFFER_HEIGHT = 192,
 
-		PIXEL_WIDTH         = 4,
-		PIXEL_HEIGHT        = 2,
+		PIXEL_WIDTH         = 2, // this is the base 2 exponent of the
+		PIXEL_HEIGHT        = 1, // pixel width and height (cheaper mult)
 
 		MEM_LOCATIONS = {
 			VSYNC:  0x00,		VBLANK: 0x01,
@@ -46,11 +51,10 @@ var TIA = (function() {
 			COLUPF: 0x08,		COLUBK: 0x09,
 			CTRLPF: 0x0a,		REFP0:  0x0b,
 			REFP1:  0x0c,		PF0:    0x0d,
-			PF1:    0x0e
+			PF1:    0x0e,		PF2:    0x0f
 		},
 
-		breakFlag = true, // set to stop the TIA execution loop
-
+		// the Atari 2600 NTSC color palette
 		COLOR_PALETTE = [
 			[    // 0
 				'#000000', '#404040', '#6C6C6C', '#909090',
@@ -103,43 +107,63 @@ var TIA = (function() {
 			]
 		],
 
-		writePixel = function(x, y) {
-			var colubk = mmap.readByte(MEM_LOCATIONS.COLUBK);
+		isPlayfieldAt = function(x) {
+			var ctrlpf;
 
-			if (videoBuffer[x][y] !== colubk) {
-				deltaQueue.push({
-					x: x,
-					y: y,
-					colubk: colubk
-				});
-				videoBuffer[x][y] = colubk;
+			if (x >= 20) {
+				ctrlpf = mmap.readByte(MEM_LOCATIONS.CTRLPF);
+				x = (ctrlpf & 0x01) ? 40 - x : x - 20;
+			}
+
+			return x < 4 ? (mmap.readByte(MEM_LOCATIONS.PF0) >>> 4) & (1 << x) :
+				x < 12 ? mmap.readByte(MEM_LOCATIONS.PF1) & (0x80 >> (x - 4)) :
+				mmap.readByte(MEM_LOCATIONS.PF2) & (1 << (x - 12));
+		},
+
+		writePixel = function(x, y) {
+			// determine what color the pixel at the present coordinates should be
+			var color = mmap.readByte(isPlayfieldAt(x >>> 2) ?
+				MEM_LOCATIONS.COLUPF :
+				MEM_LOCATIONS.COLUBK);
+
+			if (videoBuffer[x][y] !== color) {
+				if (!deltaQueue[color]) {
+					deltaQueue[color] = [];
+				}
+				
+				deltaQueue[color].push({ x: x, y: y });
+				
+				videoBuffer[x][y] = color;
 			}
 		},
 
-		drawPixel = function() {
-			var delta, colubk, hue, lum,
-				i = 0,
-				len = deltaQueue.length;
+		drawCanvas = function() {
+			var color, i, colorQueue, len, delta;
 
-			for (; i < len; i++) {
-				delta = deltaQueue[i];
-				colubk = delta.colubk;
-				hue = (colubk & 0xf0) >>> 4;
-				lum = (colubk & 0x0f) >>> 1;
-				canvasContext.fillStyle = COLOR_PALETTE[hue][lum];
-				canvasContext.fillRect(
-					delta.x * PIXEL_WIDTH,
-					delta.y * PIXEL_HEIGHT,
-					PIXEL_WIDTH,
-					PIXEL_HEIGHT
-				);
+			for (color in deltaQueue) {
+				colorQueue = deltaQueue[color];
+				len = colorQueue.length;
+				canvasContext.fillStyle = COLOR_PALETTE[(color & 0xf0) >>> 4][(color & 0x0f) >>> 1];
+
+				for (i = 0; i < len; i++) {
+					delta = colorQueue[i];
+					canvasContext.fillRect(
+						delta.x << PIXEL_WIDTH,
+						delta.y << PIXEL_HEIGHT,
+						1 << PIXEL_WIDTH,
+						1 << PIXEL_HEIGHT);
+				}
 			}
 
+			// reset the queue
 			deltaQueue = [];
+
+			// increment the number of frames drawn
 			numFrames++;
 
+			// unless the TIA was stopped, schedule another canvas draw routine
 			if (!breakFlag) {
-				reqAnimFrame(drawPixel);
+				reqAnimFrame(drawCanvas);
 			}
 		},
 
@@ -147,15 +171,15 @@ var TIA = (function() {
 		lastCycleCount = 0,
 
 		execClockCycle = function() {
-			var x, y = 0,          // the coordinates of the beam
+			var x,
+				y = 0,             // the coordinates of the beam
 				cpuWaitCycles = 0, // countdown until next CPU step
 				vsync = 0,         // has the beam been reset to the top?
 				wsync = false,     // should we lock the CPU until hblank?
+				vblank = 0,        // has the beam been turned off for v reset?
 				i,                 // generic couting variable
-				instruction,       // the next instruction to be run by CPU
 				curTime,           // time when done with frame
 				cycleRate,         // the current rate of cycles/sec
-				timeToCall,
 				handlerLength;     // number of event handlers in queue
 
 			// we are going to write one frame to the buffer before being
@@ -172,15 +196,20 @@ var TIA = (function() {
 							// tell the CPU to execute the next instruction
 							CPU6507.step();
 
-							instruction = CPU6507.queryNextInstruction();
-							cpuWaitCycles = instruction.cycles * 3;
+							// calculate how long we need to wait to execute
+							// the next CPU instruction
+							cpuWaitCycles = CPU6507.queryNextInstruction().cycles * 3;
 
 							// check if the vsync was enabled
 							vsync = mmap.readByte(MEM_LOCATIONS.VSYNC) & 0x02;
-							if (mmap.checkStrobe(MEM_LOCATIONS.WSYNC)) {
+
+							// check if wsync was enabled
+							if (mmap.isStrobeActive(MEM_LOCATIONS.WSYNC)) {
 								wsync = true;
 								mmap.resetStrobe(MEM_LOCATIONS.WSYNC);
 							}
+
+							vblank = mmap.readByte(MEM_LOCATIONS.VBLANK) & 0x02;
 						}
 					} else {
 						cpuWaitCycles = 0;
@@ -188,7 +217,7 @@ var TIA = (function() {
 
 					// if the beam is out of vertical and horizontal blank,
 					// write a pixel at the beam's position to the video buffer
-					if (x >= 68 && y >= 37) {
+					if (!vblank && x >= 68 && y >= 37) {
 						writePixel(x - 68, y - 37);
 					}
 
@@ -198,16 +227,16 @@ var TIA = (function() {
 			}
 
 			if (!breakFlag) {
+
 //				TARGET_CYCLE_RATE: 3579.545 kHz
+
 				curTime = Date.now();
 				cycleRate = (tiaCycles - lastCycleCount) / (curTime - lastTime);
-				timeToCall = cycleRate > TARGET_CYCLE_RATE ?
+				setTimeout(execClockCycle, cycleRate > TARGET_CYCLE_RATE ?
 					1 / (cycleRate - TARGET_CYCLE_RATE) :
-					0;
+					0);
 				lastTime = curTime;
 				lastCycleCount = tiaCycles;
-
-				setTimeout(execClockCycle, timeToCall);
 			} else {
 				handlerLength = handlers.stop.length;
 				for (i = 0; i < handlerLength; i++) {
@@ -220,26 +249,31 @@ var TIA = (function() {
 	return {
 
 		init: function(canvas) {
-			var i, j;
+			var i = 0;
 
 			// set the canvas reference
+			canvasElement = canvas;
+
+			// store a reference to the canvas's context
 			canvasContext = canvas.getContext('2d');
 
 			// Initialize the memory map
-			mmap = new MemoryMap(13);
-			mmap.addStrobe(0x0002);
+			mmap = MemoryMap.createAtariMemoryMap();
 
 			// create a data structure for the video frame buffer
 			videoBuffer = [];
-			for (i = 0; i < VIDEO_BUFFER_WIDTH; i++) {
+			for (; i < VIDEO_BUFFER_WIDTH; i++) {
 				videoBuffer[i] = [];
-				for (j = 0; j < VIDEO_BUFFER_HEIGHT; j++) {
-					videoBuffer[i][j] = 0xff;
-				}
 			}
 
 			// pass the memory map on to the CPU
 			CPU6507.init(mmap);
+
+			// initialize the TIA's cycle count
+			tiaCycles = 0;
+
+			// initialize the frame counter
+			numFrames = 0;
 		},
 
 		start: function() {
@@ -252,7 +286,7 @@ var TIA = (function() {
 				handlers.start[i]();
 			}
 
-			drawPixel();
+			drawCanvas();
 			execClockCycle();
 		},
 

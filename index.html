@@ -42,7 +42,7 @@
 				<tr>
 					<td id="N"></td>
 					<td id="V"></td>
-					<td></td>
+					<td>X</td>
 					<td id="B"></td>
 					<td id="D"></td>
 					<td id="I"></td>
@@ -283,7 +283,7 @@
 			TIA.init(television);
 
 			var xhr = new XMLHttpRequest();
-			xhr.open('GET', 'rom/pf1.bin', true);
+			xhr.open('GET', 'rom/pf0.bin', true);
 			xhr.responseType = 'arraybuffer';
 
 			xhr.onerror = function() {
@@ -359,7 +359,7 @@
 							tiaCycles1 = TIA.getCycleCount(),
 							tiaFrames1 = TIA.getNumFrames();
 
-						tiaFrequency.innerHTML = Math.round((tiaCycles1 - tiaCycles0) / (tiaTime1 - tiaTime0)) / 1000;
+						tiaFrequency.innerHTML = Math.round((tiaCycles1 - tiaCycles0) / (tiaTime1 - tiaTime0)) / 1e3;
 
 						frameRate.innerHTML = Math.round((tiaFrames1 - tiaFrames0) / (tiaTime1 - tiaTime0) * 1e6) / 1000;
 

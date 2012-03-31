@@ -84,10 +84,8 @@ MemoryMap.prototype.readByte = function(addr) {
 };
 
 MemoryMap.prototype.readWord = function(addr) {
-	var lo, hi;
-	
-	lo = this.readByte(addr);
-	hi = this.readByte((addr + 1) & 0xffff);
+	var lo = this.readByte(addr),
+		hi = this.readByte((addr + 1) & 0xffff);
 
 	return (hi << 8) | lo;
 };
@@ -123,28 +121,40 @@ MemoryMap.prototype.addStrobe = function(addr) {
 	});
 };
 
-MemoryMap.prototype.checkStrobe = function(addr) {
+MemoryMap.prototype.isStrobeActive = function(addr) {
 	var i = 0,
-		len = this._strobes.length;
-
-	this._isAddressValid(addr);
+		strobes = this._strobes,
+		len = strobes.length;
 
 	for (; i < len; i++) {
-		if (this._strobes[i].address === addr) {
-			return this._strobes[i].active;
+		if (strobes[i].address === addr) {
+			return strobes[i].active;
 		}
 	}
 
-	return false;
+	throw new Error('The address specified has not been added as a strobe.');
 };
 
 MemoryMap.prototype.resetStrobe = function(addr) {
 	var i = 0,
-		len = this._strobes.length;
-
-	this._isAddressValid(addr);
+		strobes = this._strobes,
+		len = strobes.length;
 
 	for (; i < len; i++) {
-		this._strobes[i].active = false;
+		if (strobes[i].address === addr) {
+			strobes[i].active = false;
+			return;
+		}
 	}
+
+	throw new Error('The address specified has not been added as a strobe');
+};
+
+MemoryMap.createAtariMemoryMap = function() {
+	var mmap = new MemoryMap(13);
+	
+	mmap.addStrobe(0x02);
+	mmap.addStrobe(0x03);
+
+	return mmap;
 };
