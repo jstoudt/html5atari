@@ -154,7 +154,7 @@ var CPU6507 = (function() {
 			},
 
 			popByte: function() {
-				regSet = (regSet + 1) & 0xff;
+				regSet.sp = (regSet.sp + 1) & 0xff;
 				return mmap.readByte(regSet.sp);
 			},
 
@@ -1738,7 +1738,10 @@ var CPU6507 = (function() {
 		step: function() {
 			var handlerLength = execloopHandlers.length,
 				i = 0,
-				inst = instruction[fetchInstruction()],
+				arg,
+				opcode = fetchInstruction(),
+				inst = instruction[opcode],
+				instCycles,
 				addressing = inst.addressing,
 				cycles0 = cycleCount;
 
@@ -1746,16 +1749,22 @@ var CPU6507 = (function() {
 
 			cycleCount += inst.cycles;
 
+			instCycles = cycleCount - cycles0;
+
 			if (handlerLength > 0) {
 				arg = {
-				}
+					opcode: opcode,
+					abbr: inst.abbr,
+					addressing: inst.addressing,
+					cycles: instCycles
+				};
 				for (; i < handlerLength; i++) {
-					execloopHandlers[i]();
+					execloopHandlers[i](arg);
 				}
 			}
 
 			// return the number of cycles this operation truly took
-			return cycleCount - cycles0;
+			return instCycles;
 
 		},
 
