@@ -29,8 +29,7 @@ function MemoryMap(bitWidth) {
 	bitWidth = Math.round(bitWidth);
 
 	for (; i < bitWidth; i++) {
-		mask <<= 1;
-		mask |= 1;
+		mask = (mask << 1) | 1;
 	}
 
 	buf = new ArrayBuffer(1 << bitWidth);
@@ -43,13 +42,12 @@ function MemoryMap(bitWidth) {
 	this.length = this._memory.length;
 }
 
+// Changes the memory at the specified address location to the specified value
 MemoryMap.prototype.writeByte = function(val, addr) {
 	var i = 0,
 		len = this._strobes.length;
 
 	addr &= this._bitmask;
-
-	val &= 0xff;
 
 	for (; i < len; i++) {
 		if (this._strobes[i].address === addr) {
@@ -58,23 +56,17 @@ MemoryMap.prototype.writeByte = function(val, addr) {
 		}
 	}
 
-	this._memory[addr] = val;
+	this._memory[addr] = val & 0xff;
 };
 
-MemoryMap.prototype.writeWord = function(val, addr) {
-	var lo = val & 0xff,
-		hi = (val >>> 8) & 0xff;
-
-	this.writeByte(lo, addr);
-	this.writeByte(hi, (addr + 1) & 0xffff);
-};
-
+// Returns the byte in memory at the specified address location
 MemoryMap.prototype.readByte = function(addr) {
 	addr &= this._bitmask;
 
 	return this._memory[addr];
 };
 
+// Returns the 2-byte little-endian word stored at the specified location
 MemoryMap.prototype.readWord = function(addr) {
 	var lo, hi;
 
@@ -86,6 +78,8 @@ MemoryMap.prototype.readWord = function(addr) {
 	return (hi << 8) | lo;
 };
 
+// Returns a deep copy of the memory beginning at the specified until
+// the specified memory length
 MemoryMap.prototype.getCopy = function(offset, len) {
 	var buf,
 		copy,
@@ -108,6 +102,8 @@ MemoryMap.prototype.getCopy = function(offset, len) {
 	return copy;
 };
 
+// Indicates that the byte at the specified address location is a strobe
+// rather than a conventional read-write byte on the memory bus
 MemoryMap.prototype.addStrobe = function(addr) {
 	addr &= this._bitmask;
 
@@ -117,6 +113,8 @@ MemoryMap.prototype.addStrobe = function(addr) {
 	});
 };
 
+// Indicates if the strobe at the specifed location was triggered as active
+// by a write to that location
 MemoryMap.prototype.isStrobeActive = function(addr) {
 	var i = 0,
 		strobes = this._strobes,
@@ -133,6 +131,7 @@ MemoryMap.prototype.isStrobeActive = function(addr) {
 	throw new Error('The address specified has not been added as a strobe.');
 };
 
+// Marks the strobe at the specifed location as inactive
 MemoryMap.prototype.resetStrobe = function(addr) {
 	var i = 0,
 		strobes = this._strobes,
@@ -150,37 +149,28 @@ MemoryMap.prototype.resetStrobe = function(addr) {
 	throw new Error('The address specified has not been added as a strobe');
 };
 
-MemoryMap.prototype.journalAddByte = function(addr, val) {
+// Adds to the journal a byte to be written at a specified location
+// when the next commit is executed
+MemoryMap.prototype.journalAddByte = function(val, addr) {
 	this._journal.push({
 		addr: addr,
 		val: val
 	});
 };
 
-MemoryMap.prototype.journalAddWord = function(addr, val) {
-	addr &= this._bitmask;
-
-	this._journal.push({
-		addr: addr,
-		val: val & 0xff
-	});
-
-	this._journal.push({
-		addr: (addr + 1) & 0xffff,
-		val: (val >>> 8) & 0xff
-	});
+// Clears the journal without committing its contents
+MemoryMap.prototype.journalReset = function() {
+	this._jounral = [];
 };
 
-MemoryMap.prototype.journalGet = function() {
-	return this._journal;
-};
-
+// Writes all the bytes in the journal to the specified address location
+// and clears the journal
 MemoryMap.prototype.journalCommit = function() {
 	var i = 0,
 		l = this._journal.length;
 
 	for (; i < l; i++) {
-		this.writeByte(this._journal[i].addr, this._journal[i].val);
+		this.writeByte(this._journal[i].val, this._journal[i].addr);
 	}
 
 	this._journal = [];

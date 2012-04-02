@@ -38,12 +38,19 @@ var CPU6507 = (function() {
 			return val;
 		},
 
+		waiting = false,  // false: read inst and wait some cycles
+
+		cyclesToWait = 0, // the number of cycles until instruction is executed
+
 		addrMode = {
 
 			// abs
 			absolute: function() {
 				var addr = mmap.readWord(regSet.pc);
 				regSet.pc = (regSet.pc + 2) & 0xffff;
+	
+				currentInstruction.operand = addr;
+	
 				return addr;
 			},
 
@@ -51,6 +58,8 @@ var CPU6507 = (function() {
 			absoluteX: function() {
 				var pre = mmap.readWord(regSet.pc),
 					post = (pre + regSet.x) & 0xffff;
+
+				currentInstruction.operand = pre;
 
 				regSet.pc = (regSet.pc + 2) & 0xffff;
 
@@ -65,7 +74,9 @@ var CPU6507 = (function() {
 			// abs,Y
 			absoluteY: function() {
 				var pre = mmap.readWord(regSet.pc),
-					post = (pre + regSet.x) & 0xffff;
+					post = (pre + regSet.y) & 0xffff;
+
+				currentInstruction.operand = pre;
 
 				regSet.pc = (regSet.pc + 2) & 0xffff;
 
@@ -79,17 +90,26 @@ var CPU6507 = (function() {
 
 			// X,ind
 			xIndexedIndirect: function() {
-				var addr = (mmap.readByte(regSet.pc) + regSet.x) & 0xff;
+				var addr = (mmap.readByte(regSet.pc));
+
+				currentInstruction.operand = addr;
+
+				addr += regSet.x;
 
 				regSet.pc = (regSet.pc + 1) & 0xffff;
 
-				return mmap.readWord(addr);
+				return mmap.readWord(addr & 0xff);
 			},
 
 			// ind,Y
 			indirectYIndexed: function() {
-				var pre = mmap.readWord(mmap.readByte(regSet.pc)),
-					post = (pre + regSet.y) & 0xffff;
+				var pre = mmap.readByte(regSet.pc),
+					post;
+
+				currentInstruction.operand = pre;
+
+				pre = mmap.readWord(pre);
+				post = (pre + regSet.y) & 0xffff;
 
 				regSet.pc = (regSet.pc + 1) & 0xffff;
 
@@ -104,34 +124,39 @@ var CPU6507 = (function() {
 
 			// zpg
 			zeroPage: function() {
-				return fetchInstruction();
+				var addr = fetchInstruction();
+
+				currentInstruction.operand = addr;
+
+				return addr;
 			},
 
 			// zpg,X
 			zeroPageX: function() {
-				var addr = (mmap.readByte(regSet.pc) + regSet.x) & 0xff;
+				var addr = fetchInstruction();
 
-				regSet.pc = (regSet.pc + 1) & 0xffff;
+				currentInstruction.operand = addr;
 
-				return addr;
+				return (addr + regSet.x) & 0xff;
 			},
 
 			// zpg,Y
 			zeroPageY: function() {
-				var addr = (mmap.readByte(regSet.pc) + regSet.y) & 0xff;
+				var addr = fetchInstruction();
 
-				regSet.pc = (regSet.pc + 1) & 0xffff;
+				currentInstruction.operand = addr;
 
-				return addr;
+				return (addr + regSet.y) & 0xff;
 			},
 
 			// rel
 			relative: function() {
 				var addr = fetchInstruction();
-
+				
 				cycleCount++;
 
-				addr = addr & 0xf0 ? regSet.pc - ((addr ^ 0xff) + 1) :
+				addr = (addr & 0x80) ?
+					regSet.pc - ((addr ^ 0xff) + 1) :
 					regSet.pc + addr;
 
 				// Fetching relative address across page boundries costs an
@@ -140,7 +165,9 @@ var CPU6507 = (function() {
 					cycleCount++;
 				}
 
-				return addr;
+				currentInstruction.operand = addr;
+
+				return addr & 0xffff;
 			}
 
 		},
@@ -246,7 +273,7 @@ var CPU6507 = (function() {
 		},
 
 		logicalShiftRight = function(val) {
-			status.set('C', (val & 0x80));
+			status.set('C', (val & 0x01));
 
 			val >>>= 1;
 
@@ -302,13 +329,7 @@ var CPU6507 = (function() {
 		},
 
 		subtractWithCarry = function(val) {
-			var valNegative = val & 0x80;
-
-			if (!status.isSet('C')) {
-				val++;
-			}
-
-			val = regSet.ac - val;
+			val = regSet.ac - val - (status.isSet('C') ? 0 : 1);
 
 			status.setFlagsNZ(val);
 
@@ -344,13 +365,13 @@ var CPU6507 = (function() {
 
 			LSR: function(fAddr) {
 				var addr = fAddr(),
-					result = logicalShiftRight(mmap.readByte(fAddr()));
+					result = logicalShiftRight(mmap.readByte(addr));
 
 				mmap.journalAddByte(result, addr);
 			},
 
 			ROL: function(fAddr) {
-				var addr = fAddr().
+				var addr = fAddr(),
 					result = rotateLeft(mmap.readByte(addr));
 
 				mmap.journalAddByte(result, addr);
@@ -449,8 +470,9 @@ var CPU6507 = (function() {
 			},
 
 			JSR: function(fAddr) {
+				var addr = fAddr();
 				stack.pushWord((regSet.pc - 1) & 0xffff);
-				regSet.pc = fAddr();
+				regSet.pc = addr;
 			}
 
 		},
@@ -464,6 +486,8 @@ var CPU6507 = (function() {
 					stack.pushByte(regSet.sr);
 					status.set('I', true);
 					regSet.pc = 0x00; // need to figure this out
+
+					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 7,
@@ -495,6 +519,7 @@ var CPU6507 = (function() {
 			0x08: { // PHP impl
 				op: function() {
 					stack.pushByte(regSet.sr);
+					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 5,
@@ -503,7 +528,9 @@ var CPU6507 = (function() {
 
 			0x09: { // ORA #
 				op: function() {
-					regSet.ac |= fetchInstruction();
+					var val = fetchInstruction();
+					currentInstruction.operand = val;
+					regSet.ac |= val;
 					status.setFlagsNZ(regSet.ac);
 				},
 				addressing: 'immediate',
@@ -514,6 +541,7 @@ var CPU6507 = (function() {
 			0x0a: { // ASL A
 				op: function() {
 					regSet.ac = arithmeticShiftLeft(regSet.ac);
+					currentInstruction.operand = 'A';
 				},
 				addressing: 'accumulator',
 				cycles: 2,
@@ -536,10 +564,10 @@ var CPU6507 = (function() {
 
 			0x10: { // BPL rel
 				op: function(fAddr) {
+					var addr = fAddr();
+
 					if (!status.isSet('N')) {
-						regSet.pc = fAddr();
-					} else {
-						regSet.pc = (regSet.pc + 1) & 0xffff;
+						regSet.pc = addr;
 					}
 				},
 				addressing: 'relative',
@@ -571,6 +599,7 @@ var CPU6507 = (function() {
 			0x18: { // CLC impl
 				op: function() {
 					status.reset('C');
+					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -636,6 +665,7 @@ var CPU6507 = (function() {
 			0x28: { // PLP impl
 				op: function() {
 					regSet.sr = stack.popByte();
+					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 4,
@@ -644,7 +674,9 @@ var CPU6507 = (function() {
 
 			0x29: { // AND #
 				op: function() {
-					regSet.ac &= fetchInstruction();
+					var val = fetchInstruction();
+					currentInstruction.operand = val;
+					regSet.ac &= val;
 					status.setFlagsNZ(regSet.ac);
 				},
 				addressing: 'immediate',
@@ -655,6 +687,7 @@ var CPU6507 = (function() {
 			0x2a: { // ROL A
 				op: function() {
 					regSet.ac = rotateLeft(regSet.ac);
+					currentInstruction.operand = 'A';
 				},
 				addressing: 'accumulator',
 				cycles: 2,
@@ -684,10 +717,9 @@ var CPU6507 = (function() {
 
 			0x30: { // BMI rel
 				op: function(fAddr) {
+					var addr = fAddr();
 					if (status.isSet('N')) {
-						regSet.pc = fAddr();
-					} else {
-						regSet.pc = (regSet.pc + 1) & 0xffff;
+						regSet.pc = addr;
 					}
 				},
 				addressing: 'relative',
@@ -749,6 +781,7 @@ var CPU6507 = (function() {
 				op: function() {
 					regSet.sr = stack.popByte();
 					regSet.pc = stack.popWord();
+					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 6,
@@ -779,6 +812,7 @@ var CPU6507 = (function() {
 			0x48: { // PHA A
 				op: function() {
 					stack.pushByte(regSet.ac);
+					currentInstruction.operand = 'A';
 				},
 				addressing: 'implied',
 				cycles: 3,
@@ -787,8 +821,10 @@ var CPU6507 = (function() {
 
 			0x49: { // EOR #
 				op: function() {
-					regSet.ac ^= fetchInstruction();
+					var val = fetchInstruction();
+					regSet.ac ^= val;
 					status.setFlagsNZ(regSet.ac);
+					currentInstruction.operand = val;
 				},
 				addressing: 'immediate',
 				cycles: 2,
@@ -798,6 +834,7 @@ var CPU6507 = (function() {
 			0x4a: { // LSR A
 				op: function() {
 					regSet.ac = logicalShiftRight(regSet.ac);
+					currentInstruction.operand = 'A';
 				},
 				addressing: 'accumulator',
 				cycles: 2,
@@ -829,10 +866,10 @@ var CPU6507 = (function() {
 
 			0x50: { // BVC rel
 				op: function(fAddr) {
+					var addr = fAddr();
+
 					if (!status.isSet('V')) {
-						regSet.pc = fAddr();
-					} else {
-						regSet.pc = (regSet.pc + 1) & 0xffff;
+						regSet.pc = addr;
 					}
 				},
 				addressing: 'relative',
@@ -864,6 +901,7 @@ var CPU6507 = (function() {
 			0x58: { // CLI impl
 				op: function() {
 					status.reset('I');
+					currentInstruction.operation = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -894,6 +932,7 @@ var CPU6507 = (function() {
 			0x60: { // RTS impl
 				op: function() {
 					regSet.pc = (stack.popWord() + 1) & 0xffff;
+					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 6,
@@ -924,6 +963,7 @@ var CPU6507 = (function() {
 			0x68: { // PLA impl
 				op: function() {
 					regSet.ac = stack.popByte();
+					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 4,
@@ -932,7 +972,9 @@ var CPU6507 = (function() {
 
 			0x69: { // ADC #
 				op: function() {
-					addWithCarry(fetchInstruction());
+					var val = fetchInstruction();
+					currentInstruction.operand = val;
+					addWithCarry(val);
 				},
 				addressing: 'immediate',
 				cycles: 2,
@@ -942,6 +984,7 @@ var CPU6507 = (function() {
 			0x6a: { // ROR A
 				op: function() {
 					regSet.ac = rotateRight(regSet.ac);
+					currentInstruction.operand = 'A';
 				},
 				addressing: 'accumulator',
 				cycles: 2,
@@ -951,6 +994,7 @@ var CPU6507 = (function() {
 			0x6c: { // JMP ind
 				op: function() {
 					var addr = mmap.readWord(regSet.pc);
+					currentInstruction.operand = addr;
 					regSet.pc = mmap.readWord(addr);
 				},
 				addressing: 'indirect',
@@ -974,10 +1018,10 @@ var CPU6507 = (function() {
 
 			0x70: { // BVS rel
 				op: function(fAddr) {
+					var addr = fAddr();
+
 					if (status.isSet('V')) {
-						regSet.pc = fAddr();
-					} else {
-						regSet.pc = (regSet.pc + 1) & 0xffff;
+						regSet.pc = addr;
 					}
 				},
 				addressing: 'relative',
@@ -1009,6 +1053,7 @@ var CPU6507 = (function() {
 			0x78: { // SEI impl
 				op: function() {
 					status.set('I');
+					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -1068,6 +1113,7 @@ var CPU6507 = (function() {
 				op: function() {
 					regSet.y = (regSet.y - 1) & 0xff;
 					status.setFlagsNZ(regSet.y);
+					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -1078,6 +1124,7 @@ var CPU6507 = (function() {
 				op: function() {
 					regSet.ac = regSet.x;
 					status.setFlagsNZ(regSet.ac);
+					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -1107,10 +1154,10 @@ var CPU6507 = (function() {
 
 			0x90: { // BCC rel
 				op: function(fAddr) {
+					var addr = fAddr();
+
 					if (!status.isSet('C')) {
-						regSet.pc = fAddr();
-					} else {
-						regSet.pc = (regSet + 1) & 0xffff;
+						regSet.pc = addr;
 					}
 				},
 				addressing: 'relative',
@@ -1150,6 +1197,7 @@ var CPU6507 = (function() {
 				op: function() {
 					regSet.ac = regSet.y;
 					status.setFlagsNZ(regSet.ac);
+					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -1166,6 +1214,7 @@ var CPU6507 = (function() {
 			0x9a: { // TXS impl
 				op: function() {
 					regSet.sp = regSet.x;
+					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -1181,8 +1230,10 @@ var CPU6507 = (function() {
 
 			0xa0: { // LDY #
 				op: function() {
-					regSet.y = fetchInstruction();
-					status.setFlagsNZ(regSet.y);
+					var val = fetchInstruction();
+					currentInstruction.operand = val;
+					regSet.y = val;
+					status.setFlagsNZ(val);
 				},
 				addressing: 'immediate',
 				cycles: 2,
@@ -1198,8 +1249,10 @@ var CPU6507 = (function() {
 
 			0xa2: { // LDX #
 				op: function() {
-					regSet.x = fetchInstruction();
-					status.setFlagsNZ(regSet.x);
+					var val = fetchInstruction();
+					currentInstruction.operand = val;
+					regSet.x = val;
+					status.setFlagsNZ(val);
 				},
 				addressing: 'immediate',
 				cycles: 2,
@@ -1231,16 +1284,19 @@ var CPU6507 = (function() {
 				op: function() {
 					regSet.y = regSet.ac;
 					status.setFlagsNZ(regSet.y);
+					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
-				abbr: ''
+				abbr: 'TAY'
 			},
 
 			0xa9: { // LDA #
 				op: function() {
-					regSet.ac = fetchInstruction();
-					status.setFlagsNZ(regSet.ac);
+					var val = fetchInstruction();
+					currentInstruction.operand = val;
+					regSet.ac = val;
+					status.setFlagsNZ(val);
 				},
 				addressing: 'immediate',
 				cycles: 2,
@@ -1251,6 +1307,7 @@ var CPU6507 = (function() {
 				op: function() {
 					regSet.x = regSet.ac;
 					status.setFlagsNZ(regSet.x);
+					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -1280,10 +1337,10 @@ var CPU6507 = (function() {
 
 			0xb0: { // BCS rel
 				op: function(fAddr) {
+					var addr = fAddr();
+
 					if (status.isSet('C')) {
-						regSet.pc = fAddr();
-					} else {
-						regSet.pc = (regSet.pc + 1) & 0xffff;
+						regSet.pc = addr;
 					}
 				},
 				addressing: 'relative',
@@ -1323,6 +1380,7 @@ var CPU6507 = (function() {
 			0xb8: { // CLV impl
 				op: function() {
 					status.reset('V');
+					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -1340,6 +1398,7 @@ var CPU6507 = (function() {
 				op: function() {
 					regSet.x = regSet.sp;
 					status.setFlagsNZ(regSet.x);
+					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -1374,6 +1433,8 @@ var CPU6507 = (function() {
 					status.set('Z', regSet.y === val);
 					status.set('C', regSet.y >= val);
 					status.set('N', regSet.y < val);
+
+					currentInstruction.operand = val;
 				},
 				addressing: 'immediate',
 				cycles: 2,
@@ -1412,6 +1473,7 @@ var CPU6507 = (function() {
 				op: function() {
 					regSet.y = (regSet.y + 1) & 0xff;
 					status.setFlagsNZ(regSet.y);
+					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -1425,6 +1487,8 @@ var CPU6507 = (function() {
 					status.set('Z', regSet.ac === val);
 					status.set('C', regSet.ac >= val);
 					status.set('N', regSet.ac < val);
+
+					currentInstruction.operand = val;
 				},
 				addressing: 'immediate',
 				cycles: 2,
@@ -1435,6 +1499,7 @@ var CPU6507 = (function() {
 				op: function() {
 					regSet.x = (regSet.x - 1) & 0xff;
 					status.setFlagsNZ(regSet.x);
+					fetchInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -1464,10 +1529,10 @@ var CPU6507 = (function() {
 
 			0xd0: { // BNE rel
 				op: function(fAddr) {
+					var addr = fAddr();
+
 					if (!status.isSet('Z')) {
-						regSet.pc = fAddr();
-					} else {
-						regSet.pc = (regSet.pc + 1) & 0xffff;
+						regSet.pc = addr;
 					}
 				},
 				addressing: 'relative',
@@ -1499,6 +1564,7 @@ var CPU6507 = (function() {
 			0xd8: { // CLD impl
 				op: function() {
 					status.reset('D');
+					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -1533,6 +1599,8 @@ var CPU6507 = (function() {
 					status.set('Z', regSet.x === val);
 					status.set('C', regSet.x >= val);
 					status.set('N', regSet.x < val);
+
+					currentInstruction.operand = val;
 				},
 				addressing: 'immediate',
 				cycles: 2,
@@ -1571,6 +1639,7 @@ var CPU6507 = (function() {
 				op: function() {
 					regSet.x = (regSet.x + 1) & 0xff;
 					status.setFlagsNZ(regSet.x);
+					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -1579,7 +1648,9 @@ var CPU6507 = (function() {
 
 			0xe9: { // SBC #
 				op: function() {
-					subtractWithCarry(fetchInstruction());
+					var val = fetchInstruction();
+					subtractWithCarry(val);
+					currentInstruction.operand = val;
 				},
 				addressing: 'immediate',
 				cycles: 2,
@@ -1616,10 +1687,10 @@ var CPU6507 = (function() {
 
 			0xf0: { // BEQ rel
 				op: function(fAddr) {
+					var addr = fAddr();
+
 					if (status.isSet('Z')) {
-						regSet.pc = fAddr();
-					} else {
-						regSet.pc = (regSet.pc + 1) & 0xffff;
+						regSet.pc = addr;
 					}
 				},
 				addressing: 'relative',
@@ -1651,6 +1722,7 @@ var CPU6507 = (function() {
 			0xf8: { // SED impl
 				op: function() {
 					status.set('D');
+					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -1678,7 +1750,7 @@ var CPU6507 = (function() {
 				abbr: 'INC'
 			}
 
-		};
+		},
 /*
 		getAddressString = function(addressing) {
 			var ll = mmap.readByte(regSet.pc),
@@ -1724,48 +1796,76 @@ var CPU6507 = (function() {
 		},
 */
 
+		currentInstruction = null,
+
+		executeInstruction = function() {
+			var opcode = fetchInstruction(),
+				inst = instruction[opcode],
+				cycles0 = cycleCount,
+				instCycles;
+
+			// set the waiting flag
+			waiting = true;
+
+			// save some information about the current operation
+			currentInstruction = {
+				opcode: opcode,
+				addressing: inst.addressing,
+				abbr: inst.abbr
+			};
+
+			// execute the operation -- memory map has not been committed
+			inst.op(addrMode[inst.addressing]);
+
+			// increment the cycle counter
+			cycleCount += inst.cycles;
+
+			// the total number of cycles this operation took to execute
+			instCycles = cycleCount - cycles0;
+
+			// wait for how many cycles this operation took
+			cyclesToWait = instCycles - 1;
+
+			// update the instruction info with the number of cycles
+			// the execution actually required
+			currentInstruction.cycles = instCycles;
+		},
+
+		commitOperation = function() {
+			var handlerLength = execloopHandlers.length,
+				i = 0;
+
+			mmap.journalCommit();
+
+			waiting = false; // reset the waiting flag
+
+			for (; i < handlerLength; i++) {
+				execloopHandlers[i](currentInstruction);
+			}
+
+			currentInstruction = null;
+		};
+
 	return {
 
-		init: function(memoryMap) {
+		init: function(map) {
 			// use the memory map we are sharing with the TIA
-			mmap = memoryMap;
+			mmap = map;
 
 			// reset the cycle counter
 			cycleCount = 0;
 		},
 
-		// execute the next instruction at the program counter
-		step: function() {
-			var handlerLength = execloopHandlers.length,
-				i = 0,
-				arg,
-				opcode = fetchInstruction(),
-				inst = instruction[opcode],
-				instCycles,
-				addressing = inst.addressing,
-				cycles0 = cycleCount;
-
-			inst.op((addressing in addrMode) ? addrMode[addressing] : null);
-
-			cycleCount += inst.cycles;
-
-			instCycles = cycleCount - cycles0;
-
-			if (handlerLength > 0) {
-				arg = {
-					opcode: opcode,
-					abbr: inst.abbr,
-					addressing: inst.addressing,
-					cycles: instCycles
-				};
-				for (; i < handlerLength; i++) {
-					execloopHandlers[i](arg);
+		// execute a single cycle
+		cycle: function() {
+			if (cyclesToWait < 1) {
+				if (waiting === true) {
+					commitOperation();
 				}
+				executeInstruction();
+			} else {
+				cyclesToWait--;
 			}
-
-			// return the number of cycles this operation truly took
-			return instCycles;
-
 		},
 
 		addEventListener: function(type, handler) {

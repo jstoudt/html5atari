@@ -1,5 +1,5 @@
 /**
- * tia.js
+ * tia.js -- Television Interface Adaptor
  * Author: Jason T. Stoudt
  * Date: 28 March 2012
  *
@@ -19,8 +19,7 @@ var TIA = (function() {
 
 		handlers = {
 			start: [],
-			stop: [],
-			step: []
+			stop: []
 		},
 
 		deltaQueue = [], // the pixels that need to be written to the canvas
@@ -40,8 +39,8 @@ var TIA = (function() {
 		VIDEO_BUFFER_WIDTH  = 160,
 		VIDEO_BUFFER_HEIGHT = 192,
 
-		PIXEL_WIDTH         = 2, // this is the base 2 exponent of the
-		PIXEL_HEIGHT        = 1, // pixel width and height (cheaper mult)
+		PIXEL_WIDTH         = 4, // the width of each pixel on the canvas
+		PIXEL_HEIGHT        = 2, // the height of each pixel on the canvas
 
 		MEM_LOCATIONS = {
 			VSYNC:  0x00,		VBLANK: 0x01,
@@ -124,6 +123,7 @@ var TIA = (function() {
 				MEM_LOCATIONS.COLUBK);
 
 			if (videoBuffer[x][y] !== color) {
+
 				if (!deltaQueue[color]) {
 					deltaQueue[color] = [];
 				}
@@ -145,10 +145,10 @@ var TIA = (function() {
 				for (i = 0; i < len; i++) {
 					delta = colorQueue[i];
 					canvasContext.fillRect(
-						delta.x << PIXEL_WIDTH,
-						delta.y << PIXEL_HEIGHT,
-						1 << PIXEL_WIDTH,
-						1 << PIXEL_HEIGHT);
+						delta.x * PIXEL_WIDTH,
+						delta.y * PIXEL_HEIGHT,
+						PIXEL_WIDTH,
+						PIXEL_HEIGHT);
 				}
 			}
 
@@ -164,81 +164,95 @@ var TIA = (function() {
 			}
 		},
 
-		lastTime = 0,
-		lastCycleCount = 0,
-		cpuWaitCycles = 0,    // countdown until next CPU step
+		// the position of the beam on the x-axis from -68 to 160
+		x,
+
+		// the position of the beam on the y-axis
+		y,
+
+		// when this is true, the CPU does not cycle
+		RDY,
+
+		// the beam is turned off when this flag is set
+		VBLANK,
 
 		execClockCycle = function() {
-			var x,
-				y = 0,             // the coordinates of the beam
-				vsync = 0,         // has the beam been reset to the top?
-				wsync = false,     // should we lock the CPU until hblank?
-				vblank = 0,        // has the beam been turned off for v reset?
-				i,                 // generic couting variable
-				curTime,           // time when done with frame
-				cycleRate,         // the current rate of cycles/sec
-				handlerLength;     // number of event handlers in queue
+			// the beam is automatically reset back to HBLANK when
+			// we get to the right edge of the frame
+			if (x >= 160) {
+				x = -68;
 
-			// we are going to write one frame to the buffer before being
-			// called again by the event queue
-			while (!vsync) {
-				// clear the wsync flag to start running CPU instructions again
-				wsync = false;
-				for (x = 0; x < 228; x++) {
+				// reset the RDY flag so the CPU can begin cycling again
+				RDY = false;
 
-					console.log('(x, y): ' + '(' + x + ', ' + y + ')');
-
-					// if we're waiting for the CPU, decrement the counter
-					if (!wsync) {
-						if (cpuWaitCycles > 0) {
-							cpuWaitCycles--;
-						} else {
-							// commit any changes to memory which occurred from
-							// the execution of last CPU instruction
-							mmap.journalCommit();
-
-							// tell the CPU to execute the next instruction
-							cpuWaitCycles = CPU6507.step() * 3;
-
-							// check if the vsync was enabled
-							vsync = mmap.readByte(MEM_LOCATIONS.VSYNC) & 0x02;
-
-							// check if wsync was enabled
-							if (mmap.isStrobeActive(MEM_LOCATIONS.WSYNC)) {
-								wsync = true;
-								mmap.resetStrobe(MEM_LOCATIONS.WSYNC);
-							}
-
-							// check if vblank is enabled
-							vblank = mmap.readByte(MEM_LOCATIONS.VBLANK) & 0x02;
-						}
-					}
-
-					// if the beam is out of vertical and horizontal blank,
-					// write a pixel at the beam's position to the video buffer
-					if (!vblank && x >= 68 && y >= 37) {
-						writePixel(x - 68, y - 37);
-					}
-
-					tiaCycles++;
-				}
+				// start drawing on the next scanline
 				y++;
 			}
+
+			// reset the beam to the top of the frame when VSYNC has been detected
+			if (mmap.readByte(MEM_LOCATIONS.VSYNC) & 0x02) {
+				y = 0;
+			}
+
+			if (tiaCycles % 3 === 0) {
+				// cycle the PIA, update the timer
+				PIA.cycle();
+
+				if (!RDY) {
+					CPU6507.cycle();
+
+					// set the RDY latch if the WSYNC byte was written to
+					if (mmap.isStrobeActive(MEM_LOCATIONS.WSYNC)) {
+						RDY = true;
+						mmap.resetStrobe(MEM_LOCATIONS.WSYNC);
+					}
+
+					// check if VBLANK was turned on or off
+					VBLANK = mmap.readByte(MEM_LOCATIONS.VBLANK) & 0x02;
+				}
+			}
+
+			if (!VBLANK && x >= 0 && y >= 37) {
+				writePixel(x, y - 37);
+			}
 			
+			// draw the next pixel
+			x++;
+
+			// incremennt the TIA clock counter
+			tiaCycles++;
+
+		},
+
+		// the last time we measured the cycle rate
+		lastTime = 0,
+
+		// the number of cycles counted last time the cycle rate was measured
+		lastCycleCount = 0,
+
+		runMainLoop = function() {
+			var curTime, cycleRate,
+				i = 0,
+				l = 32768;
+
+			for (; i < l; i++) {
+				execClockCycle();
+			}
+
 			if (!breakFlag) {
 
-//				TARGET_CYCLE_RATE: 3579.545 kHz
+				// TARGET_CYCLE_RATE: 3579.545 kHz
 
 				curTime = Date.now();
 				cycleRate = (tiaCycles - lastCycleCount) / (curTime - lastTime);
-				setTimeout(execClockCycle, cycleRate > TARGET_CYCLE_RATE ?
-					1 / (cycleRate - TARGET_CYCLE_RATE) :
+				setTimeout(runMainLoop, cycleRate > TARGET_CYCLE_RATE ?
+					Math.round(1 / (cycleRate - TARGET_CYCLE_RATE)) :
 					0);
 				lastTime = curTime;
 				lastCycleCount = tiaCycles;
 			} else {
-				handlerLength = handlers.stop.length;
-				for (i = 0; i < handlerLength; i++) {
+				l = handlers.stop.length;
+				for (i = 0; i < l; i++) {
 					handlers.stop[i]();
 				}
 			}
@@ -260,19 +274,30 @@ var TIA = (function() {
 			mmap = MemoryMap.createAtariMemoryMap();
 
 			// create a data structure for the video frame buffer
-			videoBuffer = [];
+			videoBuffer = new Array(VIDEO_BUFFER_WIDTH);
 			for (; i < VIDEO_BUFFER_WIDTH; i++) {
-				videoBuffer[i] = [];
+				videoBuffer[i] = new Array(VIDEO_BUFFER_HEIGHT);
 			}
 
 			// pass the memory map on to the CPU
 			CPU6507.init(mmap);
+
+			// initialize and pass the memory map to the PIA
+			PIA.init(mmap);
 
 			// initialize the TIA's cycle count
 			tiaCycles = 0;
 
 			// initialize the frame counter
 			numFrames = 0;
+
+			// reset the beam position
+			x = 0;
+			y = 0;
+
+			// reset VBLANK and RDY
+			VBLANK = mmap.readByte(MEM_LOCATIONS.VBLANK) & 0x02;
+			RDY = false;
 		},
 
 		start: function() {
@@ -286,7 +311,7 @@ var TIA = (function() {
 			}
 
 			drawCanvas();
-			setTimeout(execClockCycle, 0);
+			runMainLoop();
 		},
 
 		stop: function() {
@@ -315,6 +340,13 @@ var TIA = (function() {
 
 		getNumFrames: function() {
 			return numFrames;
+		},
+
+		getBeamPosition: function() {
+			return {
+				x: x,
+				y: y
+			};
 		}
 
 	};
