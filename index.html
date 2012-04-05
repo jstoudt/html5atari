@@ -254,17 +254,17 @@
 
 	(function() {
 
-		var ac = document.getElementById('ac'),
-			x  = document.getElementById('x'),
-			y = document.getElementById('y'),
-			sp = document.getElementById('sp'),
-			pc = document.getElementById('pc'),
+		var ac           = document.getElementById('ac'),
+			x            = document.getElementById('x'),
+			y            = document.getElementById('y'),
+			sp           = document.getElementById('sp'),
+			pc           = document.getElementById('pc'),
 			instructions = document.getElementById('instructions'),
-			memTable = document.getElementById('memory'),
-			cells = memTable.getElementsByTagName('td'),
-			television = document.getElementById('television'),
-			memCells = [],
-			i,
+			memTable     = document.getElementById('memory'),
+			cells        = memTable.getElementsByTagName('td'),
+			television   = document.getElementById('television'),
+			memCells     = [],
+			i            = 0,
 
 			sr = {
 				N: document.getElementById('N'),
@@ -276,7 +276,7 @@
 				C: document.getElementById('C')
 			};
 
-		for (i = 0; i < cells.length; i++) {
+		for (; i < cells.length; i++) {
 			if (cells[i].className !== 'leftcol') {
 				memCells.push(cells[i]);
 			}
@@ -306,14 +306,14 @@
 					tiaFrames0   = TIA.getNumFrames(),
 					tiaFrequency = document.getElementById('tia-frequency'),
 					frameRate    = document.getElementById('frame-rate'),
-					breakFlag    = false,
+					breakFlag    = true,
 
 					showInfo = function() {
-						var i = 0,
+						var i      = 0,
 							status = CPU6507.getRegister('sr'),
-							mem = TIA.getMemoryCopy(0x80, 128),
-							len = mem.length,
-							toHex = function(hex, digits) {
+							mem    = TIA.getMemoryCopy(0x80, 128),
+							len    = mem.length,
+							toHex  = function(hex, digits) {
 								hex = hex.toString(16);
 								while (hex.length < digits) {
 									hex = '0' + hex;
@@ -348,7 +348,7 @@
 					},
 
 					calcCycleRate = function() {
-						var tiaTime1 = Date.now(),
+						var tiaTime1   = Date.now(),
 							tiaCycles1 = TIA.getCycleCount(),
 							tiaFrames1 = TIA.getNumFrames();
 
@@ -357,7 +357,7 @@
 						frameRate.innerHTML = Math.round((tiaFrames1 - tiaFrames0) / (tiaTime1 - tiaTime0) * 1e6) / 1000;
 
 						tiaCycles0 = tiaCycles1;
-						tiaTime0 = tiaTime1;
+						tiaTime0   = tiaTime1;
 						tiaFrames0 = tiaFrames1;
 
 						if (breakFlag !== true) {
@@ -408,7 +408,7 @@
 /*
 				CPU6507.addEventListener('execloop', function(inst) {
 					var pos = TIA.getBeamPosition();
-					console.log('x: ' + pos.x + ' y: ' + pos.y +
+					console.log('y: ' + pos.y + ' x: ' + pos.x +
 						'\t' + inst.abbr +
 						'\t' + inst.operand +
 						'\t0x' + inst.opcode.toString(16) +

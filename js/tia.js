@@ -206,6 +206,8 @@ var TIA = (function() {
 		runMainLoop = function() {
 			var y0, i, l;
 
+			// if the main loop was stopped, run any handlers that were bound
+			// to the stop event and return
 			if (breakFlag === true) {
 				l = handlers.stop.length;
 				for (i = 0; i < l; i++) {
@@ -214,6 +216,8 @@ var TIA = (function() {
 				return;
 			}
 
+			// run the code until VSYNC is enabled, then draw the frame
+			// and request another execution of this function
 			while(1) {
 				y0 = y;
 				execClockCycle();
@@ -248,8 +252,8 @@ var TIA = (function() {
 			// pass the memory map on to the CPU
 			CPU6507.init(mmap);
 
-			// initialize and pass the memory map to the PIA
-			PIA.init(mmap);
+			// initialize and pass the memory map to the RIOT
+			RIOT.init(mmap);
 
 			// initialize the TIA's cycle count
 			tiaCycles = 0;

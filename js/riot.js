@@ -15,13 +15,14 @@ var RIOT = (function() {
 
 		TIMINT: 0x285,  // seems to be 0x00 until the timer expires, then 0x80
 
-		TIM1T:  0x294,
+		TIM1T:  0x294,  // the various input registers for setting the timer
 		TIM8T:  0x295,
 		TIM64T: 0x296,
 		T1024T: 0x297
 		
 	},
 
+		// whether divide by 1t, 8t, 64t or 1024t is selected
 		INTERVAL_MODE = {
 			NONE:   0,
 			TIM1T:  1,
@@ -32,7 +33,7 @@ var RIOT = (function() {
 
 		timer, // the timer value
 
-		intervalMode,  // whether divide by 1t, 8t, 64t or 1024t is selected
+		intervalMode,  // the currently selected INTERVAL MODE value
 
 		mmap; // the memory map shared by other components of the system
 
@@ -54,13 +55,15 @@ var RIOT = (function() {
 		},
 
 		cycle: function() {
-			var tim1t, tim8t, tim64t, t1024t;
+			var tim1t  = mmap.readByte(MEM_LOCATIONS.TIM1T),
+				tim8t  = mmap.readByte(MEM_LOCATIONS.TIM8T),
+				tim64t = mmap.readByte(MEM_LOCATIONS.TIM64T),
+				t1024t = mmap.readByte(MEM_LOCATIONS.T1024T);
 
 			// decrement the timer
 			timer = (timer - 1) & 0xffffffff;
 
 			// check if the TIM1T register has been written to
-			tim1t = mmap.readByte(MEM_LOCATIONS.TIM1T);
 			if (tim1t > 0) {
 				mmap.writeByte(0, MEM_LOCATIONS.TIM1T);
 				timer = tim1t;
@@ -68,7 +71,6 @@ var RIOT = (function() {
 			}
 
 			// check if the TIM8T register has been written to
-			tim8t = mmap.readByte(MEM_LOCATIONS.TIM8T);
 			if (tim8t > 0) {
 				mmap.writeByte(0, MEM_LOCATIONS.TIM8T);
 				timer = tim8t << 3;
@@ -76,7 +78,6 @@ var RIOT = (function() {
 			}
 
 			// check if the TIM64T register has been written to
-			tim64t = mmap.readByte(MEM_LOCATIONS.TIM64T);
 			if (tim64t > 0) {
 				mmap.writeByte(0, MEM_LOCATIONS.TIM64T);
 				timer = tim64t << 6;
@@ -84,19 +85,23 @@ var RIOT = (function() {
 			}
 
 			// check if the the T1024T register has been written to
-			t1024t = mmap.readByte(MEM_LOCATIONS.T1024T);
 			if (t1024t > 0) {
 				mmap.writeByte(0, MEM_LOCATIONS.T1024T);
 				timer = t1024t << 10;
 				intervalMode = INTERVAL_MODE.T1024T;
 			}
-/*
+
 			if (timer < 0) {
 				mmap.writeByte(0x80, MEM_LOCATIONS.TIMINT);
-				mmap.writeByte
+				mmap.writeByte(-timer & 0xff, MEM_LOCATIONS.INTIM);
+			} else {
+				mmap.writeByte(0, MEM_LOCATIONS.TIMINT);
+				mmap.writeByte(intervalMode === INTERVAL_MODE.TIM1T ? timer :
+						intervalMode === INTERVAL_MODE.TIM8T ? timer >> 3 :
+						intervalMode === INTERVAL_MODE.TIM64T ? timer >> 6 :
+						timer >> 10,
+					MEM_LOCATIONS.INTIM);
 			}
-*/
-
 		}
 
 	};
