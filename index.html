@@ -4,7 +4,7 @@
 <head>
 	<meta charset="UTF-8">
 	<title>6507 Emulation Testing</title>
-	<link rel="stylesheet" href="css/6507.css">
+	<link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 	<div id="main">
@@ -60,12 +60,15 @@
 			<div id="frame-rate" class="register"></div><span>frames/sec</span>
 		</div>
 
-		<canvas id="television" width="640" height="384"></canvas>
-
+		<div class="tv-wrapper">
+			<canvas id="television" width="160" height="192"></canvas>
+		</div>
+		
 		<div class="controls">
 			<button id="start" disabled>Start</button>
 			<button id="stop" disabled>Stop</button>
 			<button id="reset" disabled>Reset</button>
+			<button id="step" disabled>Step</button>
 		</div>
 		<table id="memory">
 			<thead>
@@ -245,7 +248,7 @@
 	</div>
 	<script src="js/memory.js"></script>
 	<script src="js/tia.js"></script>
-	<script src="js/pia.js"></script>
+	<script src="js/riot.js"></script>
 	<script src="js/6507.js"></script>
 	<script>
 
@@ -284,7 +287,7 @@
 			TIA.init(television);
 
 			var xhr = new XMLHttpRequest();
-			xhr.open('GET', 'rom/bin/pf1.bin', true);
+			xhr.open('GET', 'rom/bin/Combat.bin', true);
 			xhr.responseType = 'arraybuffer';
 
 			xhr.onerror = function() {
@@ -293,37 +296,26 @@
 
 			xhr.onload = function() {
 
-				var prog = new Uint8Array(xhr.response),
-					startBtn = document.getElementById('start'),
-					stopBtn = document.getElementById('stop'),
-					resetBtn = document.getElementById('reset'),
-					tiaTime0 = Date.now(),
-					tiaCycles0 = TIA.getCycleCount(),
-					tiaFrames0 = TIA.getNumFrames(),
+				var prog         = new Uint8Array(xhr.response),
+					startBtn     = document.getElementById('start'),
+					stopBtn      = document.getElementById('stop'),
+					resetBtn     = document.getElementById('reset'),
+					stepBtn      = document.getElementById('step'),
+					tiaTime0     = Date.now(),
+					tiaCycles0   = TIA.getCycleCount(),
+					tiaFrames0   = TIA.getNumFrames(),
 					tiaFrequency = document.getElementById('tia-frequency'),
-					frameRate = document.getElementById('frame-rate'),
-					breakFlag = false;
+					frameRate    = document.getElementById('frame-rate'),
+					breakFlag    = false,
 
-				CPU6507.loadProgram(prog, 0xf000);
-
-				startBtn.removeAttribute('disabled');
-				startBtn.addEventListener('click', function() {
-					startBtn.setAttribute('disabled', 'disabled');
-					stopBtn.removeAttribute('disabled');
-					resetBtn.setAttribute('disabled', 'disabled');
-
-					TIA.start();
-
-					breakFlag = false;
-
-					(function showInfo() {
+					showInfo = function() {
 						var i = 0,
 							status = CPU6507.getRegister('sr'),
-							mem = 	TIA.getMemoryCopy(0x80, 128),
+							mem = TIA.getMemoryCopy(0x80, 128),
 							len = mem.length,
-							twoHex = function(hex) {
+							toHex = function(hex, digits) {
 								hex = hex.toString(16);
-								while (hex.length < 2) {
+								while (hex.length < digits) {
 									hex = '0' + hex;
 								}
 								return hex;
@@ -332,11 +324,11 @@
 								window.mozRequestAnimationFrame ||
 								window.webkitRequestAnimationFrame;
 
-						ac.innerHTML = twoHex(CPU6507.getRegister('ac'));
-						x.innerHTML = twoHex(CPU6507.getRegister('x'));
-						y.innerHTML = twoHex(CPU6507.getRegister('y'));
-						sp.innerHTML = twoHex(CPU6507.getRegister('sp'));
-						pc.innerHTML = twoHex(CPU6507.getRegister('pc'));
+						ac.innerHTML = toHex(CPU6507.getRegister('ac'), 2);
+						x.innerHTML  = toHex(CPU6507.getRegister('x'), 2);
+						y.innerHTML  = toHex(CPU6507.getRegister('y'), 2);
+						sp.innerHTML = toHex(CPU6507.getRegister('sp'), 2);
+						pc.innerHTML = toHex(CPU6507.getRegister('pc'), 2);
 
 						sr.N.innerHTML = status & 0x80 ? 1 : 0;
 						sr.V.innerHTML = status & 0x40 ? 1 : 0;
@@ -347,15 +339,15 @@
 						sr.C.innerHTML = status & 0x01 ? 1 : 0;
 
 						for (; i < len; i++) {
-							memCells[i].innerHTML = twoHex(mem[i]);
+							memCells[i].innerHTML = toHex(mem[i], 2);
 						}
 
 						if (breakFlag !== true) {
 							reqAnimFrame(showInfo);
 						}
-					})();
+					},
 
-					(function calcCycleRate() {
+					calcCycleRate = function() {
 						var tiaTime1 = Date.now(),
 							tiaCycles1 = TIA.getCycleCount(),
 							tiaFrames1 = TIA.getNumFrames();
@@ -371,23 +363,25 @@
 						if (breakFlag !== true) {
 							setTimeout(calcCycleRate, 1000);
 						}
+					};
 
-					})();
-/*
-					CPU6507.addEventListener('execloop', function(inst) {
-						var pos = TIA.getBeamPosition();
-						console.log('x: ' + pos.x + ' y: ' + pos.y +
-							'\t' + inst.abbr +
-							'\t' + inst.operand +
-							'\t0x' + inst.opcode.toString(16) +
-							'\t' + inst.addressing + 
-							'\t' + inst.cycles +
-							'\tA: ' + CPU6507.getRegister('ac') +
-							'\tX: ' + CPU6507.getRegister('x') +
-							'\tY: ' + CPU6507.getRegister('y') +
-							'\tPC: ' + CPU6507.getRegister('pc').toString(16));
-					});
-*/
+				CPU6507.loadProgram(prog, 0xf000);
+
+				startBtn.removeAttribute('disabled');
+				startBtn.addEventListener('click', function() {
+					startBtn.setAttribute('disabled', 'disabled');
+					stopBtn.removeAttribute('disabled');
+					resetBtn.setAttribute('disabled', 'disabled');
+					stepBtn.setAttribute('disabled', 'disabled');
+
+					// start the magic
+					TIA.start();
+
+					// monitor the magic as it happens
+					breakFlag = false;
+					showInfo();
+					calcCycleRate();
+
 				}, false);
 
 				stopBtn.addEventListener('click', function() {
@@ -395,6 +389,7 @@
 					stopBtn.setAttribute('disabled', 'disabled');
 					startBtn.removeAttribute('disabled');
 					resetBtn.removeAttribute('disabled');
+					stepBtn.removeAttribute('disabled');
 					breakFlag = true;
 				}, false);
 
@@ -403,6 +398,28 @@
 					TIA.init(television);
 					CPU6507.loadProgram(prog, 0xf000);
 				}, false);
+
+				stepBtn.removeAttribute('disabled');
+				stepBtn.addEventListener('click', function() {
+					breakFlag = true;
+					TIA.step();
+					showInfo();
+				}, false);
+/*
+				CPU6507.addEventListener('execloop', function(inst) {
+					var pos = TIA.getBeamPosition();
+					console.log('x: ' + pos.x + ' y: ' + pos.y +
+						'\t' + inst.abbr +
+						'\t' + inst.operand +
+						'\t0x' + inst.opcode.toString(16) +
+						'\t' + inst.addressing + 
+						'\t' + inst.cycles +
+						'\tA: ' + CPU6507.getRegister('ac') +
+						'\tX: ' + CPU6507.getRegister('x') +
+						'\tY: ' + CPU6507.getRegister('y') +
+						'\tPC: ' + CPU6507.getRegister('pc').toString(16));
+				});
+*/
 			};
 
 			xhr.send();

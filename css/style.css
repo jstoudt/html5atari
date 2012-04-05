@@ -7,6 +7,7 @@ canvas {
 	border: 1px solid #606060;
 	margin: 15px auto 0;
 	padding: 0;
+	-webkit-transform: scaleX(4.0) scaleY(2.0) translateY(48px);
 }
 
 #main {
@@ -55,6 +56,10 @@ label:after {
 #frame-rate {
 	width: 6em;
 	margin-right: 0.5em;
+}
+
+.tv-wrapper {
+	height: 400px;
 }
 
 .controls {

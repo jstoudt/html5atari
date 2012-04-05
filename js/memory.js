@@ -40,6 +40,11 @@ function MemoryMap(bitWidth) {
 
 	// the only public property of a MemoryMap object created in this constructor
 	this.length = this._memory.length;
+
+	// load the memory with junk to simulate real hardware
+	for (i = 0; i < this._memory.length; i++) {
+		this._memory[i] = (Math.random() * 1000) & 0xff;
+	}
 }
 
 // Changes the memory at the specified address location to the specified value

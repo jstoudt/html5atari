@@ -1,5 +1,5 @@
 /**
- * tia.js -- Television Interface Adaptor
+ * "tia.js -- Television Interface Adaptor
  * Author: Jason T. Stoudt
  * Date: 28 March 2012
  *
@@ -9,9 +9,9 @@
 
 var TIA = (function() {
 
-	var mmap,        // the memory map to be shared between TIA & CPU
+	var mmap,          // the memory map to be shared between TIA & CPU
 
-		videoBuffer, // the array of pixel colors representing the video output
+		pixelBuffer,   // the array of pixel colors representing the video output
 
 		canvasElement, // a reference to the canvas element for video output
 
@@ -22,8 +22,6 @@ var TIA = (function() {
 			stop: []
 		},
 
-		deltaQueue = [], // the pixels that need to be written to the canvas
-
 		reqAnimFrame = window.requestAnimationFrame ||
 			window.webkitRequestAnimationFrame ||
 			window.mozRequestAnimationFrame,
@@ -32,16 +30,15 @@ var TIA = (function() {
 
 		numFrames, // the number of frames written to the canvas
 
-		breakFlag = true, // set to stop the TIA execution loop
+		breakFlag, // set to stop the TIA execution loop
 
 		TARGET_CYCLE_RATE = 3579.545, // frequency of the TIA clock in kHz
 
+		// the dimensions of the output video buffer -- NTSC only for now
 		VIDEO_BUFFER_WIDTH  = 160,
 		VIDEO_BUFFER_HEIGHT = 192,
 
-		PIXEL_WIDTH         = 4, // the width of each pixel on the canvas
-		PIXEL_HEIGHT        = 2, // the height of each pixel on the canvas
-
+		// locations of TIA registers on the system bus
 		MEM_LOCATIONS = {
 			VSYNC:  0x00,		VBLANK: 0x01,
 			WSYNC:  0x02,		RSYNC:  0x03,
@@ -56,53 +53,53 @@ var TIA = (function() {
 		// the Atari 2600 NTSC color palette
 		COLOR_PALETTE = [
 			[    // 0
-				'#000000', '#404040', '#6C6C6C', '#909090',
-				'#B0B0B0', '#C8C8C8', '#DCDCDC', '#ECECEC'
+				[0x00,0x00,0x00],[0x40,0x40,0x40],[0x6c,0x6c,0x6c],[0x90,0x90,0x90],
+				[0xb0,0xb0,0xb0],[0xc8,0xc8,0xc8],[0xdc,0xdc,0xdc],[0xec,0xec,0xec]
 			], [ // 1
-				'#444400', '#646410', '#848424', '#A0A034',
-				'#B8B840', '#D0D050', '#E8E85C', '#FCFC68'
+				[0x44,0x44,0x00],[0x64,0x64,0x10],[0x84,0x84,0x24],[0xa0,0xa0,0x34],
+				[0xb8,0xb8,0x40],[0xd0,0xd0,0x50],[0xe8,0xe8,0x5c],[0xfc,0xfc,0x68]
 			], [ // 2
-				'#702800', '#844414', '#985C28', '#AC783C',
-				'#BC8C4C', '#CCA05C', '#DCB468', '#ECC878'
+				[0x70,0x28,0x00],[0x84,0x44,0x14],[0x98,0x5c,0x28],[0xac,0x78,0x3c],
+				[0xbc,0x8c,0x4c],[0xcc,0xa0,0x5c],[0xdc,0xb4,0x68],[0xec,0xc8,0x78]
 			], [ // 3
-				'#841800', '#983418', '#AC5030', '#C06848',
-				'#D0805C', '#E09470', '#ECA880', '#FCBC94'
+				[0x84,0x18,0x00],[0x98,0x34,0x18],[0xac,0x50,0x30],[0xc0,0x68,0x48],
+				[0xd0,0x80,0x5c],[0xe0,0x94,0x70],[0xec,0xa8,0x80],[0xfc,0xbc,0x94]
 			], [ // 4
-				'#880000', '#9C2020', '#B03C3C', '#C05858',
-				'#D07070', '#E08888', '#ECA0A0', '#FCB4B4'
+				[0x88,0x00,0x00],[0x9c,0x20,0x20],[0xb0,0x3c,0x3c],[0xc0,0x58,0x58],
+				[0xd0,0x70,0x70],[0xe0,0x88,0x88],[0xec,0xa0,0xa0],[0xfc,0xb4,0xb4]
 			], [ // 5
-				'#78005C', '#8C2074', '#A03C88', '#B0589C',
-				'#C070B0', '#D084C0', '#DC9CD0', '#ECB0E0'
+				[0x78,0x00,0x5c],[0x8c,0x20,0x74],[0xa0,0x3c,0x88],[0xb0,0x58,0x9c],
+				[0xc0,0x70,0xb0],[0xd0,0x84,0xc0],[0xdc,0x9c,0xd0],[0xec,0xb0,0xe0]
 			], [ // 6
-				'#480078', '#602090', '#783CA4', '#8C58B8',
-				'#A070CC', '#B484DC', '#C49CEC', '#D4B0FC'
+				[0x48,0x00,0x78],[0x60,0x20,0x90],[0x78,0x3c,0xa4],[0x8c,0x58,0xb8],
+				[0xa0,0x70,0xcc],[0xb4,0x84,0xdc],[0xc4,0x9c,0xec],[0xd4,0xb0,0xfc]
 			], [ // 7
-				'#140084', '#302098', '#4C3CAC', '#6858C0',
-				'#7C70D0', '#9488E0', '#A8A0EC', '#BCB4FC'
+				[0x14,0x00,0x84],[0x30,0x20,0x98],[0x4c,0x3c,0xac],[0x68,0x58,0xc0],
+				[0x7c,0x70,0xd0],[0x94,0x88,0xe0],[0xa8,0xa0,0xec],[0xbc,0xb4,0xfc]
 			], [ // 8
-				'#000088', '#1C209C', '#3840B0', '#505CC0',
-				'#6874D0', '#7C8CE0', '#90A4EC', '#A4B8FC'
+				[0x00,0x00,0x88],[0x1c,0x20,0x9c],[0x38,0x40,0xb0],[0x50,0x5c,0xc0],
+				[0x68,0x74,0xd0],[0x7c,0x8c,0xe0],[0x90,0xa4,0xec],[0xa4,0xb8,0xfc]
 			], [ // 9
-				'#00187C', '#1C3890', '#3854A8', '#5070BC',
-				'#6888CC', '#7C9CDC', '#90B4EC', '#A4C8FC'
+				[0x00,0x18,0x7c],[0x1c,0x38,0x90],[0x38,0x54,0xa8],[0x50,0x70,0xbc],
+				[0x68,0x88,0xcc],[0x7c,0x9c,0xdc],[0x90,0xb4,0xec],[0xa4,0xc8,0xfc]
 			], [ // 10
-				'#002C5C', '#1C4C78', '#386890', '#5084AC',
-				'#689CC0', '#7CB4D4', '#90CCE8', '#A4E0FC'
+				[0x00,0x2c,0x5c],[0x1c,0x4c,0x78],[0x38,0x68,0x90],[0x50,0x84,0xac],
+				[0x68,0x9c,0xc0],[0x7c,0xb4,0xd4],[0x90,0xcc,0xe8],[0xa4,0xe0,0xfc]
 			], [ // 11
-				'#003C2C', '#1C5C48', '#387C64', '#509C80',
-				'#68B494', '#7CD0AC', '#90E4C0', '#A4FCD4'
+				[0x00,0x3c,0x2c],[0x1c,0x5c,0x48],[0x38,0x7c,0x64],[0x50,0x9c,0x80],
+				[0x68,0xb4,0x94],[0x7c,0xd0,0xac],[0x90,0xe4,0xc0],[0xa4,0xfc,0xd4]
 			], [ // 12
-				'#003C00', '#205C20', '#407C40', '#5C9C5C',
-				'#74B474', '#8CD08C', '#A4E4A4', '#B8FCB8'
+				[0x00,0x3c,0x00],[0x20,0x5c,0x20],[0x40,0x7c,0x40],[0x5c,0x9c,0x5c],
+				[0x74,0xb4,0x74],[0x8c,0xd0,0x8c],[0xa4,0xe4,0xa4],[0xb8,0xfc,0xb8]
 			], [ // 13
-				'#143800', '#345C1C', '#507C38', '#6C9850',
-				'#84B468', '#9CCC7C', '#B4E490', '#C8FCA4'
+				[0x14,0x38,0x00],[0x34,0x5c,0x1c],[0x50,0x7c,0x38],[0x6c,0x98,0x50],
+				[0x84,0xb4,0x68],[0x9c,0xcc,0x7c],[0xb4,0xe4,0x90],[0xc8,0xfc,0xa4]
 			], [ // 14
-				'#2C3000', '#4C501C', '#687034', '#848C4C',
-				'#9CA864', '#B4C078', '#CCD488', '#E0EC9C'
+				[0x2c,0x30,0x00],[0x4c,0x50,0x1c],[0x68,0x70,0x34],[0x84,0x8c,0x4c],
+				[0x9c,0xa8,0x64],[0xb4,0xc0,0x78],[0xcc,0xd4,0x88],[0xe0,0xec,0x9c]
 			], [ // 15
-				'#442800', '#644818', '#846830', '#A08444',
-				'#B89C58', '#D0B46C', '#E8CC7C', '#FCE08C'
+				[0x44,0x28,0x00],[0x64,0x48,0x18],[0x84,0x68,0x30],[0xa0,0x84,0x44],
+				[0xb8,0x9c,0x58],[0xd0,0xb4,0x6c],[0xe8,0xcc,0x7c],[0xfc,0xe0,0x8c]
 			]
 		],
 
@@ -118,50 +115,23 @@ var TIA = (function() {
 
 		writePixel = function(x, y) {
 			// determine what color the pixel at the present coordinates should be
-			var color = mmap.readByte(isPlayfieldAt(x >>> 2) ?
-				MEM_LOCATIONS.COLUPF :
-				MEM_LOCATIONS.COLUBK);
+			var index = (y * VIDEO_BUFFER_WIDTH + x) << 2,
+				color = mmap.readByte(isPlayfieldAt(x >>> 2) ?
+					MEM_LOCATIONS.COLUPF : MEM_LOCATIONS.COLUBK);
 
-			if (videoBuffer[x][y] !== color) {
-
-				if (!deltaQueue[color]) {
-					deltaQueue[color] = [];
-				}
-				
-				deltaQueue[color].push({ x: x, y: y });
-				
-				videoBuffer[x][y] = color;
-			}
+			color = COLOR_PALETTE[(color & 0xf0) >>> 4][(color & 0x0f) >>> 1];
+			pixelBuffer.data[index]     = color[0]; // red
+			pixelBuffer.data[index + 1] = color[1]; // green
+			pixelBuffer.data[index + 2] = color[2]; // blue
+			pixelBuffer.data[index + 3] = 255;      // alpha
 		},
 
 		drawCanvas = function() {
-			var color, i, colorQueue, len, delta;
-
-			for (color in deltaQueue) {
-				colorQueue = deltaQueue[color];
-				len = colorQueue.length;
-				canvasContext.fillStyle = COLOR_PALETTE[(color & 0xf0) >>> 4][(color & 0x0f) >>> 1];
-
-				for (i = 0; i < len; i++) {
-					delta = colorQueue[i];
-					canvasContext.fillRect(
-						delta.x * PIXEL_WIDTH,
-						delta.y * PIXEL_HEIGHT,
-						PIXEL_WIDTH,
-						PIXEL_HEIGHT);
-				}
-			}
-
-			// reset the queue
-			deltaQueue = [];
+			// draw the current pixel buffer to the canvas
+			canvasContext.putImageData(pixelBuffer, 0, 0);
 
 			// increment the number of frames drawn
 			numFrames++;
-
-			// unless the TIA was stopped, schedule another canvas draw routine
-			if (!breakFlag) {
-				reqAnimFrame(drawCanvas);
-			}
 		},
 
 		// the position of the beam on the x-axis from -68 to 160
@@ -176,7 +146,12 @@ var TIA = (function() {
 		// the beam is turned off when this flag is set
 		VBLANK,
 
+		// when set, a signal is being sent to reset the beam to the top of the frame
+		VSYNC,
+
 		execClockCycle = function() {
+			var proc;
+
 			// the beam is automatically reset back to HBLANK when
 			// we get to the right edge of the frame
 			if (x >= 160) {
@@ -189,30 +164,28 @@ var TIA = (function() {
 				y++;
 			}
 
-			// reset the beam to the top of the frame when VSYNC has been detected
-			if (mmap.readByte(MEM_LOCATIONS.VSYNC) & 0x02) {
-				y = 0;
-			}
-
 			if (tiaCycles % 3 === 0) {
-				// cycle the PIA, update the timer
-				PIA.cycle();
+				// cycle the RIOT, update the timer
+				RIOT.cycle();
 
-				if (!RDY) {
-					CPU6507.cycle();
+				if (RDY === false) {
+					proc = CPU6507.cycle();
 
 					// set the RDY latch if the WSYNC byte was written to
-					if (mmap.isStrobeActive(MEM_LOCATIONS.WSYNC)) {
+					if (mmap.isStrobeActive(MEM_LOCATIONS.WSYNC) === true) {
 						RDY = true;
 						mmap.resetStrobe(MEM_LOCATIONS.WSYNC);
 					}
 
 					// check if VBLANK was turned on or off
-					VBLANK = mmap.readByte(MEM_LOCATIONS.VBLANK) & 0x02;
+					VBLANK = !!(mmap.readByte(MEM_LOCATIONS.VBLANK) & 0x02);
+
+					// check if the VSYCN signal has been turned on or off
+					VSYNC = !!(mmap.readByte(MEM_LOCATIONS.VSYNC) & 0x02);
 				}
 			}
 
-			if (!VBLANK && x >= 0 && y >= 37) {
+			if (VBLANK === false && x >= 0 && y >= 37) {
 				writePixel(x, y - 37);
 			}
 			
@@ -222,62 +195,55 @@ var TIA = (function() {
 			// incremennt the TIA clock counter
 			tiaCycles++;
 
-		},
-
-		// the last time we measured the cycle rate
-		lastTime = 0,
-
-		// the number of cycles counted last time the cycle rate was measured
-		lastCycleCount = 0,
-
-		runMainLoop = function() {
-			var curTime, cycleRate,
-				i = 0,
-				l = 32768;
-
-			for (; i < l; i++) {
-				execClockCycle();
+			// reset the beam to the top of the frame when VSYNC has been detected
+			if (VSYNC === true) {
+				y = 0;
 			}
 
-			if (!breakFlag) {
+			return proc;
+		},
 
-				// TARGET_CYCLE_RATE: 3579.545 kHz
+		runMainLoop = function() {
+			var y0, i, l;
 
-				curTime = Date.now();
-				cycleRate = (tiaCycles - lastCycleCount) / (curTime - lastTime);
-				setTimeout(runMainLoop, cycleRate > TARGET_CYCLE_RATE ?
-					Math.round(1 / (cycleRate - TARGET_CYCLE_RATE)) :
-					0);
-				lastTime = curTime;
-				lastCycleCount = tiaCycles;
-			} else {
+			if (breakFlag === true) {
 				l = handlers.stop.length;
 				for (i = 0; i < l; i++) {
 					handlers.stop[i]();
 				}
+				return;
 			}
+
+			while(1) {
+				y0 = y;
+				execClockCycle();
+				if (VSYNC === true && y0 > 0) {
+					drawCanvas();
+					reqAnimFrame(runMainLoop);
+					break;
+				}
+			}
+			
 		};
 
 
 	return {
 
 		init: function(canvas) {
-			var i = 0;
-
 			// set the canvas reference
 			canvasElement = canvas;
 
 			// store a reference to the canvas's context
 			canvasContext = canvas.getContext('2d');
 
+			// create a pixel buffer to hold the raw data
+			pixelBuffer = canvasContext.createImageData(
+				VIDEO_BUFFER_WIDTH,
+				VIDEO_BUFFER_HEIGHT
+			);
+
 			// Initialize the memory map
 			mmap = MemoryMap.createAtariMemoryMap();
-
-			// create a data structure for the video frame buffer
-			videoBuffer = new Array(VIDEO_BUFFER_WIDTH);
-			for (; i < VIDEO_BUFFER_WIDTH; i++) {
-				videoBuffer[i] = new Array(VIDEO_BUFFER_HEIGHT);
-			}
 
 			// pass the memory map on to the CPU
 			CPU6507.init(mmap);
@@ -291,27 +257,45 @@ var TIA = (function() {
 			// initialize the frame counter
 			numFrames = 0;
 
+			// initialize the TIA as being in the off state
+			breakFlag = true;
+
 			// reset the beam position
 			x = 0;
 			y = 0;
 
-			// reset VBLANK and RDY
-			VBLANK = mmap.readByte(MEM_LOCATIONS.VBLANK) & 0x02;
+			// reset VBLANK and RDY and VSYNC
+			VBLANK = !!(mmap.readByte(MEM_LOCATIONS.VBLANK) & 0x02);
 			RDY = false;
+			VSYNC = !!(mmap.readByte(MEM_LOCATIONS.VSYNC) & 0x02);
 		},
 
 		start: function() {
 			var i = 0,
-				handlerLength = handlers.start.length;
+				l = handlers.start.length;
 
+			// reset the break flag
 			breakFlag = false;
 
-			for (; i < handlerLength; i++) {
+			// loop through and execute each of the handlers that have been
+			// binded to the start event
+			for (; i < l; i++) {
 				handlers.start[i]();
 			}
 
-			drawCanvas();
+			// start running the main loop
 			runMainLoop();
+		},
+
+		step: function() {
+			var y0;
+
+			while(1) {
+				if (execClockCycle() === true) {
+					drawCanvas();
+					break;
+				}
+			}
 		},
 
 		stop: function() {
