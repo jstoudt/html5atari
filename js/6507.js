@@ -1751,55 +1751,12 @@ var CPU6507 = (function() {
 			}
 
 		},
-/*
-		getAddressString = function(addressing) {
-			var ll = mmap.readByte(regSet.pc),
-				hh = mmap.readByte((regSet.pc + 1) & 0xffff);
-				twoHex = function(hex) {
-					hex = hex.toString(16);
-					while (hex.length < 2) {
-						hex = '0' + hex;
-					}
-					return hex;
-				};
-
-			switch (addressing) {
-				case 'accumulator':
-					return 'A';
-				case 'absolute':
-					return '$' + twoHex(hh) + twoHex(ll);
-				case 'absoluteX':
-					return '$' + twoHex(hh) + twoHex(ll) + ',X';
-				case 'absoluteY':
-					return '$' + twoHex(hh) + twoHex(ll) + ',Y';
-				case 'immediate':
-					return '#$' + twoHex(ll);
-				case 'implied':
-					return 'impl';
-				case 'indirect':
-					return '($' + twoHex(hh) + twoHex(ll) + ')';
-				case 'xIndexedIndirect':
-					return '($' + twoHex(ll) + ',X)';
-				case 'indirectYIndexed':
-					return '($' + twoHex(ll) + '),Y';
-				case 'relative':
-					return '$' + twoHex(ll);
-				case 'zeroPage':
-					return '$' + twoHex(ll);
-				case 'zeroPageX':
-					return '$' + twoHex(ll) + ',X';
-				case 'zeroPageY':
-					return '$' + twoHex(ll) + ',Y';
-				default:
-					throw new Error('Illegal addressing mode detected.');
-			}
-		},
-*/
 
 		currentInstruction = null,
 
 		executeInstruction = function() {
-			var opcode = fetchInstruction(),
+			var offset = regSet.pc,
+				opcode = fetchInstruction(),
 				inst = instruction[opcode],
 				cycles0 = cycleCount,
 				instCycles;
@@ -1809,6 +1766,7 @@ var CPU6507 = (function() {
 
 			// save some information about the current operation
 			currentInstruction = {
+				offset: offset,
 				opcode: opcode,
 				addressing: inst.addressing,
 				abbr: inst.abbr
@@ -1889,6 +1847,24 @@ var CPU6507 = (function() {
 			} else {
 				throw new Error('Event type is invalid.');
 			}
+		},
+
+		removeEventListener: function(type, handler) {
+			var i, l;
+
+			if (typeof handler !== 'function') {
+				throw new Error('Parameter handler must be of type function.');
+			}
+
+			if (type === 'execloop') {
+				l = execloopHandlers.length;
+				for (i = 0; i < l; i++) {
+					if (execloopHandlers[i] === handler) {
+						execloopHandlers.splice(i, 1);
+					}
+				}
+			}
+
 		},
 
 		loadProgram: function(program, offset, len) {

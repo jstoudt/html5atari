@@ -47,7 +47,8 @@ var RIOT = (function() {
 
 			intervalMode = INTERVAL_MODE.NONE;
 
-			mmap.writeByte(0, MEM_LOCATIONS.TIMINT);
+			mmap.writeByte(timer & 0xf0000000 ? 0x80 : 0, MEM_LOCATIONS.INTIM);
+			mmap.writeByte(timer & 0xff, MEM_LOCATIONS.INTIM);
 			mmap.writeByte(0, MEM_LOCATIONS.TIM1T);
 			mmap.writeByte(0, MEM_LOCATIONS.TIM8T);
 			mmap.writeByte(0, MEM_LOCATIONS.TIM64T);

@@ -1,32 +1,70 @@
+html,
 body {
-	font: 16px/1.5 sans-serif;
+	height: 100%;
 }
 
-canvas {
-	display: block;
-	border: 1px solid #606060;
-	margin: 15px auto 0;
+body {
+	font: 12px/1.5 sans-serif;
 	padding: 0;
+	margin: 0;
+}
+
+[role=main] {
+	position: absolute;
+	left: 0;
+	top: 37.5%;
+	overflow: hidden;
+	width: 100%;
+	height: 525px;
+	margin-top: -262px;
+}
+
+.main-inner {
+	width: 644px;
+	margin: 0 auto;
+	text-align: center;
+}
+
+#television {
+	border: 1px solid #606060;
 	-webkit-transform: scaleX(4.0) scaleY(2.0) translateY(48px);
 }
 
-#main {
-	width: 960px;
-	margin: 0 auto;
+.controls {
+	margin-top: 210px;
 }
 
-#status,
-#memory {
-	text-align: center;
+#debug-panel {
+	position: fixed;
+	left: 50%;
+	bottom: -22px;
+	width: 900px;
+	height: 0;
+	overflow: hidden;
+	background: #fff;
+	border: 2px solid #aaa;
+	border-bottom-width: 0;
+	margin-left: -461px;
+	border-radius: 4px 4px 0 0;
+	padding: 10px;
+	-webkit-transition: height 0.5s ease-in;
+}
+
+#debug-panel.open {
+	height: 400px;
+	-webkit-transition: height 0.5s ease-out;
+}
+
+#debug-panel table {
 	border-collapse: collapse;
 }
 
-#status td,
-#memory td {
+#debug-panel td {
 	width: 2em;
-	height: 30px;
+	height: 24px;
 	font-family: monospace,monospace;
-	line-height: 30px;
+	line-height: 24px;
+	text-align: center;
 	border: 1px solid #000;
 }
 
@@ -37,19 +75,28 @@ label:after {
 	content: ":";
 }
 
-.register-wrapper {
-	margin-bottom: 40px;
-}
-
 .register {
 	display: inline-block;
 	vertical-align: middle;
 	text-align: center;
 	width: 4em;
-	height: 30px;
-	font: 16px/30px monospace,monospace;
+	height: 24px;
+	font: 11px/24px monospace,monospace;
 	border: 1px solid #000;
-	margin-right: 25px;
+	margin-right: 20px;
+}
+
+.register-wrapper {
+	line-height: 40px;
+}
+
+#status {
+	float: left;
+	margin: 15px 0 0 50px;
+}
+
+.frequency-wrapper {
+	display: inline-block;
 }
 
 #tia-frequency,
@@ -58,27 +105,14 @@ label:after {
 	margin-right: 0.5em;
 }
 
-.tv-wrapper {
-	height: 400px;
-}
-
-.controls {
-	clear: both;
-	margin-top: 50px;
-}
-
-#instructions {
-	display: block;
-	width: 600px;
-	height: 600px;
-	overflow: auto;
-	background: #ddd;
-	resize: none;
-	margin: 40px auto 0;
+#frame-rate {
+	margin-left: 25px;
 }
 
 #memory {
-	margin-top: 35px;
+	float: left;
+	clear: left;
+	margin-top: 25px;
 }
 
 #memory .leftcol {
@@ -87,7 +121,15 @@ label:after {
 	border-width: 0;
 }
 
-#status {
-	float: left;
-	margin-right: 100px;
+#instructions {
+	float: right;
+	width: 430px;
+	height: 325px;
+	background: #fff;
+	border: 1px solid #d0d0d0;
+	padding: 0;
+}
+
+#instructions {
+	font-family: monospace;
 }

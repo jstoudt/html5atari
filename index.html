@@ -7,7 +7,19 @@
 	<link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-	<div id="main">
+	<div role="main">
+		<div class="main-inner">
+			<canvas id="television" width="160" height="192"></canvas>
+			<div class="controls">
+				<button id="start" disabled>Start</button>
+				<button id="stop" disabled>Stop</button>
+				<button id="reset" disabled>Reset</button>
+				<button id="step" disabled>Step</button>
+			</div>
+		</div>
+	</div>
+
+	<div id="debug-panel">
 		<div class="register-wrapper">
 			<label>Accumulator</label>
 			<div id="ac" class="register"></div>
@@ -23,6 +35,13 @@
 
 			<label>PC</label>
 			<div id="pc" class="register"></div>
+
+			<label>TIA Frequency</label>
+			<div id="tia-frequency" class="register"></div>
+			<span>MHz</span>
+			
+			<div id="frame-rate" class="register"></div>
+			<span>fps</span>
 		</div>
 
 		<table id="status">
@@ -52,24 +71,8 @@
 			</tbody>
 		</table>
 
-		<div class="frequency-wrapper">
-			<label>TIA Clock Frequency</label>
-			<div id="tia-frequency" class="register"></div><span>MHz</span>
-			<br><br>
-			<label>Frame Rate</label>
-			<div id="frame-rate" class="register"></div><span>frames/sec</span>
-		</div>
+		<select id="instructions" multiple></select>
 
-		<div class="tv-wrapper">
-			<canvas id="television" width="160" height="192"></canvas>
-		</div>
-		
-		<div class="controls">
-			<button id="start" disabled>Start</button>
-			<button id="stop" disabled>Stop</button>
-			<button id="reset" disabled>Reset</button>
-			<button id="step" disabled>Step</button>
-		</div>
 		<table id="memory">
 			<thead>
 				<th>00xx</th>
@@ -246,189 +249,12 @@
 			</tbody>
 		</table>
 	</div>
+
 	<script src="js/memory.js"></script>
 	<script src="js/tia.js"></script>
 	<script src="js/riot.js"></script>
 	<script src="js/6507.js"></script>
-	<script>
-
-	(function() {
-
-		var ac           = document.getElementById('ac'),
-			x            = document.getElementById('x'),
-			y            = document.getElementById('y'),
-			sp           = document.getElementById('sp'),
-			pc           = document.getElementById('pc'),
-			instructions = document.getElementById('instructions'),
-			memTable     = document.getElementById('memory'),
-			cells        = memTable.getElementsByTagName('td'),
-			television   = document.getElementById('television'),
-			memCells     = [],
-			i            = 0,
-
-			sr = {
-				N: document.getElementById('N'),
-				V: document.getElementById('V'),
-				B: document.getElementById('B'),
-				D: document.getElementById('D'),
-				I: document.getElementById('I'),
-				Z: document.getElementById('Z'),
-				C: document.getElementById('C')
-			};
-
-		for (; i < cells.length; i++) {
-			if (cells[i].className !== 'leftcol') {
-				memCells.push(cells[i]);
-			}
-		}
-
-		document.addEventListener('DOMContentLoaded', function() {
-
-			TIA.init(television);
-
-			var xhr = new XMLHttpRequest();
-			xhr.open('GET', 'rom/bin/Combat.bin', true);
-			xhr.responseType = 'arraybuffer';
-
-			xhr.onerror = function() {
-				alert('Failed to load resource.');
-			};
-
-			xhr.onload = function() {
-
-				var prog         = new Uint8Array(xhr.response),
-					startBtn     = document.getElementById('start'),
-					stopBtn      = document.getElementById('stop'),
-					resetBtn     = document.getElementById('reset'),
-					stepBtn      = document.getElementById('step'),
-					tiaTime0     = Date.now(),
-					tiaCycles0   = TIA.getCycleCount(),
-					tiaFrames0   = TIA.getNumFrames(),
-					tiaFrequency = document.getElementById('tia-frequency'),
-					frameRate    = document.getElementById('frame-rate'),
-					breakFlag    = true,
-
-					showInfo = function() {
-						var i      = 0,
-							status = CPU6507.getRegister('sr'),
-							mem    = TIA.getMemoryCopy(0x80, 128),
-							len    = mem.length,
-							toHex  = function(hex, digits) {
-								hex = hex.toString(16);
-								while (hex.length < digits) {
-									hex = '0' + hex;
-								}
-								return hex;
-							},
-							reqAnimFrame = window.requestAnimationFrame ||
-								window.mozRequestAnimationFrame ||
-								window.webkitRequestAnimationFrame;
-
-						ac.innerHTML = toHex(CPU6507.getRegister('ac'), 2);
-						x.innerHTML  = toHex(CPU6507.getRegister('x'), 2);
-						y.innerHTML  = toHex(CPU6507.getRegister('y'), 2);
-						sp.innerHTML = toHex(CPU6507.getRegister('sp'), 2);
-						pc.innerHTML = toHex(CPU6507.getRegister('pc'), 2);
-
-						sr.N.innerHTML = status & 0x80 ? 1 : 0;
-						sr.V.innerHTML = status & 0x40 ? 1 : 0;
-						sr.B.innerHTML = status & 0x10 ? 1 : 0;
-						sr.D.innerHTML = status & 0x08 ? 1 : 0;
-						sr.I.innerHTML = status & 0x04 ? 1 : 0;
-						sr.Z.innerHTML = status & 0x02 ? 1 : 0;
-						sr.C.innerHTML = status & 0x01 ? 1 : 0;
-
-						for (; i < len; i++) {
-							memCells[i].innerHTML = toHex(mem[i], 2);
-						}
-
-						if (breakFlag !== true) {
-							reqAnimFrame(showInfo);
-						}
-					},
-
-					calcCycleRate = function() {
-						var tiaTime1   = Date.now(),
-							tiaCycles1 = TIA.getCycleCount(),
-							tiaFrames1 = TIA.getNumFrames();
-
-						tiaFrequency.innerHTML = Math.round((tiaCycles1 - tiaCycles0) / (tiaTime1 - tiaTime0)) / 1e3;
-
-						frameRate.innerHTML = Math.round((tiaFrames1 - tiaFrames0) / (tiaTime1 - tiaTime0) * 1e6) / 1000;
-
-						tiaCycles0 = tiaCycles1;
-						tiaTime0   = tiaTime1;
-						tiaFrames0 = tiaFrames1;
-
-						if (breakFlag !== true) {
-							setTimeout(calcCycleRate, 1000);
-						}
-					};
-
-				CPU6507.loadProgram(prog, 0xf000);
-
-				startBtn.removeAttribute('disabled');
-				startBtn.addEventListener('click', function() {
-					startBtn.setAttribute('disabled', 'disabled');
-					stopBtn.removeAttribute('disabled');
-					resetBtn.setAttribute('disabled', 'disabled');
-					stepBtn.setAttribute('disabled', 'disabled');
-
-					// start the magic
-					TIA.start();
-
-					// monitor the magic as it happens
-					breakFlag = false;
-					showInfo();
-					calcCycleRate();
-
-				}, false);
-
-				stopBtn.addEventListener('click', function() {
-					TIA.stop();
-					stopBtn.setAttribute('disabled', 'disabled');
-					startBtn.removeAttribute('disabled');
-					resetBtn.removeAttribute('disabled');
-					stepBtn.removeAttribute('disabled');
-					breakFlag = true;
-				}, false);
-
-				resetBtn.removeAttribute('disabled');
-				resetBtn.addEventListener('click', function() {
-					TIA.init(television);
-					CPU6507.loadProgram(prog, 0xf000);
-				}, false);
-
-				stepBtn.removeAttribute('disabled');
-				stepBtn.addEventListener('click', function() {
-					breakFlag = true;
-					TIA.step();
-					showInfo();
-				}, false);
-/*
-				CPU6507.addEventListener('execloop', function(inst) {
-					var pos = TIA.getBeamPosition();
-					console.log('y: ' + pos.y + ' x: ' + pos.x +
-						'\t' + inst.abbr +
-						'\t' + inst.operand +
-						'\t0x' + inst.opcode.toString(16) +
-						'\t' + inst.addressing + 
-						'\t' + inst.cycles +
-						'\tA: ' + CPU6507.getRegister('ac') +
-						'\tX: ' + CPU6507.getRegister('x') +
-						'\tY: ' + CPU6507.getRegister('y') +
-						'\tPC: ' + CPU6507.getRegister('pc').toString(16));
-				});
-*/
-			};
-
-			xhr.send();
-
-		}, false);
-
-	})();
-
-	</script>
+	<script src="js/script.js"></script>
 <!--
 	<script>
 		window.onload = function() {
