@@ -10,7 +10,45 @@
 
 var CPU6507 = (function() {
 
-	var regSet = {
+	var ROM_TYPE = {
+			'2K': 1,
+			'4K': 2
+		},
+
+		// lookup tables for binary coded decimal math operations
+		BCD_TO_DEC = [
+			0,    1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15,  // 0x00
+			10,  11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,  // 0x10
+			20,  21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,  // 0x20
+			30,  31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45,  // 0x30
+			40,  41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55,  // 0x40
+			50,  51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65,  // 0x50
+			60,  61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75,  // 0x60
+			70,  71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85,  // 0x70
+			80,  81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95,  // 0x80
+			90,  91, 92, 93, 94, 95, 96, 97, 98, 99,100,101,102,103,104,105,  // 0x90
+			100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,  // 0xA0
+			110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,  // 0xB0
+			120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,  // 0xC0
+			130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,  // 0xD0
+			140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,  // 0xE0
+			150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165   // 0xF0
+		],
+		
+		DEC_TO_BCD = [
+			0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09,
+			0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
+			0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29,
+			0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39,
+			0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49,
+			0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58, 0x59,
+			0x60, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69,
+			0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78, 0x79,
+			0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89,
+			0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99
+		],
+
+		regSet = {
 			ac: 0,    // Accumulator
 			x:  0,    // X Register
 			y:  0,    // Y Register
@@ -25,10 +63,15 @@ var CPU6507 = (function() {
 			pc: 0     // Program Counter
 		},
 		mmap, // a reference to the memory map to be passed in by TIA
+
+		romType, // the type of ROM cartridge that has been loaded
 		
 		cycleCount = 0, // number of CPU cycles executed -- for timing purposes
 
-		execloopHandlers = [], // an array of functions to call after each exec loop
+		handlers = {
+			load: [],     // functions to call after a ROM has been loaded
+			execloop: []  // an array of functions to call after each exec loop
+		},
 
 		// retrieve the byte in memory at the address specified by the
 		// program counter
@@ -315,28 +358,75 @@ var CPU6507 = (function() {
 		},
 
 		addWithCarry = function(val) {
-			var	v = regSet.ac & 0x80;
+			var v = regSet.ac & 0x80;
 
-			val += regSet.ac + (status.isSet('C') === true ? 1 : 0);
+			// execute addition in binary coded decimal mode
+			if (status.isSet('D')) {
+				val = BCD_TO_DEC[val] + BCD_TO_DEC[regSet.ac];
+				if (status.isSet('C') === true) {
+					val++;
+				}
 
-			status.set('C', val > 0xff);
+				if (val > 99) {
+					status.set('C');
+					val = -100;
+				} else {
+					status.reset('C');
+				}
 
-			status.setFlagsNZ(val);
+				val = DEC_TO_BCD[val];
 
-			status.set('V', v !== (val & 0x80));
+				status.setFlagsNZ(val);
 
-			regSet.ac = val & 0xff;
+				status.set('V', v !== (val & 0x80));
+
+				regSet.ac = DEC_TO_BCD[val];
+			} else {
+
+				val += regSet.ac + (status.isSet('C') === true ? 1 : 0);
+
+				status.set('C', val > 0xff);
+
+				status.setFlagsNZ(val);
+
+				status.set('V', v !== (val & 0x80));
+
+				regSet.ac = val & 0xff;
+			}
 		},
 
 		subtractWithCarry = function(val) {
-			val = regSet.ac - val - (status.isSet('C') === true ? 0 : 1);
+			var v = regSet.ac & 0x80;
 
-			status.setFlagsNZ(val);
+			// execute subtraction in binary coded decimal mode
+			if (status.isSet('D')) {
+				val = BCD_TO_DEC[regSet.ac] - BCD_TO_DEC[val];
+				if (status.isSet('C') === false) {
+					val--;
+				}
 
-			status.set('C', val >= 0);
-			status.set('V', val < 0);
+				status.set('C', val >= 0);
 
-			regSet.ac = val & 0xff;
+				if (val < 0) {
+					val += 100;
+				}
+
+				val = DEC_TO_BCD[val];
+
+				status.setFlagsNZ(val);
+
+				status.set('V', v !== (val & 0x80));
+
+				regSet.ac = val;
+			} else {
+				val = regSet.ac - val - (status.isSet('C') === true ? 0 : 1);
+
+				status.set('C', val >= 0);
+				
+				status.setFlagsNZ(val);
+
+				regSet.ac = val & 0xff;
+			}
 		},
 
 		operation = {
@@ -491,29 +581,32 @@ var CPU6507 = (function() {
 				},
 				addressing: 'implied',
 				cycles: 7,
-				abbr: 'BRK'
+				abbr: 'BRK',
+				bytes: 1
 			},
 
 			0x01: { // ORA X,ind
 				op: operation.ORA,
 				addressing: 'xIndexedIndirect',
 				cycles: 6,
-				bytes: 2,
-				abbr: 'ORA'
+				abbr: 'ORA',
+				bytes: 2
 			},
 
 			0x05: { // ORA zpg
 				op: operation.ORA,
 				addressing: 'zeroPage',
 				cycles: 3,
-				abbr: 'ORA'
+				abbr: 'ORA',
+				bytes: 2
 			},
 
 			0x06: { // ASL zpg
 				op: operation.ASL,
 				addressing: 'zeroPage',
 				cycles: 2,
-				abbr: 'ASL'
+				abbr: 'ASL',
+				bytes: 2
 			},
 
 			0x08: { // PHP impl
@@ -523,7 +616,8 @@ var CPU6507 = (function() {
 				},
 				addressing: 'implied',
 				cycles: 5,
-				abbr: 'PHP'
+				abbr: 'PHP',
+				bytes: 1
 			},
 
 			0x09: { // ORA #
@@ -535,7 +629,8 @@ var CPU6507 = (function() {
 				},
 				addressing: 'immediate',
 				cycles: 2,
-				abbr: 'ORA'
+				abbr: 'ORA',
+				bytes: 2
 			},
 
 			0x0a: { // ASL A
@@ -545,21 +640,24 @@ var CPU6507 = (function() {
 				},
 				addressing: 'accumulator',
 				cycles: 2,
-				abbr: 'ASL'
+				abbr: 'ASL',
+				bytes: 1
 			},
 
 			0x0d: { // ORA abs
 				op: operation.ORA,
 				addressing: 'absolute',
 				cycles: 4,
-				abbr: 'ORA'
+				abbr: 'ORA',
+				bytes: 3
 			},
 
 			0x0e: { // ASL abs
 				op: operation.ASL,
 				addressing: 'absolute',
 				cycles: 6,
-				abbr: 'ASL'
+				abbr: 'ASL',
+				bytes: 3
 			},
 
 			0x10: { // BPL rel
@@ -572,28 +670,32 @@ var CPU6507 = (function() {
 				},
 				addressing: 'relative',
 				cycles: 2,
-				abbr: 'BPL'
+				abbr: 'BPL',
+				bytes: 2
 			},
 
 			0x11: { // ORA ind,Y
 				op: operation.ORA,
 				addressing: 'indirectYIndexed',
 				cycles: 5,
-				abbr: 'ORA'
+				abbr: 'ORA',
+				bytes: 2
 			},
 
 			0x15: { // ORA zpg,X
 				op: operation.ORA,
 				addressing: 'zeroPageX',
 				cycles: 4,
-				abbr: 'ORA'
+				abbr: 'ORA',
+				bytes: 2
 			},
 
 			0x16: { // ASL zpg,X
 				op: operation.ASL,
 				addressing: 'zeroPageX',
 				cycles: 6,
-				abbr: 'ASL'
+				abbr: 'ASL',
+				bytes: 2
 			},
 
 			0x18: { // CLC impl
@@ -603,63 +705,72 @@ var CPU6507 = (function() {
 				},
 				addressing: 'implied',
 				cycles: 2,
-				abbr: 'CLC'
+				abbr: 'CLC',
+				bytes: 1
 			},
 
 			0x19: { // ORA abs,Y
 				op: operation.ORA,
 				addressing: 'absoluteY',
 				cycles: 4,
-				abbr: 'ORA'
+				abbr: 'ORA',
+				bytes: 3
 			},
 
 			0x1d: { // ORA abs,X
 				op: operation.ORA,
 				addressing: 'absoluteX',
 				cycles: 4,
-				abbr: 'ORA'
+				abbr: 'ORA',
+				bytes: 3
 			},
 
 			0x1e: { // ASL abs,X
 				op: operation.ASL,
 				addressing: 'absoluteX',
 				cycles: 7,
-				abbr: 'ASL'
+				abbr: 'ASL',
+				bytes: 3
 			},
 
 			0x20: { // JSR abs
 				op: operation.JSR,
 				addressing: 'absolute',
 				cycles: 6,
-				abbr: 'JSR'
+				abbr: 'JSR',
+				bytes: 3
 			},
 
 			0x21: { // AND x,ind
 				op: operation.AND,
 				addressing: 'xIndexedIndirect',
 				cycles: 6,
-				abbr: 'AND'
+				abbr: 'AND',
+				bytes: 2
 			},
 
 			0x24: { // BIT zpg
 				op: operation.BIT,
 				addressing: 'zeroPage',
 				cycles: 3,
-				abbr: 'BIT'
+				abbr: 'BIT',
+				bytes: 2
 			},
 
 			0x25: { // AND zpg
 				op: operation.AND,
 				addressing: 'zeroPage',
 				cycles: 3,
-				abbr: 'AND'
+				abbr: 'AND',
+				bytes: 2
 			},
 
 			0x26: { // ROL zpg
 				op: operation.ROL,
 				addressing: 'zeroPage',
 				cycles: 5,
-				abbr: 'ROL'
+				abbr: 'ROL',
+				bytes: 2
 			},
 
 			0x28: { // PLP impl
@@ -669,7 +780,8 @@ var CPU6507 = (function() {
 				},
 				addressing: 'implied',
 				cycles: 4,
-				abbr: 'PLP'
+				abbr: 'PLP',
+				bytes: 1
 			},
 
 			0x29: { // AND #
@@ -681,7 +793,8 @@ var CPU6507 = (function() {
 				},
 				addressing: 'immediate',
 				cycles: 2,
-				abbr: 'AND'
+				abbr: 'AND',
+				bytes: 2
 			},
 
 			0x2a: { // ROL A
@@ -691,28 +804,32 @@ var CPU6507 = (function() {
 				},
 				addressing: 'accumulator',
 				cycles: 2,
-				abbr: 'ROL'
+				abbr: 'ROL',
+				bytes: 1
 			},
 
 			0x2c: { // BIT abs
 				op: operation.BIT,
 				addressing: 'absolute',
 				cycles: 4,
-				abbr: 'BIT'
+				abbr: 'BIT',
+				bytes: 3
 			},
 
 			0x2d: { // AND abs
 				op: operation.AND,
 				addressing: 'absolute',
 				cycles: 4,
-				abbr: 'AND'
+				abbr: 'AND',
+				bytes: 3
 			},
 
 			0x2e: { // ROL abs
 				op: operation.ROL,
 				addressing: 'absolute',
 				cycles: 6,
-				abbr: 'ROL'
+				abbr: 'ROL',
+				bytes: 3
 			},
 
 			0x30: { // BMI rel
@@ -724,28 +841,32 @@ var CPU6507 = (function() {
 				},
 				addressing: 'relative',
 				cycles: 2,
-				abbr: 'BMI'
+				abbr: 'BMI',
+				bytes: 2
 			},
 
 			0x31: { // AND ind,Y
 				op: operation.AND,
 				addressing: 'indirectYIndexed',
 				cycles: 5,
-				abbr: 'AND'
+				abbr: 'AND',
+				bytes: 2
 			},
 
 			0x35: { // AND zpg,X
 				op: operation.AND,
 				addressing: 'zeroPageX',
 				cycles: 4,
-				abbr: 'AND'
+				abbr: 'AND',
+				bytes: 2
 			},
 
 			0x36: { // ROL zpg,X
 				op: operation.ROL,
 				addressing: 'zeroPageX',
 				cycles: 6,
-				abbr: 'ROL'
+				abbr: 'ROL',
+				bytes: 2
 			},
 
 			0x38: { // SEC impl
@@ -754,27 +875,31 @@ var CPU6507 = (function() {
 				},
 				addressing: 'implied',
 				cycles: 2,
-				abbr: 'SEC'
+				abbr: 'SEC',
+				bytes: 1
 			},
 
 			0x39: { // AND abs,Y
 				op: operation.AND,
 				addressing: 'absoluteY',
-				cycles: 4
+				cycles: 4,
+				bytes: 3
 			},
 
 			0x3d: { // AND abs,Y
 				op: operation.AND,
 				addressing: 'absoluteX',
 				cycles: 4,
-				abbr: 'AND'
+				abbr: 'AND',
+				bytes: 3
 			},
 
 			0x3e: { // ROL abs,X
 				op: operation.ROL,
 				addressing: 'absoluteX',
 				cycles: 7,
-				abbr: 'ROL'
+				abbr: 'ROL',
+				bytes: 3
 			},
 
 			0x40: { // RTI impl
@@ -785,28 +910,32 @@ var CPU6507 = (function() {
 				},
 				addressing: 'implied',
 				cycles: 6,
-				abbr: 'RTI'
+				abbr: 'RTI',
+				bytes: 1
 			},
 
 			0x41: { // EOR x,ind
 				op: operation.EOR,
 				addressing: 'xIndexedIndirect',
 				cycles: 6,
-				abbr: 'EOR'
+				abbr: 'EOR',
+				bytes: 2
 			},
 
 			0x45: { // EOR zpg
 				op: operation.EOR,
 				addressing: 'zeroPage',
 				cycles: 3,
-				abbr: 'EOR'
+				abbr: 'EOR',
+				bytes: 2
 			},
 
 			0x46: { // LSR zpg
 				op: operation.LSR,
 				addressing: 'zeroPage',
 				cycles: 5,
-				abbr: 'LSR'
+				abbr: 'LSR',
+				bytes: 2
 			},
 
 			0x48: { // PHA A
@@ -816,7 +945,8 @@ var CPU6507 = (function() {
 				},
 				addressing: 'implied',
 				cycles: 3,
-				abbr: 'PHA'
+				abbr: 'PHA',
+				bytes: 1
 			},
 
 			0x49: { // EOR #
@@ -828,7 +958,8 @@ var CPU6507 = (function() {
 				},
 				addressing: 'immediate',
 				cycles: 2,
-				abbr: 'EOR'
+				abbr: 'EOR',
+				bytes: 2
 			},
 
 			0x4a: { // LSR A
@@ -838,7 +969,8 @@ var CPU6507 = (function() {
 				},
 				addressing: 'accumulator',
 				cycles: 2,
-				abbr: 'LSR'
+				abbr: 'LSR',
+				bytes: 1
 			},
 
 			0x4c: { // JMP abs
@@ -847,21 +979,24 @@ var CPU6507 = (function() {
 				},
 				addressing: 'absolute',
 				cycles: 3,
-				abbr: 'JMP'
+				abbr: 'JMP',
+				bytes: 3
 			},
 
 			0x4d: { // EOR abs
 				op: operation.EOR,
 				addressing: 'absolute',
 				cycles: 4,
-				abbr: 'EOR'
+				abbr: 'EOR',
+				bytes: 3
 			},
 
 			0x4e: { // LSR abs
 				op: operation.LSR,
 				addressing: 'absolute',
 				cycles: 6,
-				abbr: 'LSR'
+				abbr: 'LSR',
+				bytes: 3
 			},
 
 			0x50: { // BVC rel
@@ -874,28 +1009,32 @@ var CPU6507 = (function() {
 				},
 				addressing: 'relative',
 				cycles: 2,
-				abbr: 'BVC'
+				abbr: 'BVC',
+				bytes: 2
 			},
 
 			0x51: { // EOR ind,Y
 				op: operation.EOR,
 				addressing: 'indirectYIndexed',
 				cycles: 5,
-				abbr: 'EOR'
+				abbr: 'EOR',
+				bytes: 2
 			},
 
 			0x55: { // EOR zpg,X
 				op: operation.EOR,
 				addressing: 'zeroPageX',
 				cycles: 4,
-				abbr: 'EOR'
+				abbr: 'EOR',
+				bytes: 2
 			},
 
 			0x56: { // LSR zpg,X
 				op: operation.LSR,
 				addressing: 'zeroPageX',
 				cycles: 6,
-				abbr: 'LSR'
+				abbr: 'LSR',
+				bytes: 2
 			},
 
 			0x58: { // CLI impl
@@ -905,28 +1044,32 @@ var CPU6507 = (function() {
 				},
 				addressing: 'implied',
 				cycles: 2,
-				abbr: 'CLI'
+				abbr: 'CLI',
+				bytes: 1
 			},
 
 			0x59: { // EOR abs,Y
 				op: operation.EOR,
 				addressing: 'absoluteY',
 				cycles: 4,
-				abbr: 'EOR'
+				abbr: 'EOR',
+				bytes: 3
 			},
 
 			0x5d: { // EOR abs,X
 				op: operation.EOR,
 				addressing: 'absoluteX',
 				cycles: 4,
-				abbr: 'EOR'
+				abbr: 'EOR',
+				bytes: 3
 			},
 
 			0x5e: { // LSR abs,X
 				op: operation.LSR,
 				addressing: 'absoluteX',
 				cycles: 7,
-				abbr: 'LSR'
+				abbr: 'LSR',
+				bytes: 3
 			},
 
 			0x60: { // RTS impl
@@ -936,28 +1079,32 @@ var CPU6507 = (function() {
 				},
 				addressing: 'implied',
 				cycles: 6,
-				abbr: 'RTS'
+				abbr: 'RTS',
+				bytes: 1
 			},
 
 			0x61: { // ADC X,ind
 				op: operation.ADC,
 				addressing: 'xIndexedIndirect',
 				cycles: 6,
-				abbr: 'ADC'
+				abbr: 'ADC',
+				bytes: 2
 			},
 
 			0x65: { // ADC zpg
 				op: operation.ADC,
 				addressing: 'zeroPage',
 				cycles: 3,
-				abbr: 'ADC'
+				abbr: 'ADC',
+				bytes: 2
 			},
 
 			0x66: { // ROR zpg
 				op: operation.ROR,
 				addressing: 'zeroPage',
 				cycles: 5,
-				abbr: 'ROR'
+				abbr: 'ROR',
+				bytes: 2
 			},
 
 			0x68: { // PLA impl
@@ -967,7 +1114,8 @@ var CPU6507 = (function() {
 				},
 				addressing: 'implied',
 				cycles: 4,
-				abbr: 'PLA'
+				abbr: 'PLA',
+				bytes: 1
 			},
 
 			0x69: { // ADC #
@@ -978,7 +1126,8 @@ var CPU6507 = (function() {
 				},
 				addressing: 'immediate',
 				cycles: 2,
-				abbr: 'ADC'
+				abbr: 'ADC',
+				bytes: 2
 			},
 
 			0x6a: { // ROR A
@@ -988,7 +1137,8 @@ var CPU6507 = (function() {
 				},
 				addressing: 'accumulator',
 				cycles: 2,
-				abbr: 'ROR'
+				abbr: 'ROR',
+				bytes: 1
 			},
 
 			0x6c: { // JMP ind
@@ -999,21 +1149,24 @@ var CPU6507 = (function() {
 				},
 				addressing: 'indirect',
 				cycles: 5,
-				abbr: 'JMP'
+				abbr: 'JMP',
+				bytes: 3
 			},
 
 			0x6d: { // ADC abs
 				op: operation.ADC,
 				addressing: 'absolute',
 				cycles: 4,
-				abbr: 'ADC'
+				abbr: 'ADC',
+				bytes: 3
 			},
 
 			0x6e: { // ROR abs
 				op: operation.ROR,
 				addressing: 'absolute',
 				cycles: 6,
-				abbr: 'ROR'
+				abbr: 'ROR',
+				bytes: 3
 			},
 
 			0x70: { // BVS rel
@@ -1026,28 +1179,32 @@ var CPU6507 = (function() {
 				},
 				addressing: 'relative',
 				cycles: 2,
-				abbr: 'BVS'
+				abbr: 'BVS',
+				bytes: 2
 			},
 
 			0x71: { // ADC Y,ind
 				op: operation.ADC,
 				addressing: 'indirectYIndexed',
 				cycles: 5,
-				abbr: 'ADC'
+				abbr: 'ADC',
+				bytes: 2
 			},
 
 			0x75: { // ADC zpg,X
 				op: operation.ADC,
 				addressing: 'zeroPageX',
 				cycles: 4,
-				abbr: 'ADC'
+				abbr: 'ADC',
+				bytes: 2
 			},
 
 			0x76: { // ROR zpg,X
 				op: operation.ROR,
 				addressing: 'zeroPageX',
 				cycles: 6,
-				abbr: 'ROR'
+				abbr: 'ROR',
+				bytes: 2
 			},
 
 			0x78: { // SEI impl
@@ -1057,56 +1214,64 @@ var CPU6507 = (function() {
 				},
 				addressing: 'implied',
 				cycles: 2,
-				abbr: 'SEI'
+				abbr: 'SEI',
+				bytes: 1
 			},
 
 			0x79: { // ADC abs,Y
 				op: operation.ADC,
 				addressing: 'absoluteY',
 				cycles: 4,
-				abbr: 'ADC'
+				abbr: 'ADC',
+				bytes: 3
 			},
 
 			0x7d: { // ADC abs,X
 				op: operation.ADC,
 				addressing: 'absoluteX',
 				cycles: 4,
-				abbr: 'ADC'
+				abbr: 'ADC',
+				bytes: 3
 			},
 
 			0x7e: { // ROR abs,X
 				op: operation.ROR,
 				addressing: 'absoluteX',
 				cycles: 7,
-				abbr: 'ROR'
+				abbr: 'ROR',
+				bytes: 3
 			},
 
 			0x81: { // STA X,ind
 				op: operation.STA,
 				addressing: 'xIndexedIndirect',
 				cycles: 6,
-				abbr: 'STA'
+				abbr: 'STA',
+				bytes: 2
 			},
 
 			0x84: { // STY zpg
 				op: operation.STY,
 				addressing: 'zeroPage',
 				cycles: 3,
-				abbr: 'STY'
+				abbr: 'STY',
+				bytes: 2
 			},
 
 			0x85: { // STA zpg
 				op: operation.STA,
 				addressing: 'zeroPage',
 				cycles: 3,
-				abbr: 'STA'
+				abbr: 'STA',
+				bytes: 2
 			},
 
 			0x86: { // STX zpg
 				op: operation.STX,
 				addressing: 'zeroPage',
 				cycles: 3,
-				abbr: 'STX'
+				abbr: 'STX',
+				bytes: 2
 			},
 
 			0x88: { // DEY impl
@@ -1117,7 +1282,8 @@ var CPU6507 = (function() {
 				},
 				addressing: 'implied',
 				cycles: 2,
-				abbr: 'DEY'
+				abbr: 'DEY',
+				bytes: 1
 			},
 
 			0x8a: { // TXA impl
@@ -1128,28 +1294,32 @@ var CPU6507 = (function() {
 				},
 				addressing: 'implied',
 				cycles: 2,
-				abbr: 'TXA'
+				abbr: 'TXA',
+				bytes: 1
 			},
 
 			0x8c: { // STY abs
 				op: operation.STY,
 				addressing: 'absolute',
 				cycles: 4,
-				abbr: 'STY'
+				abbr: 'STY',
+				bytes: 3
 			},
 
 			0x8d: { // STA abs
 				op: operation.STA,
 				addressing: 'absolute',
 				cycles: 4,
-				abbr: 'STA'
+				abbr: 'STA',
+				bytes: 3
 			},
 
 			0x8e: { // STX abs
 				op: operation.STX,
 				addressing: 'absolute',
 				cycles: 4,
-				abbr: 'STX'
+				abbr: 'STX',
+				bytes: 3
 			},
 
 			0x90: { // BCC rel
@@ -1162,35 +1332,40 @@ var CPU6507 = (function() {
 				},
 				addressing: 'relative',
 				cycles: 2,
-				abbr: 'BCC'
+				abbr: 'BCC',
+				bytes: 2
 			},
 
 			0x91: { // STA ind,Y
 				op: operation.STA,
 				addressing: 'indirectYIndexed',
 				cycles: 6,
-				abbr: 'STA'
+				abbr: 'STA',
+				bytes: 2
 			},
 
 			0x94: { // STY zpg,X
 				op: operation.STY,
 				addressing: 'zeroPageX',
 				cycles: 4,
-				abbr: 'STY'
+				abbr: 'STY',
+				bytes: 2
 			},
 
 			0x95: { // STA zpg,X
 				op: operation.STA,
 				addressing: 'zeroPageX',
 				cycles: 4,
-				abbr: 'STA'
+				abbr: 'STA',
+				bytes: 2
 			},
 
 			0x96: { // STX zpg,Y
 				op: operation.STX,
 				addressing: 'zeroPageY',
 				cycles: 4,
-				abbr: 'STX'
+				abbr: 'STX',
+				bytes: 2
 			},
 
 			0x98: { // TYA impl
@@ -1201,14 +1376,16 @@ var CPU6507 = (function() {
 				},
 				addressing: 'implied',
 				cycles: 2,
-				abbr: 'TYA'
+				abbr: 'TYA',
+				bytes: 1
 			},
 
 			0x99: { // STA abs,Y
 				op: operation.STA,
 				addressing: 'absoluteY',
 				cycles: 5,
-				abbr: 'STA'
+				abbr: 'STA',
+				bytes: 3
 			},
 
 			0x9a: { // TXS impl
@@ -1218,14 +1395,16 @@ var CPU6507 = (function() {
 				},
 				addressing: 'implied',
 				cycles: 2,
-				abbr: 'TXS'
+				abbr: 'TXS',
+				bytes: 1
 			},
 
 			0x9d: { // STA abs,X
 				op: operation.STA,
 				addressing: 'absoluteX',
 				cycles: 5,
-				abbr: 'STA'
+				abbr: 'STA',
+				bytes: 3
 			},
 
 			0xa0: { // LDY #
@@ -1237,14 +1416,16 @@ var CPU6507 = (function() {
 				},
 				addressing: 'immediate',
 				cycles: 2,
-				abbr: 'LDY'
+				abbr: 'LDY',
+				bytes: 2
 			},
 
 			0xa1: { // LDA X,ind
 				op: operation.LDA,
 				addressing: 'xIndexedIndirect',
 				cycles: 6,
-				abbr: 'LDA'
+				abbr: 'LDA',
+				bytes: 2
 			},
 
 			0xa2: { // LDX #
@@ -1256,28 +1437,32 @@ var CPU6507 = (function() {
 				},
 				addressing: 'immediate',
 				cycles: 2,
-				abbr: 'LDX'
+				abbr: 'LDX',
+				bytes: 2
 			},
 
 			0xa4: { // LDY zpg
 				op: operation.LDY,
 				addressing: 'zeroPage',
 				cycles: 3,
-				abbr: 'LDY'
+				abbr: 'LDY',
+				bytes: 2
 			},
 
 			0xa5: { // LDA zpg
 				op: operation.LDA,
 				addressing: 'zeroPage',
 				cycles: 3,
-				abbr: 'LDA'
+				abbr: 'LDA',
+				bytes: 2
 			},
 
 			0xa6: { // LDX zpg
 				op: operation.LDX,
 				addressing: 'zeroPage',
 				cycles: 3,
-				abbr: 'LDX'
+				abbr: 'LDX',
+				bytes: 2
 			},
 
 			0xa8: { // TAY impl
@@ -1288,7 +1473,8 @@ var CPU6507 = (function() {
 				},
 				addressing: 'implied',
 				cycles: 2,
-				abbr: 'TAY'
+				abbr: 'TAY',
+				bytes: 1
 			},
 
 			0xa9: { // LDA #
@@ -1300,7 +1486,8 @@ var CPU6507 = (function() {
 				},
 				addressing: 'immediate',
 				cycles: 2,
-				abbr: 'LDA'
+				abbr: 'LDA',
+				bytes: 2
 			},
 
 			0xaa: { // TAX impl
@@ -1311,28 +1498,32 @@ var CPU6507 = (function() {
 				},
 				addressing: 'implied',
 				cycles: 2,
-				abbr: 'TAX'
+				abbr: 'TAX',
+				bytes: 1
 			},
 
 			0xac: { // LDY abs
 				op: operation.LDY,
 				addressing: 'absolute',
 				cycles: 4,
-				abbr: 'LDY'
+				abbr: 'LDY',
+				bytes: 3
 			},
 
 			0xad: { // LDA abs
 				op: operation.LDA,
 				addressing: 'absolute',
 				cycles: 4,
-				abbr: 'LDA'
+				abbr: 'LDA',
+				bytes: 3
 			},
 
 			0xae: { // LDX abs
 				op: operation.LDX,
 				addressing: 'absolute',
 				cycles: 5,
-				abbr: 'LDX'
+				abbr: 'LDX',
+				bytes: 3
 			},
 
 			0xb0: { // BCS rel
@@ -1345,35 +1536,40 @@ var CPU6507 = (function() {
 				},
 				addressing: 'relative',
 				cycles: 2,
-				abbr: 'BCS'
+				abbr: 'BCS',
+				bytes: 2
 			},
 
 			0xb1: { // LDA ind,Y
 				op: operation.LDY,
 				addressing: 'indirectYIndexed',
 				cycles: 5,
-				abbr: 'LDA'
+				abbr: 'LDA',
+				bytes: 2
 			},
 
 			0xb4: { // LDY zpg,X
 				op: operation.LDY,
 				addressing: 'zeroPageX',
 				cycles: 4,
-				abbr: 'LDY'
+				abbr: 'LDY',
+				bytes: 2
 			},
 
 			0xb5: { // LDA zpg,X
 				op: operation.LDA,
 				addressing: 'zeroPageX',
 				cycles: 4,
-				abbr: 'LDA'
+				abbr: 'LDA',
+				bytes: 2
 			},
 
 			0xb6: { // LDX zpg,Y
 				op: operation.LDX,
 				addressing: 'zeroPageY',
 				cycles: 4,
-				abbr: 'LDX'
+				abbr: 'LDX',
+				bytes: 2
 
 			},
 
@@ -1384,14 +1580,16 @@ var CPU6507 = (function() {
 				},
 				addressing: 'implied',
 				cycles: 2,
-				abbr: 'CLV'
+				abbr: 'CLV',
+				bytes: 1
 			},
 
 			0xb9: { // LDA abs,Y
 				op: operation.LDA,
 				addressing: 'absoluteY',
 				cycles: 4,
-				abbr: 'LDA'
+				abbr: 'LDA',
+				bytes: 3
 			},
 
 			0xba: { // TSX impl
@@ -1402,28 +1600,32 @@ var CPU6507 = (function() {
 				},
 				addressing: 'implied',
 				cycles: 2,
-				abbr: 'TSX'
+				abbr: 'TSX',
+				bytes: 1
 			},
 
 			0xbc: { // LDY abs,X
 				op: operation.LDY,
 				addressing: 'absoluteX',
 				cycles: 4,
-				abbr: 'LDY'
+				abbr: 'LDY',
+				bytes: 3
 			},
 
 			0xbd: { // LDA abs,X
 				op: operation.LDA,
 				addressing: 'absoluteX',
 				cycles: 4,
-				abbr: 'LDA'
+				abbr: 'LDA',
+				bytes: 3
 			},
 
 			0xbe: { // LDX abs,Y
 				op: operation.LDX,
 				addressing: 'absoluteY',
 				cycles: 4,
-				abbr: 'LDX'
+				abbr: 'LDX',
+				bytes: 3
 			},
 
 			0xc0: { // CPY #
@@ -1438,35 +1640,40 @@ var CPU6507 = (function() {
 				},
 				addressing: 'immediate',
 				cycles: 2,
-				abbr: 'CPY'
+				abbr: 'CPY',
+				bytes: 2
 			},
 
 			0xc1: { // CMP X,ind
 				op: operation.CMP,
 				addressing: 'xIndexedIndirect',
 				cycles: 6,
-				abbr: 'CMP'
+				abbr: 'CMP',
+				bytes: 2
 			},
 
 			0xc4: { // CPY zpg
 				op: operation.CPY,
 				addressing: 'zeroPage',
 				cycles: 3,
-				abbr: 'CPY'
+				abbr: 'CPY',
+				bytes: 2
 			},
 
 			0xc5: { // CMP zpg
 				op: operation.CMP,
 				addressing: 'zeroPage',
 				cycles: 3,
-				abbr: 'CMP'
+				abbr: 'CMP',
+				bytes: 2
 			},
 
 			0xc6: { // DEC zpg
 				op: operation.DEC,
 				addressing: 'zeroPage',
 				cycles: 5,
-				abbr: 'DEC'
+				abbr: 'DEC',
+				bytes: 2
 			},
 
 			0xc8: { // INY impl
@@ -1477,7 +1684,8 @@ var CPU6507 = (function() {
 				},
 				addressing: 'implied',
 				cycles: 2,
-				abbr: 'INY'
+				abbr: 'INY',
+				bytes: 1
 			},
 
 			0xc9: { // CMP #
@@ -1492,7 +1700,8 @@ var CPU6507 = (function() {
 				},
 				addressing: 'immediate',
 				cycles: 2,
-				abbr: 'CMP'
+				abbr: 'CMP',
+				bytes: 2
 			},
 
 			0xca: { // DEX impl
@@ -1503,28 +1712,32 @@ var CPU6507 = (function() {
 				},
 				addressing: 'implied',
 				cycles: 2,
-				abbr: 'DEX'
+				abbr: 'DEX',
+				bytes: 1
 			},
 
 			0xcc: { // CPY abs
 				op: operation.CPY,
 				addressing: 'absolute',
 				cycles: 4,
-				abbr: 'CPY'
+				abbr: 'CPY',
+				bytes: 3
 			},
 
 			0xcd: { // CMP abs
 				op: operation.CMP,
 				addressing: 'absolute',
 				cycles: 4,
-				abbr: 'CMP'
+				abbr: 'CMP',
+				bytes: 3
 			},
 
 			0xce: { // DEC abs
 				op: operation.DEC,
 				addressing: 'absolute',
 				cycles: 3,
-				abbr: 'DEC'
+				abbr: 'DEC',
+				bytes: 3
 			},
 
 			0xd0: { // BNE rel
@@ -1537,28 +1750,32 @@ var CPU6507 = (function() {
 				},
 				addressing: 'relative',
 				cycles: 2,
-				abbr: 'BNE'
+				abbr: 'BNE',
+				bytes: 2
 			},
 
 			0xd1: { // CMP ind,Y
 				op: operation.CMP,
 				addressing: 'indirectYIndexed',
 				cycles: 5,
-				abbr: 'CMP'
+				abbr: 'CMP',
+				bytes: 2
 			},
 
 			0xd5: { // CMP zpg,X
 				op: operation.CMP,
 				addressing: 'zeroPageX',
 				cycles: 4,
-				abbr: 'CMP'
+				abbr: 'CMP',
+				bytes: 2
 			},
 
 			0xd6: { // DEC zpg,X
 				op: operation.DEC,
 				addressing: 'zeroPageX',
 				cycles: 6,
-				abbr: 'DEC'
+				abbr: 'DEC',
+				bytes: 2
 			},
 
 			0xd8: { // CLD impl
@@ -1568,28 +1785,32 @@ var CPU6507 = (function() {
 				},
 				addressing: 'implied',
 				cycles: 2,
-				abbr: 'CLD'
+				abbr: 'CLD',
+				bytes: 1
 			},
 
 			0xd9: { // CMP abs,Y
 				op: operation.CMP,
 				addressing: 'absoluteY',
 				cycles: 4,
-				abbr: 'CMP'
+				abbr: 'CMP',
+				bytes: 3
 			},
 
 			0xdd: { // CMP abs,X
 				op: operation.CMP,
 				addressing: 'absoluteX',
 				cycles: 4,
-				abbr: 'CMP'
+				abbr: 'CMP',
+				bytes: 3
 			},
 
 			0xde: { // DEC abs,X
 				op: operation.DEC,
 				addressing: 'absoluteX',
 				cycles: 7,
-				abbr: 'DEC'
+				abbr: 'DEC',
+				bytes: 3
 			},
 
 			0xe0: { // CPX #
@@ -1604,35 +1825,40 @@ var CPU6507 = (function() {
 				},
 				addressing: 'immediate',
 				cycles: 2,
-				abbr: 'CPX'
+				abbr: 'CPX',
+				bytes: 2
 			},
 
 			0xe1: { // SBC X,ind
 				op: operation.SBC,
 				addressing: 'xIndexedIndirect',
 				cycles: 6,
-				abbr: 'SBC'
+				abbr: 'SBC',
+				bytes: 2
 			},
 
 			0xe4: { // CPX zpg
 				op: operation.CPX,
 				addressing: 'zeroPage',
 				cycles: 3,
-				abbr: 'CPX'
+				abbr: 'CPX',
+				bytes: 2
 			},
 
 			0xe5: { // SBC zpg
 				op: operation.SBC,
 				addressing: 'zeroPage',
 				cycles: 3,
-				abbr: 'SBC'
+				abbr: 'SBC',
+				bytes: 2
 			},
 
 			0xe6: { // INC zpg
 				op: operation.INC,
 				addressing: 'zeroPage',
 				cycles: 5,
-				abbr: 'INC'
+				abbr: 'INC',
+				bytes: 2
 			},
 
 			0xe8: { // INX impl
@@ -1643,7 +1869,8 @@ var CPU6507 = (function() {
 				},
 				addressing: 'implied',
 				cycles: 2,
-				abbr: 'INX'
+				abbr: 'INX',
+				bytes: 1
 			},
 
 			0xe9: { // SBC #
@@ -1654,35 +1881,40 @@ var CPU6507 = (function() {
 				},
 				addressing: 'immediate',
 				cycles: 2,
-				abbr: 'SBC'
+				abbr: 'SBC',
+				bytes: 2
 			},
 
 			0xea: { // NOP impl
 				op: function() {},
 				addressing: 'implied',
 				cycles: 2,
-				abbr: 'NOP'
+				abbr: 'NOP',
+				bytes: 1
 			},
 
 			0xec: { // CPX abs
 				op: operation.CPX,
 				addressing: 'absolute',
 				cycles: 4,
-				abbr: 'CPX'
+				abbr: 'CPX',
+				bytes: 3
 			},
 
 			0xed: { // SBC abs
 				op: operation.SBC,
 				addressing: 'absolute',
 				cycles: 4,
-				abbr: 'SBC'
+				abbr: 'SBC',
+				bytes: 1
 			},
 
 			0xee: { // INC abs
 				op: operation.INC,
 				addressing: 'absolute',
 				cycles: 6,
-				abbr: 'INC'
+				abbr: 'INC',
+				bytes: 3
 			},
 
 			0xf0: { // BEQ rel
@@ -1695,28 +1927,32 @@ var CPU6507 = (function() {
 				},
 				addressing: 'relative',
 				cycles: 2,
-				abbr: 'BEQ'
+				abbr: 'BEQ',
+				bytes: 2
 			},
 
 			0xf1: { // SBC ind,Y
 				op: operation.SBC,
 				addressing: 'indirectYIndexed',
 				cycles: 5,
-				abbr: 'SBC'
+				abbr: 'SBC',
+				bytes: 2
 			},
 
 			0xf5: { // SBC zpg,X
 				op: operation.SBC,
 				addressing: 'zeroPageX',
 				cycles: 4,
-				abbr: 'SBC'
+				abbr: 'SBC',
+				bytes: 2
 			},
 
 			0xf6: { // INC zpg,X
 				op: operation.INC,
 				addressing: 'zeroPageX',
 				cycles: 6,
-				abbr: 'INC'
+				abbr: 'INC',
+				bytes: 2
 			},
 
 			0xf8: { // SED impl
@@ -1726,29 +1962,179 @@ var CPU6507 = (function() {
 				},
 				addressing: 'implied',
 				cycles: 2,
-				abbr: 'SED'
+				abbr: 'SED',
+				bytes: 1
 			},
 
 			0xf9: { // SBC abs,Y
 				op: operation.SBC,
 				addressing: 'absoluteY',
 				cycles: 4,
-				abbr: 'SBC'
+				abbr: 'SBC',
+				bytes: 3
 			},
 
 			0xfd: { // SBC abs,X
 				op: operation.SBC,
 				addressing: 'absoluteX',
 				cycles: 4,
-				abbr: 'SBC'
+				abbr: 'SBC',
+				bytes: 3
 			},
 
 			0xfe: { // INC abs,X
 				op: operation.INC,
 				addressing: 'absoluteX',
 				cycles: 7,
-				abbr: 'INC'
+				abbr: 'INC',
+				bytes: 3
 			}
+
+		},
+
+		parseProgram = function() {
+			var instructionList = [],
+				funcStack = [],
+				initAddr;
+
+			function parseInstruction(addr) {
+				var opcode, operand, inst, item,
+					toHex = function(arg, len) {
+						arg = arg.toString(16).toUpperCase();
+						while (arg.length < len) {
+							arg = '0' + operand;
+						}
+						return arg;
+					};
+
+				while(1) {
+					if (addr in instructionList) {
+						return;
+					}
+
+					opcode = mmap.readByte(addr);
+
+					if (!(opcode in instruction)) {
+						return;
+					}
+
+					inst = instruction[opcode];
+					item = {
+						offset: addr,
+						offset_str: '$' + toHex(addr, 4),
+						opcode: toHex(opcode, 2),
+						op_abbr: inst.abbr,
+						bytes: inst.bytes,
+						cycles: inst.cycles
+					};
+
+					operand = 0;
+					addr = (addr + 1) & 0xffff;
+
+					if (inst.bytes === 2) { // instruction has 2 bytes
+						operand = mmap.readByte(addr);
+						addr = (addr + 1) & 0xffff;
+					}
+
+					if (inst.bytes === 3) { // instruction has 3 bytes
+						operand = mmap.readWord(addr);
+						addr = (addr + 2) & 0xffff;
+					}
+
+					// Determine how to display the instruction's operand
+					switch (inst.addressing) {
+						case 'implied':
+							item.operand = 'impl';
+							break;
+						case 'accumulator':
+							item.operand = 'A';
+							break;
+						case 'absolute':
+							item.operand = '$' + toHex(operand, 4);
+							break;
+						case 'absoluteX':
+							item.operand = '$' + toHex(operand, 4) + ',X';
+							break;
+						case 'absoluteY':
+							item.operand = '$' + toHex(operand, 4) + ',Y';
+							break;
+						case 'immediate':
+							item.operand = '$#' + toHex(operand, 2);
+							break;
+						case 'indirect':
+							item.operand = '($' + toHex(operand, 4) + ')';
+							break;
+						case 'xIndexedIndirect':
+							item.operand = '($' + toHex(operand, 2) + ',X)';
+							break;
+						case 'indirectYIndexed':
+							item.operand = '($' + toHex(operand, 2) + '),Y';
+							break;
+						case 'relative':
+							operand = operand & 0x80 ?
+								addr - ((operand ^ 0xff) + 1) :
+								addr + operand;
+							operand &= 0xffff;
+							item.operand = '$' + toHex(operand, 4);
+							break;
+						case 'zeroPage':
+							item.operand = '$' + toHex(operand, 2);
+							break;
+						case 'zeroPageX':
+							item.operand = '$' + toHex(operand, 2) + ',X';
+							break;
+						case 'zeroPageY':
+							item.operand = '$' + toHex(operand, 2) + ',Y';
+							break;
+					}
+
+					instructionList[item.offset] = item;
+
+					// determine the next address
+					switch (inst.abbr) {
+						// a branch instruction causes recursion
+						case 'BCC':
+						case 'BCS':
+						case 'BEQ':
+						case 'BMI':
+						case 'BNE':
+						case 'BPL':
+						case 'BVC':
+						case 'BVS':
+							parseInstruction(operand);
+							break;
+
+						case 'JMP':
+							if (inst.addressing === 'absolute') {
+								parseInstruction(operand);
+							}
+							if (inst.addressing === 'indirect') {
+								parseInstruction(mmap.readWord(operand));
+							}
+							break;
+
+						case 'JSR':
+							parseInstruction(operand);
+							break;
+
+						case 'RTS':
+							return;
+					}
+
+				}
+
+			}
+
+			// seed the function with the first instruction address
+			if (romType === ROM_TYPE['2K']) {
+				initAddr = mmap.readByte(0xf7fc) | mmap.readByte(0xf7fd) << 8;
+			} else if (romType === ROM_TYPE['4K']) {
+				initAddr = mmap.readByte(0xfffc) | mmap.readByte(0xfffd) << 8;
+			}
+
+			parseInstruction(initAddr);
+
+			return instructionList;
 
 		},
 
@@ -1790,7 +2176,7 @@ var CPU6507 = (function() {
 		},
 
 		commitOperation = function() {
-			var handlerLength = execloopHandlers.length,
+			var handlerLength = handlers.execloop.length,
 				i = 0;
 
 			mmap.journalCommit();
@@ -1798,7 +2184,7 @@ var CPU6507 = (function() {
 			waiting = false; // reset the waiting flag
 
 			for (; i < handlerLength; i++) {
-				execloopHandlers[i](currentInstruction);
+				handlers.execloop[i](currentInstruction);
 			}
 
 			currentInstruction = null;
@@ -1842,48 +2228,68 @@ var CPU6507 = (function() {
 				throw new Error('Parameter handler must be of type function.');
 			}
 
-			if (type === 'execloop') {
-				execloopHandlers.push(handler);
+			if (type in handlers) {
+				handlers[type].push(handler);
 			} else {
-				throw new Error('Event type is invalid.');
+				throw new Error('Unrecognized event type.');
 			}
 		},
 
 		removeEventListener: function(type, handler) {
-			var i, l;
+			var i, l, handlerList;
 
 			if (typeof handler !== 'function') {
 				throw new Error('Parameter handler must be of type function.');
 			}
 
-			if (type === 'execloop') {
-				l = execloopHandlers.length;
-				for (i = 0; i < l; i++) {
-					if (execloopHandlers[i] === handler) {
-						execloopHandlers.splice(i, 1);
-					}
-				}
+			if (type in handler) {
+				handlerList = handlers[type];
+			} else {
+				throw new Error('Unrecognized event type.');
 			}
 
+			l = handlerList.length;
+			for (i = 0; i < l; i++) {
+				if (handlerList[i] === handler) {
+					handlerList.execloop.splice(i, 1);
+				}
+			}
 		},
 
-		loadProgram: function(program, offset, len) {
-			var i = 0;
+		loadProgram: function(program) {
+			var i, progList,
+				len = program.length,
+				l = handlers.load.length;
 
-			offset = offset || 0;
-			len = len || program.length;
+			romType = len === 2048 ? ROM_TYPE['2K'] :
+				len === 4096 ? ROM_TYPE['4K'] :
+				(function() {
+					throw new Error('Unsupported ROM type.');
+				})();
 
 			if (!(mmap instanceof MemoryMap)) {
 				throw new Error('The TIA must be initialized prior to loading a program.');
 			}
 
-			for (; i < len; i++) {
-				mmap.writeByte(program[i], (i + offset) & 0xffff);
+			for (i = 0; i < len; i++) {
+				mmap.writeByte(program[i], (i + 0xf000));
 			}
 
 			// this is incorrect... supposed to get PC value from reset
 			// value at the end of the ROM
-			regSet.pc = offset;
+			if (romType === ROM_TYPE['2K']) {
+				regSet.pc = mmap.readByte(0xf7fc) | mmap.readByte(0xf7fd) << 8;
+			} else if (romType === ROM_TYPE['4K']) {
+				regSet.pc = mmap.readByte(0xfffc) | mmap.readByte(0xfffd) << 8;
+			}
+
+			// execute any handlers bound to the load event
+			if (l > 0) {
+				progList = parseProgram();
+				for (i = 0; i < l; i++) {
+					handlers.load[i](progList);
+				}
+			}
 		},
 
 		getRegister: function(name) {
@@ -1892,21 +2298,8 @@ var CPU6507 = (function() {
 
 		getCycleCount: function() {
 			return cycleCount;
-		},
-
-		getInstruction: function(opcode) {
-			if (opcode in instruction) {
-				inst = instruction[opcode];
-
-				return {
-					opcode: opcode,
-					addressMode: inst.addressing,
-					cycles: inst.cycles
-				};
-			}
-
-			throw new Error('Illegal opcode has been specified.');
 		}
+
 	};
 
 })();

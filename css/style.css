@@ -12,7 +12,7 @@ body {
 [role=main] {
 	position: absolute;
 	left: 0;
-	top: 37.5%;
+	top: 50%;
 	overflow: hidden;
 	width: 100%;
 	height: 525px;
@@ -31,7 +31,7 @@ body {
 }
 
 .controls {
-	margin-top: 210px;
+	margin-bottom: 15px;
 }
 
 #debug-panel {
@@ -125,11 +125,42 @@ label:after {
 	float: right;
 	width: 430px;
 	height: 325px;
-	background: #fff;
 	border: 1px solid #d0d0d0;
-	padding: 0;
+	overflow: auto;
 }
 
-#instructions {
-	font-family: monospace;
+#instructions tr:hover {
+	background-color: #cfd;
+}
+
+#instructions tr.active td {
+	border-top: 1px solid #aaa;
+	border-bottom: 1px solid #aaa;
+	padding-top: 0;
+	padding-bottom: 0;
+}
+
+#instructions td {
+	font: 13px/15px monospace;
+	border: 0;
+	text-align: left;
+	height: 15px;
+	padding: 1px 0;
+}
+
+#instructions .offset {
+	width: 50px;
+	padding-left: 20px;
+}
+
+#instructions .abbr {
+	width: 40px;
+}
+
+#instructions .operand {
+	width: 50px;
+}
+
+#instructions .cycles {
+	width: 20px;
 }

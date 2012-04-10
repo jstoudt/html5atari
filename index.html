@@ -9,13 +9,13 @@
 <body>
 	<div role="main">
 		<div class="main-inner">
-			<canvas id="television" width="160" height="192"></canvas>
 			<div class="controls">
 				<button id="start" disabled>Start</button>
 				<button id="stop" disabled>Stop</button>
 				<button id="reset" disabled>Reset</button>
 				<button id="step" disabled>Step</button>
 			</div>
+			<canvas id="television" width="160" height="192"></canvas>
 		</div>
 	</div>
 
@@ -71,7 +71,11 @@
 			</tbody>
 		</table>
 
-		<select id="instructions" multiple></select>
+		<div id="instructions">
+			<table id="instructions">
+				<tbody></tbody>
+			</table>
+		</div>
 
 		<table id="memory">
 			<thead>

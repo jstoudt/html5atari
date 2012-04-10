@@ -13,10 +13,11 @@
 		tiaFrames0   = TIA.getNumFrames(),
 		tiaFrequency = document.getElementById('tia-frequency'),
 		frameRate    = document.getElementById('frame-rate'),
-		instructions = document.getElementById('instructions');
+		instructions = document.getElementById('instructions'),
 		memCells     = [],
 		scrollDown   = null,
 		i            = 0,
+		breakFlag    = true,
 
 		sr = {
 			N: document.getElementById('N'),
@@ -35,7 +36,8 @@
 	}
 
 	function showInfo() {
-		var i      = 0,
+		var list, tr, i, dataAddr,
+			progCounter = CPU6507.getRegister('pc'),
 			status = CPU6507.getRegister('sr'),
 			mem    = TIA.getMemoryCopy(0x80, 128),
 			len    = mem.length,
@@ -54,7 +56,7 @@
 		x.innerHTML  = toHex(CPU6507.getRegister('x'), 2);
 		y.innerHTML  = toHex(CPU6507.getRegister('y'), 2);
 		sp.innerHTML = toHex(CPU6507.getRegister('sp'), 2);
-		pc.innerHTML = toHex(CPU6507.getRegister('pc'), 2);
+		pc.innerHTML = toHex(progCounter, 2);
 
 		sr.N.innerHTML = status & 0x80 ? 1 : 0;
 		sr.V.innerHTML = status & 0x40 ? 1 : 0;
@@ -64,8 +66,21 @@
 		sr.Z.innerHTML = status & 0x02 ? 1 : 0;
 		sr.C.innerHTML = status & 0x01 ? 1 : 0;
 
-		for (; i < len; i++) {
+		for (i = 0; i < len; i++) {
 			memCells[i].innerHTML = toHex(mem[i], 2);
+		}
+
+		list = instructions.querySelectorAll('tr');
+		len = list.length;
+		for (i = 0; i < len; i++) {
+			tr = list[i];
+			dataAddr = parseInt(tr.getAttribute('data-addr'), 10);
+			if (dataAddr === progCounter) {
+				tr.classList.add('active');
+				tr.scrollIntoView();
+			} else {
+				tr.classList.remove('active');
+			}
 		}
 
 		if (breakFlag !== true) {
@@ -92,40 +107,36 @@
 		}
 	}
 
-	function listInstruction(inst) {
-		var option     = document.createElement('option'),
-			html       = '',
-			getPadding = function(text, size) {
-				var n = size - text.length,
-					i = 0;
-				for (; i < n; i++) {
-					text += '&nbsp;';
-				}
-				return text;
+	function listInstructions(program) {
+		var i, item, tr,
+			tbody = document.getElementById('instructions').querySelector('tbody'),
+			createCol = function(str, cname, row) {
+				var td = document.createElement('td');
+				td.innerHTML = str;
+				td.className = cname;
+				row.appendChild(td);
 			};
+			
+		for (i in program) {
+			item = program[i];
 
-		html += getPadding(inst.offset.toString(16).toUpperCase(), 14);
-		html += getPadding(inst.abbr, 7);
-		html += getPadding(inst.operand || '', 10);
-		html += ';' + inst.cycles;
+			tr = document.createElement('tr');
+			tr.setAttribute('data-addr', item.offset);
 
-		option.innerHTML = html;
-
-		instructions.appendChild(option);
-
-		if (scrollDown !== null) {
-			clearTimeout(scrollDown);
-			scrollDown = null;
+			createCol(item.offset_str, 'offset', tr);
+			createCol(item.op_abbr, 'abbr', tr);
+			createCol(item.operand, 'operand', tr);
+			createCol(';' + item.cycles, 'cycles', tr);
+			
+			tbody.appendChild(tr);
 		}
-
-		scrollDown = setTimeout(function() {
-			instructions.scrollTop = instructions.scrollHeight;
-		}, 0);
 	}
 
 	document.addEventListener('DOMContentLoaded', function() {
 
 		TIA.init(television);
+
+		CPU6507.addEventListener('load', listInstructions);
 
 		var xhr = new XMLHttpRequest();
 		xhr.open('GET', 'rom/bin/Combat.bin', true);
@@ -137,13 +148,12 @@
 
 		xhr.onload = function() {
 
-			var prog         = new Uint8Array(xhr.response),
-				startBtn     = document.getElementById('start'),
+			var startBtn     = document.getElementById('start'),
 				stopBtn      = document.getElementById('stop'),
 				resetBtn     = document.getElementById('reset'),
 				stepBtn      = document.getElementById('step');
 
-			CPU6507.loadProgram(prog, 0xf000);
+			CPU6507.loadProgram(new Uint8Array(xhr.response));
 
 			startBtn.removeAttribute('disabled');
 			startBtn.addEventListener('click', function() {
@@ -152,36 +162,35 @@
 				resetBtn.setAttribute('disabled', 'disabled');
 				stepBtn.setAttribute('disabled', 'disabled');
 
+				breakFlag = false;
+
 				// start the magic
 				TIA.start();
-
-				// monitor the magic as it happens
-				breakFlag = false;
-				showInfo();
-				calcCycleRate();
 
 			}, false);
 
 			stopBtn.addEventListener('click', function() {
 				TIA.stop();
+				breakFlag = true;
 				stopBtn.setAttribute('disabled', 'disabled');
 				startBtn.removeAttribute('disabled');
 				resetBtn.removeAttribute('disabled');
 				stepBtn.removeAttribute('disabled');
-				breakFlag = true;
 			}, false);
 
 			resetBtn.removeAttribute('disabled');
 			resetBtn.addEventListener('click', function() {
 				TIA.init(television);
-				CPU6507.loadProgram(prog, 0xf000);
+				breakFlag = true;
+				CPU6507.loadProgram(new Uint8Array(xhr.response));
 			}, false);
 
 			stepBtn.removeAttribute('disabled');
 			stepBtn.addEventListener('click', function() {
-				breakFlag = true;
 				TIA.step();
 				showInfo();
+				calcCycleRate();
+				breakFlag = true;
 			}, false);
 
 		};
@@ -194,11 +203,9 @@
 			if (event.keyCode === 192) {
 				debugPanel = document.getElementById('debug-panel');
 				if (debugPanel.classList.contains('open')) {
-					CPU6507.removeEventListener('execloop', listInstruction);
 					debugPanel.classList.remove('open');
 					breakFlag = true;
 				} else {
-					CPU6507.addEventListener('execloop', listInstruction);
 					debugPanel.classList.add('open');
 					breakFlag = false;
 					showInfo();
