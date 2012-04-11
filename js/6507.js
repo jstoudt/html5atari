@@ -375,24 +375,17 @@ var CPU6507 = (function() {
 				}
 
 				val = DEC_TO_BCD[val];
-
-				status.setFlagsNZ(val);
-
-				status.set('V', v !== (val & 0x80));
-
-				regSet.ac = DEC_TO_BCD[val];
 			} else {
-
 				val += regSet.ac + (status.isSet('C') === true ? 1 : 0);
 
 				status.set('C', val > 0xff);
-
-				status.setFlagsNZ(val);
-
-				status.set('V', v !== (val & 0x80));
-
-				regSet.ac = val & 0xff;
 			}
+
+			status.setFlagsNZ(val);
+
+			status.set('V', v !== (val & 0x80));
+
+			regSet.ac = val & 0xff;
 		},
 
 		subtractWithCarry = function(val) {
@@ -412,21 +405,18 @@ var CPU6507 = (function() {
 				}
 
 				val = DEC_TO_BCD[val];
-
-				status.setFlagsNZ(val);
-
-				status.set('V', v !== (val & 0x80));
-
-				regSet.ac = val;
 			} else {
 				val = regSet.ac - val - (status.isSet('C') === true ? 0 : 1);
 
 				status.set('C', val >= 0);
-				
-				status.setFlagsNZ(val);
-
-				regSet.ac = val & 0xff;
 			}
+
+			status.setFlagsNZ(val);
+
+			status.set('V', v !== (val & 0x80));
+
+			regSet.ac = val & 0xff;
+
 		},
 
 		operation = {
@@ -1326,7 +1316,7 @@ var CPU6507 = (function() {
 				op: function(fAddr) {
 					var addr = fAddr();
 
-					if (status.isSet('C') === true) {
+					if (status.isSet('C') === false) {
 						regSet.pc = addr;
 					}
 				},
@@ -1993,21 +1983,21 @@ var CPU6507 = (function() {
 		},
 
 		parseProgram = function() {
-			var instructionList = [],
-				funcStack = [],
-				initAddr;
+			var initAddr,
+				instructionList = [],
+				toHex = function(arg, len) {
+					arg = arg.toString(16).toUpperCase();
+					while (arg.length < len) {
+						arg = '0' + arg;
+					}
+					return arg;
+				};
 
 			function parseInstruction(addr) {
-				var opcode, operand, inst, item,
-					toHex = function(arg, len) {
-						arg = arg.toString(16).toUpperCase();
-						while (arg.length < len) {
-							arg = '0' + operand;
-						}
-						return arg;
-					};
+				var opcode, operand, inst, item;
 
 				while(1) {
+
 					if (addr in instructionList) {
 						return;
 					}
@@ -2059,7 +2049,7 @@ var CPU6507 = (function() {
 							item.operand = '$' + toHex(operand, 4) + ',Y';
 							break;
 						case 'immediate':
-							item.operand = '$#' + toHex(operand, 2);
+							item.operand = '#$' + toHex(operand, 2);
 							break;
 						case 'indirect':
 							item.operand = '($' + toHex(operand, 4) + ')';
@@ -2086,6 +2076,8 @@ var CPU6507 = (function() {
 						case 'zeroPageY':
 							item.operand = '$' + toHex(operand, 2) + ',Y';
 							break;
+						default:
+							throw new Error('Addressing mode unknown: ' + inst.addressing);
 					}
 
 					instructionList[item.offset] = item;

@@ -8,6 +8,7 @@
 		memTable     = document.getElementById('memory'),
 		cells        = memTable.getElementsByTagName('td'),
 		television   = document.getElementById('television'),
+		debugPanel   = document.getElementById('debug-panel'),
 		tiaTime0     = Date.now(),
 		tiaCycles0   = TIA.getCycleCount(),
 		tiaFrames0   = TIA.getNumFrames(),
@@ -18,6 +19,7 @@
 		scrollDown   = null,
 		i            = 0,
 		breakFlag    = true,
+		started      = false,
 
 		sr = {
 			N: document.getElementById('N'),
@@ -109,7 +111,7 @@
 
 	function listInstructions(program) {
 		var i, item, tr,
-			tbody = document.getElementById('instructions').querySelector('tbody'),
+			tbody = instructions.querySelector('tbody'),
 			createCol = function(str, cname, row) {
 				var td = document.createElement('td');
 				td.innerHTML = str;
@@ -139,7 +141,7 @@
 		CPU6507.addEventListener('load', listInstructions);
 
 		var xhr = new XMLHttpRequest();
-		xhr.open('GET', 'rom/bin/Combat.bin', true);
+		xhr.open('GET', 'rom/bin/Boxing.bin', true);
 		xhr.responseType = 'arraybuffer';
 
 		xhr.onerror = function() {
@@ -163,6 +165,7 @@
 				stepBtn.setAttribute('disabled', 'disabled');
 
 				breakFlag = false;
+				started = true;
 
 				// start the magic
 				TIA.start();
@@ -172,6 +175,7 @@
 			stopBtn.addEventListener('click', function() {
 				TIA.stop();
 				breakFlag = true;
+				started = false;
 				stopBtn.setAttribute('disabled', 'disabled');
 				startBtn.removeAttribute('disabled');
 				resetBtn.removeAttribute('disabled');
@@ -182,6 +186,7 @@
 			resetBtn.addEventListener('click', function() {
 				TIA.init(television);
 				breakFlag = true;
+				started = false;
 				CPU6507.loadProgram(new Uint8Array(xhr.response));
 			}, false);
 
@@ -191,6 +196,7 @@
 				showInfo();
 				calcCycleRate();
 				breakFlag = true;
+				started = false;
 			}, false);
 
 		};
@@ -198,22 +204,32 @@
 		xhr.send();
 
 		window.addEventListener('keyup', function(event) {
-			var debugPanel;
-
 			if (event.keyCode === 192) {
-				debugPanel = document.getElementById('debug-panel');
 				if (debugPanel.classList.contains('open')) {
 					debugPanel.classList.remove('open');
 					breakFlag = true;
+					delete localStorage['debug'];
 				} else {
 					debugPanel.classList.add('open');
-					breakFlag = false;
+					breakFlag = ~started;
 					showInfo();
 					calcCycleRate();
+					localStorage['debug'] = 'open';
 				}
 			}
 		}, false);
 
+		// open the debug panel if it was open previously
+		if (localStorage['debug'] === 'open') {
+			debugPanel.classList.add('open');
+			showInfo();
+			calcCycleRate();
+		}
+
 	}, false);
 
 })();
+
+/*
+(function skipAhead() { if (CPU6507.getRegister('pc') !== 0xf3d6) { document.getElementById('step').click(); t = setTimeout(skipAhead, 10); } })();
+*/

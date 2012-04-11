@@ -20,6 +20,16 @@ TIMETOCHANGE    = 20                   ; speed of "animation" - change as desire
                 ORG $F000
 
 Reset
+                sei
+                lda $80
+                sed
+                sec
+                sbc #5
+                sta $80
+                jmp Reset
+
+
+;Reset
 
    ; Clear RAM and all TIA registers
 
@@ -53,7 +63,7 @@ StartOfFrame
                 lda #2
                 sta VSYNC
 
-;                sta WSYNC
+                sta WSYNC
                 sta WSYNC
                 sta WSYNC               ; 3 scanlines of VSYNC signal
 
