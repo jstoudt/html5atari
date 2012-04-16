@@ -187,8 +187,17 @@ MemoryMap.prototype.journalCommit = function() {
 MemoryMap.createAtariMemoryMap = function() {
 	var mmap = new MemoryMap(13);
 	
-	mmap.addStrobe(0x02);
-	mmap.addStrobe(0x03);
+	// "Strobes" registers assigned to the TIA
+	mmap.addStrobe(0x02);  // WSYNC
+	mmap.addStrobe(0x03);  // RSYNC
+	mmap.addStrobe(0x10);  // RESP0
+	mmap.addStrobe(0x11);  // RESP1
+	mmap.addStrobe(0x12);  // RESM0
+	mmap.addStrobe(0x13);  // RESM1
+	mmap.addStrobe(0x14);  // RESBL
+	mmap.addStrobe(0x2a);  // HMOVE
+	mmap.addStrobe(0x2b);  // HMCLR
+	mmap.addStrobe(0x2c);  // CXCLR
 
 	return mmap;
 };

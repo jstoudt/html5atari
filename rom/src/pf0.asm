@@ -20,16 +20,6 @@ TIMETOCHANGE    = 20                   ; speed of "animation" - change as desire
                 ORG $F000
 
 Reset
-                sei
-                lda $80
-                sed
-                sec
-                sbc #5
-                sta $80
-                jmp Reset
-
-
-;Reset
 
    ; Clear RAM and all TIA registers
 
@@ -44,6 +34,9 @@ Clear           sta 0,x
 
                 lda #0
                 sta PATTERN            ; The binary PF 'pattern'
+
+                lda #1
+                sta CTRLPF             ; Reflect the playfield
 
                 lda #$45
                 sta COLUPF             ; set the playfield colour
@@ -99,13 +92,13 @@ notyet
 ;                lda PATTERN            ; use our saved pattern
 ;                sta PF1                ; as the playfield shape
 
-                lda #$af
+                lda #$10
                 sta PF0
 
-                lda #$aa
+                lda #0
                 sta PF1
 
-                lda #$aa
+                lda #$80
                 sta PF2
 
        ;------------------------------------------------

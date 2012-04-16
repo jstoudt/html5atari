@@ -31,7 +31,7 @@ body {
 }
 
 .controls {
-	margin-bottom: 15px;
+	margin-bottom: 30px;
 }
 
 #debug-panel {
@@ -92,7 +92,22 @@ label:after {
 
 #status {
 	float: left;
-	margin: 15px 0 0 50px;
+	margin: 15px 20px 0 0;
+}
+
+#beam-position {
+	float: left;
+	margin-top: 10px;
+}
+
+#beam-position label {
+	display: inline-block;
+	text-align: right;
+	width: 80px;
+}
+
+#beam-position .register {
+	margin: 0 0 5px 10px;
 }
 
 .frequency-wrapper {

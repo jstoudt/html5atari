@@ -5,6 +5,8 @@
 		y            = document.getElementById('y'),
 		sp           = document.getElementById('sp'),
 		pc           = document.getElementById('pc'),
+		pixelClock   = document.getElementById('x-pos'),
+		scanline     = document.getElementById('y-pos'),
 		memTable     = document.getElementById('memory'),
 		cells        = memTable.getElementsByTagName('td'),
 		television   = document.getElementById('television'),
@@ -43,6 +45,7 @@
 			status = CPU6507.getRegister('sr'),
 			mem    = TIA.getMemoryCopy(0x80, 128),
 			len    = mem.length,
+			beamPosition = TIA.getBeamPosition(),
 			toHex  = function(hex, digits) {
 				hex = hex.toString(16);
 				while (hex.length < digits) {
@@ -68,6 +71,9 @@
 		sr.Z.innerHTML = status & 0x02 ? 1 : 0;
 		sr.C.innerHTML = status & 0x01 ? 1 : 0;
 
+		pixelClock.textContent = beamPosition.x;
+		scanline.textContent   = beamPosition.y;
+
 		for (i = 0; i < len; i++) {
 			memCells[i].innerHTML = toHex(mem[i], 2);
 		}
@@ -79,15 +85,17 @@
 			dataAddr = parseInt(tr.getAttribute('data-addr'), 10);
 			if (dataAddr === progCounter) {
 				tr.classList.add('active');
-				tr.scrollIntoView();
+				if (tr.offsetTop < instructions.scrollTop || tr.offsetTop > instructions.scrollTop + instructions.offsetHeight) {
+					tr.scrollIntoView();
+				}
 			} else {
 				tr.classList.remove('active');
 			}
 		}
 
-		if (breakFlag !== true) {
-			reqAnimFrame(showInfo);
-		}
+//		if (breakFlag !== true) {
+//			reqAnimFrame(showInfo);
+//		}
 	}
 
 	function calcCycleRate() {
@@ -139,9 +147,10 @@
 		TIA.init(television);
 
 		CPU6507.addEventListener('load', listInstructions);
+		CPU6507.addEventListener('execloop', showInfo);
 
 		var xhr = new XMLHttpRequest();
-		xhr.open('GET', 'rom/bin/Boxing.bin', true);
+		xhr.open('GET', 'rom/bin/kernel21.bin', true);
 		xhr.responseType = 'arraybuffer';
 
 		xhr.onerror = function() {
@@ -150,10 +159,10 @@
 
 		xhr.onload = function() {
 
-			var startBtn     = document.getElementById('start'),
-				stopBtn      = document.getElementById('stop'),
-				resetBtn     = document.getElementById('reset'),
-				stepBtn      = document.getElementById('step');
+			var startBtn = document.getElementById('start'),
+				stopBtn  = document.getElementById('stop'),
+				resetBtn = document.getElementById('reset'),
+				stepBtn  = document.getElementById('step');
 
 			CPU6507.loadProgram(new Uint8Array(xhr.response));
 
@@ -193,7 +202,7 @@
 			stepBtn.removeAttribute('disabled');
 			stepBtn.addEventListener('click', function() {
 				TIA.step();
-				showInfo();
+//				showInfo();
 				calcCycleRate();
 				breakFlag = true;
 				started = false;

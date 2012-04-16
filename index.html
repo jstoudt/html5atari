@@ -15,7 +15,7 @@
 				<button id="reset" disabled>Reset</button>
 				<button id="step" disabled>Step</button>
 			</div>
-			<canvas id="television" width="160" height="192"></canvas>
+			<canvas id="television" width="160" height="222"></canvas>
 		</div>
 	</div>
 
@@ -30,7 +30,7 @@
 			<label>Y</label>
 			<div id="y" class="register"></div>
 
-			<label>Stack</label>
+			<label>SP</label>
 			<div id="sp" class="register"></div>
 
 			<label>PC</label>
@@ -70,6 +70,13 @@
 				</tr>
 			</tbody>
 		</table>
+		<div id="beam-position">
+			<label>Pixel Clock</label>
+			<div id="x-pos" class="register"></div>
+			<br>
+			<label>Scanline</label>
+			<div id="y-pos" class="register"></div>
+		</div>
 
 		<div id="instructions">
 			<table id="instructions">

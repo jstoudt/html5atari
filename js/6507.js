@@ -49,18 +49,18 @@ var CPU6507 = (function() {
 		],
 
 		regSet = {
-			ac: 0,    // Accumulator
-			x:  0,    // X Register
-			y:  0,    // Y Register
-			sr: 0,    // Status Register
+			ac: 0,       // Accumulator Register
+			x:  0,       // X Register
+			y:  0,       // Y Register
+			sr: 0,       // Status Register
 
 //       bit ->   7                           0
 //              +---+---+---+---+---+---+---+---+
 //              | N | V |   | B | D | I | Z | C |  <-- flag, 0/1 = reset/set
 //              +---+---+---+---+---+---+---+---+
 
-			sp: 0,    // Stack Pointer
-			pc: 0     // Program Counter
+			sp: 0,      // Stack Pointer
+			pc: 0       // Program Counter
 		},
 		mmap, // a reference to the memory map to be passed in by TIA
 
@@ -266,27 +266,6 @@ var CPU6507 = (function() {
 				}
 
 				if (!val) {
-					status.reset(register);
-					return;
-				}
-
-				register = register.toUpperCase();
-
-				regSet.sr |= register === 'N' ? 0x80 :
-					register === 'V' ? 0x40 :
-					register === 'B' ? 0x10 :
-					register === 'D' ? 0x08 :
-					register === 'I' ? 0x04 :
-					register === 'Z' ? 0x02 :
-					register === 'C' ? 0x01 :
-					(function() {
-						throw new Error('An illegal status register has been specified.');
-					})();
-			},
-
-			reset: function(register) {
-				register = register.toUpperCase();
-
 				regSet.sr &= register === 'N' ? 0x7f :
 					register === 'V' ? 0xbf :
 					register === 'B' ? 0xef :
@@ -297,11 +276,33 @@ var CPU6507 = (function() {
 					(function() {
 						throw new Error('An illegal status register has been specified.');
 					})();
+				} else {
+					regSet.sr |= register === 'N' ? 0x80 :
+						register === 'V' ? 0x40 :
+						register === 'B' ? 0x10 :
+						register === 'D' ? 0x08 :
+						register === 'I' ? 0x04 :
+						register === 'Z' ? 0x02 :
+						register === 'C' ? 0x01 :
+						(function() {
+							throw new Error('An illegal status register has been specified.');
+						})();
+				}
 			},
 
 			setFlagsNZ: function(val) {
-				status.set('N', (val & 0x80));
-				status.set('Z', (val === 0x00));
+
+				if (val & 0x80) {
+					regSet.sr |= 0x80;
+				} else {
+					regSet.sr &= 0x7f;
+				}
+
+				if (val === 0) {
+					regSet.sr |= 0x02;
+				} else {
+					regSet.sr &= 0xfd;
+				}
 			}
 		},
 
@@ -371,7 +372,7 @@ var CPU6507 = (function() {
 					status.set('C');
 					val = -100;
 				} else {
-					status.reset('C');
+					status.set('C', false);
 				}
 
 				val = DEC_TO_BCD[val];
@@ -413,10 +414,9 @@ var CPU6507 = (function() {
 
 			status.setFlagsNZ(val);
 
-			status.set('V', v !== (val & 0x80));
+			status.set('V', v && !(val & 0x80));
 
 			regSet.ac = val & 0xff;
-
 		},
 
 		operation = {
@@ -690,7 +690,7 @@ var CPU6507 = (function() {
 
 			0x18: { // CLC impl
 				op: function() {
-					status.reset('C');
+					status.set('C', false);
 					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
@@ -1029,7 +1029,7 @@ var CPU6507 = (function() {
 
 			0x58: { // CLI impl
 				op: function() {
-					status.reset('I');
+					status.set('I', false);
 					currentInstruction.operation = 'impl';
 				},
 				addressing: 'implied',
@@ -1565,7 +1565,7 @@ var CPU6507 = (function() {
 
 			0xb8: { // CLV impl
 				op: function() {
-					status.reset('V');
+					status.set('V', false);
 					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
@@ -1770,7 +1770,7 @@ var CPU6507 = (function() {
 
 			0xd8: { // CLD impl
 				op: function() {
-					status.reset('D');
+					status.set('D', false);
 					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
@@ -2193,7 +2193,7 @@ var CPU6507 = (function() {
 			regSet.x  = 0;
 			regSet.y  = 0;
 			regSet.sp = 0xff;
-			regSet.sr = 0x10;
+			regSet.sr = 0x30;
 			regSet.pc = 0xff;
 
 			// reset the cycle counter
@@ -2208,10 +2208,10 @@ var CPU6507 = (function() {
 				}
 				executeInstruction();
 				return true;
-			} else {
-				cyclesToWait--;
 			}
 
+			cyclesToWait--;
+			
 			return false;
 		},
 
