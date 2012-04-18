@@ -165,7 +165,7 @@ MemoryMap.prototype.journalAddByte = function(val, addr) {
 
 // Clears the journal without committing its contents
 MemoryMap.prototype.journalReset = function() {
-	this._jounral = [];
+	this._journal = [];
 };
 
 // Writes all the bytes in the journal to the specified address location
@@ -185,19 +185,26 @@ MemoryMap.prototype.journalCommit = function() {
 // "static" function to create the Atari memory map with it's less than
 // subtle quirks and irregularities
 MemoryMap.createAtariMemoryMap = function() {
-	var mmap = new MemoryMap(13);
-	
+	var mmap = new MemoryMap(13),
+		i = 0,
+		strobeList = [
+			0x02, // WSYNC
+			0x03, // RSYNC
+			0x10, // RESP0
+			0x11, // RESP1
+			0x12, // RESM0
+			0x13, // RESM1
+			0x14, // RESBL
+			0x2a, // HMOVE
+			0x2b, // HMCLR
+			0x2c  // CXCLR
+		],
+		l = strobeList.length;
+
 	// "Strobes" registers assigned to the TIA
-	mmap.addStrobe(0x02);  // WSYNC
-	mmap.addStrobe(0x03);  // RSYNC
-	mmap.addStrobe(0x10);  // RESP0
-	mmap.addStrobe(0x11);  // RESP1
-	mmap.addStrobe(0x12);  // RESM0
-	mmap.addStrobe(0x13);  // RESM1
-	mmap.addStrobe(0x14);  // RESBL
-	mmap.addStrobe(0x2a);  // HMOVE
-	mmap.addStrobe(0x2b);  // HMCLR
-	mmap.addStrobe(0x2c);  // CXCLR
+	for (; i < l; i++)  {
+		mmap.addStrobe(strobeList[i]);
+	}
 
 	return mmap;
 };

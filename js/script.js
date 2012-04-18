@@ -147,10 +147,10 @@
 		TIA.init(television);
 
 		CPU6507.addEventListener('load', listInstructions);
-		CPU6507.addEventListener('execloop', showInfo);
+//		CPU6507.addEventListener('execloop', showInfo);
 
 		var xhr = new XMLHttpRequest();
-		xhr.open('GET', 'rom/bin/kernel21.bin', true);
+		xhr.open('GET', 'rom/bin/redline.bin', true);
 		xhr.responseType = 'arraybuffer';
 
 		xhr.onerror = function() {

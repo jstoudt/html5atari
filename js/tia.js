@@ -64,7 +64,19 @@ var TIA = (function() {
 			VDELBL: 0x27,
 			RESMP0: 0x28,		RESMP1: 0x29,
 			HMOVE:  0x2a,		HMCLR:  0x2b,
-			CXCLR:  0x2c
+			CXCLR:  0x2c,
+
+			// These are TIA Collision Read Registers
+			CXM0P:  0x40,		CXM1P:  0x41,
+			CXP0FB: 0x42,		CXP1FB: 0x43,
+			CXM0FB: 0x44,		CXM1FB: 0x45,
+			CXBLPF: 0x46,		CXPPMM: 0x47,
+
+			// These are TIA Input Read Registers
+			INPT0:  0x48,		INPT1:  0x49,
+			INPT2:  0x4a,		INPT3:  0x4b,
+
+			INPT4:  0x4c,		INPT5:  0x4d
 		},
 
 		// the Atari 2600 NTSC color palette
@@ -125,9 +137,9 @@ var TIA = (function() {
 				x = (mmap.readByte(MEM_LOCATIONS.CTRLPF) & 0x01) ? 39 - x : x - 20;
 			}
 
-			return x >= 12 ? mmap.readByte(MEM_LOCATIONS.PF2) & (1 << (x - 12)) :
+			return !!(x >= 12 ? mmap.readByte(MEM_LOCATIONS.PF2) & (1 << (x - 12)) :
 				x >= 4 ? mmap.readByte(MEM_LOCATIONS.PF1) & (0x80 >> (x - 4)) :
-				(mmap.readByte(MEM_LOCATIONS.PF0) >>> 4) & (1 << x);
+				(mmap.readByte(MEM_LOCATIONS.PF0) >>> 4) & (1 << x));
 		},
 
 		isPlayerAt = function(x, p) {
@@ -135,47 +147,171 @@ var TIA = (function() {
 
 			if (p === 0) {
 				gr    = mmap.readByte(MEM_LOCATIONS.GRP0);
-				ref   = mmap.readByte(MEM_LOCATIONS.REFP0);
-				nusiz = mmap.readByte(MEM_LOCATIONS.NUSIZ0);
-				vdel  = mmap.readByte(MEM_LOCATIONS.VDELP0);
+//				ref   = mmap.readByte(MEM_LOCATIONS.REFP0);
+//				nusiz = mmap.readByte(MEM_LOCATIONS.NUSIZ0);
+//				vdel  = mmap.readByte(MEM_LOCATIONS.VDELP0);
 				pos = x - p0Pos;
 			} else {
 				gr    = mmap.readByte(MEM_LOCATIONS.GRP1);
-				ref   = mmap.readByte(MEM_LOCATIONS.REFP1);
-				nusiz = mmap.readByte(MEM_LOCATIONS.NUSIZ1);
-				vdel  = mmap.readByte(MEM_LOCATIONS.VDELP1);
+//				ref   = mmap.readByte(MEM_LOCATIONS.REFP1);
+//				nusiz = mmap.readByte(MEM_LOCATIONS.NUSIZ1);
+//				vdel  = mmap.readByte(MEM_LOCATIONS.VDELP1);
 				pos = x - p1Pos;
 			}
 
-			return pos >= 0 && pos < 8 && gr & (0x80 >>> pos);
+			return !!(pos >= 0 && pos < 8 && gr & (0x80 >>> pos));
+		},
+
+		isMissleAt = function(x, p) {
+			var enabled, pos, size;
+
+			enabled = p === 0 ? mmap.readByte(MEM_LOCATIONS.ENAM0) & 0x02 :
+				mmap.readByte(MEM_LOCATIONS.ENAM1) & 0x02;
+
+			if (enabled) {
+				if (p === 0) {
+					pos = m0Pos;
+					size = mmap.readByte(MEM_LOCATIONS.NUSIZ0);
+				} else {
+					pos = m1Pos;
+					size = mmap.readByte(MEM_LOCATIONS.NUSIZ1);
+				}
+				
+				size = 1 << ((size >>> 4) & 0x03);
+
+				if (x >= pos && x <= pos + size) {
+					return true;
+				}
+			}
+
+			return false;
+		},
+
+		isBallAt = function(x) {
+			var size;
+
+			if (mmap.readByte(MEM_LOCATIONS.ENABL) & 0x02) {
+				size = 1 << ((mmap.readByte(MEM_LOCATIONS.CTRLPF) >>> 4) & 0x03);
+				
+				if (x >= blPos && x <= blPos + size) {
+					return true;
+				}
+			}
+			return false;
 		},
 
 		writePixel = function(x, y) {
 			// determine what color the pixel at the present coordinates should be
 			var color,
 				i     = (y * VIDEO_BUFFER_WIDTH + x) << 2,
-				data  = pixelBuffer.data;
+				data  = pixelBuffer.data,
+				pf    = isPlayfieldAt(x >>> 2),
+				p0    = isPlayerAt(x, 0),
+				p1    = isPlayerAt(x, 1),
+				m0    = isMissleAt(x, 0),
+				m1    = isMissleAt(x, 1),
+				bl    = isBallAt(x);
 
-			if (mmap.readByte(MEM_LOCATIONS.CTRLPF) & 0x40) {
-				color = isPlayfieldAt(x >>> 2) ? mmap.readByte(MEM_LOCATIONS.COLUPF) :
-					isPlayerAt(x, 0) ? mmap.readByte(MEM_LOCATIONS.COLUP0) :
-					isPlayerAt(x, 1) ? mmap.readByte(MEM_LOCATIONS.COLUP1) :
+			if (mmap.readByte(MEM_LOCATIONS.CTRLPF) & 0x04) {
+				color = pf === true ? mmap.readByte(MEM_LOCATIONS.COLUPF) :
+					p0 === true ? mmap.readByte(MEM_LOCATIONS.COLUP0) :
+					m0 === true ? mmap.readByte(MEM_LOCATIONS.COLUP0) :
+					p1 === true ? mmap.readByte(MEM_LOCATIONS.COLUP1) :
+					m1 === true ? mmap.readByte(MEM_LOCATIONS.COLUP1) :
 					mmap.readByte(MEM_LOCATIONS.COLUBK);
 			} else {
-				color = isPlayerAt(x, 0) ? mmap.readByte(MEM_LOCATIONS.COLUP0) :
-					isPlayerAt(x, 1) ? mmap.readByte(MEM_LOCATIONS.COLUP1) :
-					isPlayfieldAt(x >>> 2) ? mmap.readByte(MEM_LOCATIONS.COLUPF) :
+				color = p0 === true ? mmap.readByte(MEM_LOCATIONS.COLUP0) :
+					m0 === true ? mmap.readByte(MEM_LOCATIONS.COLUP0) :
+					p1 === true ? mmap.readByte(MEM_LOCATIONS.COLUP1) :
+					m1 === true ? mmap.readByte(MEM_LOCATIONS.COLUP1) :
+					pf === true ? mmap.readByte(MEM_LOCATIONS.COLUPF) :
 					mmap.readByte(MEM_LOCATIONS.COLUBK);
 			}
-
-//			color = mmap.readByte(isPlayfieldAt(x >>> 2) ?
-//				MEM_LOCATIONS.COLUPF : MEM_LOCATIONS.COLUBK);
 
 			color = COLOR_PALETTE[(color & 0xf0) >>> 4][(color & 0x0f) >>> 1];
 			data[i]     = color[0]; // red
 			data[i + 1] = color[1]; // green
 			data[i + 2] = color[2]; // blue
 			data[i + 3] = 255;      // alpha
+
+			// now determine if there were collisions and set the
+			// correct registers
+			if (m0 === true) {
+				if (p0 === true) {
+					mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXM0P) | 0x40,
+						MEM_LOCATIONS.CXM0P);
+				}
+				if (p1 === true) {
+					mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXM0P) | 0x80,
+						MEM_LOCATIONS.CXM0P);
+				}
+
+				if (pf === true) {
+					mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXM0FB) | 0x80,
+						MEM_LOCATIONS.CXM0FB);
+				}
+				if (bl === true) {
+					mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXM0FB) | 0x40,
+						MEM_LOCATIONS.CXM0FB);
+				}
+
+				if (m1 === true) {
+					mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXPPMM) | 0x40,
+						MEM_LOCATIONS.CXPPMM);
+				}
+			}
+
+			if (m1 === true) {
+				if (p0 === true) {
+					mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXM1P) | 0x80,
+						MEM_LOCATIONS.CXM1P);
+				}
+				if (p1 === true) {
+					mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXM1P) | 0x40,
+						MEM_LOCATIONS.CXM1P);
+				}
+
+				if (pf === true) {
+					mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXM1FB) | 0x80,
+						MEM_LOCATIONS.CXM1FB);
+				}
+				if (bl === true) {
+					mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXM1FB) | 0x40,
+						MEM_LOCATIONS.CXM1FB);
+				}
+			}
+
+			if (p0 === true) {
+				if (pf === true) {
+					mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXP0FB) | 0x80,
+						MEM_LOCATIONS.CXP0FB);
+				}
+				if (bl === true) {
+					mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXP0FB) | 0x40,
+						MEM_LOCATIONS.CXP0FB);
+				}
+
+				if (p1 === true) {
+					mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXPPMM) | 0x80,
+						MEM_LOCATIONS.CXPPMM);
+				}
+			}
+
+			if (p1 === true) {
+				if (pf === true) {
+					mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXP1FB) | 0x80,
+						MEM_LOCATIONS.CXP1FB);
+				}
+				if (bl === true) {
+					mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXP1FB) | 0x40,
+						MEM_LOCATIONS.CXP1FB);
+				}
+			}
+
+			if (bl === true && pf === true) {
+				mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXBLPF) | 0x80,
+					MEM_LOCATIONS.CXBLPF);
+			}
 		},
 
 		drawCanvas = function() {
@@ -184,6 +320,31 @@ var TIA = (function() {
 
 			// increment the number of frames drawn
 			numFrames++;
+		},
+
+		calcHorizMotion = function(x, d) {
+			// only bits D7 to D4 affect horizontal motion, so confine
+			// just those bits
+			d = (d >>> 4) & 0x0f;
+
+			// if d is negative, move that many pixels to the right
+			if (d & 0x08) {
+				x += (~d & 0x0f) + 1;
+
+				// wrap around if we went passed the right of the canvas
+				if (x > 0x9f) {
+					x -= 0xa0;
+				}
+			} else { // d is nonnegative - move to the left
+				x -= d;
+
+				// wrap around if we passed the left side of the canvas
+				if (x < 0) {
+					x = 0xa0 - x;
+				}
+			}
+
+			return x;
 		},
 
 		// a value that cycles between 0, 1 and 2... 6507 is cycled on 0
@@ -257,7 +418,7 @@ var TIA = (function() {
 
 			if (tiaClock === 0) {
 				// cycle the RIOT, update the timer
-//				RIOT.cycle();
+				RIOT.cycle();
 
 				if (RDY === false) {
 					proc = CPU6507.cycle();
@@ -300,6 +461,43 @@ var TIA = (function() {
 						if (mmap.isStrobeActive(MEM_LOCATIONS.RESBL) === true) {
 							nextBLPos = x < 0 ? 0 : x;
 							mmap.resetStrobe(MEM_LOCATIONS.RESBL);
+						}
+
+						// turn on horizontal motion if the HMOVE register
+						// was strobed
+						if (mmap.isStrobeActive(MEM_LOCATIONS.HMOVE) === true) {
+							mmap.resetStrobe(MEM_LOCATIONS.HMOVE);
+
+							p0Pos = calcHorizMotion(p0Pos, mmap.readByte(MEM_LOCATIONS.HMP0));
+							p1Pos = calcHorizMotion(p1Pos, mmap.readByte(MEM_LOCATIONS.HMP1));
+							m0Pos = calcHorizMotion(m0Pos, mmap.readByte(MEM_LOCATIONS.HMM0));
+							m1Pos = calcHorizMotion(m1Pos, mmap.readByte(MEM_LOCATIONS.HMM1));
+							blPos = calcHorizMotion(blPos, mmap.readByte(MEM_LOCATIONS.HMBL));
+						}
+
+						// check the HMOVE register, if strobed, reset all
+						// the horizontal motion registers
+						if (mmap.isStrobeActive(MEM_LOCATIONS.HMCLR) === true) {
+							mmap.resetStrobe(MEM_LOCATIONS.HMCLR);
+
+							mmap.writeByte(0, MEM_LOCATIONS.HMP0);
+							mmap.writeByte(0, MEM_LOCATIONS.HMP1);
+							mmap.writeByte(0, MEM_LOCATIONS.HMM0);
+							mmap.writeByte(0, MEM_LOCATIONS.HMM1);
+							mmap.writeByte(0, MEM_LOCATIONS.HMBL);
+						}
+
+						if (mmap.isStrobeActive(MEM_LOCATIONS.CXCLR) === true) {
+							mmap.resetStrobe(MEM_LOCATIONS.CXCLR);
+
+							mmap.writeByte(0, MEM_LOCATIONS.CXM0P);
+							mmap.writeByte(0, MEM_LOCATIONS.CXM1P);
+							mmap.writeByte(0, MEM_LOCATIONS.CXP0FB);
+							mmap.writeByte(0, MEM_LOCATIONS.CXP1FB);
+							mmap.writeByte(0, MEM_LOCATIONS.CXM0FB);
+							mmap.writeByte(0, MEM_LOCATIONS.CXM1FB);
+							mmap.writeByte(0, MEM_LOCATIONS.CXBLPF);
+							mmap.writeByte(0, MEM_LOCATIONS.CXPPMM);
 						}
 
 						// check if VBLANK was turned on or off
@@ -429,6 +627,8 @@ var TIA = (function() {
 			m0Pos = 0;
 			m1Pos = 0;
 			blPos = 0;
+
+			hmove = false;
 		},
 
 		start: function() {

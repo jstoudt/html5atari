@@ -2,3 +2,4 @@ docs/
 html5atari.sublime-project
 html5atari.sublime-workspace
 rom/bin
+rom/src/*.h
