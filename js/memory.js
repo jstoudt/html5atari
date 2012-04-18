@@ -41,9 +41,9 @@ function MemoryMap(bitWidth) {
 	// the only public property of a MemoryMap object created in this constructor
 	this.length = this._memory.length;
 
-	// load the memory with junk to simulate real hardware
+	// initialize all registers on the system bus to zero
 	for (i = 0; i < this._memory.length; i++) {
-		this._memory[i] = (Math.random() * 1000) & 0xff;
+		this._memory[i] = 0;
 	}
 }
 
@@ -204,6 +204,11 @@ MemoryMap.createAtariMemoryMap = function() {
 	// "Strobes" registers assigned to the TIA
 	for (; i < l; i++)  {
 		mmap.addStrobe(strobeList[i]);
+	}
+
+	// Randomize the bits in RAM
+	for (i = 0x80; i < 0xff; i++) {
+		mmap.writeByte(i, (Math.random() * 1000) & 0xff);
 	}
 
 	return mmap;

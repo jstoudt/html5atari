@@ -40,8 +40,11 @@ var TIA = (function() {
 
 		// locations of TIA registers on the system bus
 		MEM_LOCATIONS = {
+			// TIA Sync registers
 			VSYNC:  0x00,		VBLANK: 0x01,
 			WSYNC:  0x02,		RSYNC:  0x03,
+
+			// TIA Graphics registers
 			NUSIZ0: 0x04,		NUSIZ1: 0x05,
 			COLUP0: 0x06,		COLUP1: 0x07,
 			COLUPF: 0x08,		COLUBK: 0x09,
@@ -147,19 +150,114 @@ var TIA = (function() {
 
 			if (p === 0) {
 				gr    = mmap.readByte(MEM_LOCATIONS.GRP0);
-//				ref   = mmap.readByte(MEM_LOCATIONS.REFP0);
-//				nusiz = mmap.readByte(MEM_LOCATIONS.NUSIZ0);
-//				vdel  = mmap.readByte(MEM_LOCATIONS.VDELP0);
-				pos = x - p0Pos;
+				ref   = mmap.readByte(MEM_LOCATIONS.REFP0);
+				nusiz = mmap.readByte(MEM_LOCATIONS.NUSIZ0) & 0x07;
+//				vdel  = mmap.readByte(MEM_LOCATIONS.VDELP0) & 0x01;
+				pos = p0Pos;
 			} else {
 				gr    = mmap.readByte(MEM_LOCATIONS.GRP1);
-//				ref   = mmap.readByte(MEM_LOCATIONS.REFP1);
-//				nusiz = mmap.readByte(MEM_LOCATIONS.NUSIZ1);
-//				vdel  = mmap.readByte(MEM_LOCATIONS.VDELP1);
-				pos = x - p1Pos;
+				ref   = mmap.readByte(MEM_LOCATIONS.REFP1);
+				nusiz = mmap.readByte(MEM_LOCATIONS.NUSIZ1) & 0x07;
+//				vdel  = mmap.readByte(MEM_LOCATIONS.VDELP1) & 0x01;
+				pos = p1Pos;
 			}
 
-			return !!(pos >= 0 && pos < 8 && gr & (0x80 >>> pos));
+			pos = x - pos;
+
+			// if the beam is still to the left of the player, we can
+			// short circuit out here
+			if (pos < 0) {
+				return false;
+			}
+
+			switch (nusiz) {
+				case 0x00: // one copy -- simplest case
+					return pos > 7 ? false :
+						ref ? !!(gr & (1 << pos)) :
+						!!(gr & (0x80 >>> pos));
+
+				case 0x01: // two copies close (8 clocks apart)
+					if (pos < 8) {
+						return ref ? !!(gr & (1 << pos)) :
+							!!(gr & (0x80 >>> pos));
+					} else if (pos >= 16 && pos < 24) {
+						pos -= 16;
+						return ref ? !!(gr & (1 << pos)) :
+							!!(gr & (0x80 >>> pos));
+
+					}
+					return false;
+
+				case 0x02: // two copies med (24 clocks apart)
+					if (pos < 8) {
+						return ref ? !!(gr & (1 << pos)) :
+							!!(gr & (0x80 >>> pos));
+					} else if (pos >= 32 && pos < 40) {
+						pos -= 32;
+						return ref ? !!(gr & (1 << pos)) :
+							!!(gr & (0x80 >>> pos));
+					}
+					return false;
+
+				case 0x03: // three copies close (8 clocks apart)
+					if (pos < 8) {
+						return ref ? !!(gr & (1 << pos)) :
+							!!(gr & (0x80 >>> pos));
+					} else if (pos >= 16 && pos < 24) {
+						pos -= 16;
+						return ref ? !!(gr & (1 << pos)) :
+							!!(gr & 0x80 >>> pos);
+					} else if (pos >= 32 && pos < 40) {
+						pos -= 32;
+						return ref ? !!(gr & (1 << pos)) :
+							!!(gr & 0x80 >>> pos);
+					}
+					return false;
+
+				case 0x04: // two copies wide (56 clocks apart)
+					if (pos < 8) {
+						return ref ? !!(gr & (1 << pos)) :
+							!!(gr & (0x80 >>> pos));
+					} else if (pos >= 64 && pos < 72) {
+						pos -= 64;
+						return ref ? !!(gr & (1 << pos)) :
+							!!(gr & (0x80 >>> pos));
+					}
+					return false;
+				case 0x05: // double size player
+					if (pos < 16) {
+						pos >>>= 1;
+						return ref ? !!(gr & (1 << pos)) :
+							!!(gr & (0x80 >>> pos));
+					}
+					return false;
+
+				case 0x06: // 3 copies medium (24 clocks apart)
+					if (pos < 8) {
+						return ref ? !!(gr & (1 << pos)) :
+							!!(gr & (0x80 >>> pos));
+					} else if (pos >= 32 && pos < 40) {
+						pos -= 32;
+						return ref ? !!(gr & (1 << pos)) :
+							!!(gr & (0x80 >>> pos));
+					} else if (pos >= 64 && pos < 72) {
+						pos -= 64;
+						return ref ? !!(gr & (1 << pos)) :
+							!!(gr & (0x80 >>> pos));
+					}
+					return false;
+
+				case 0x07: // quad size player
+					if (pos < 32) {
+						pos >>>= 2;
+						return ref ? !!(gr & (1 << pos)) :
+							!!(gr & (0x80 >>> pos));
+
+					}
+					return false;
+			}
+
+			throw new Error('Unrecognized value in NUSIZ register');
 		},
 
 		isMissleAt = function(x, p) {
@@ -229,6 +327,7 @@ var TIA = (function() {
 			}
 
 			color = COLOR_PALETTE[(color & 0xf0) >>> 4][(color & 0x0f) >>> 1];
+
 			data[i]     = color[0]; // red
 			data[i + 1] = color[1]; // green
 			data[i + 2] = color[2]; // blue

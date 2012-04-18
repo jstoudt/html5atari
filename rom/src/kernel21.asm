@@ -39,10 +39,17 @@ Clear           sta 0,x
                 lda #$45
                 sta COLUPF              ; set the playfield colour
                 
-                lda #$56
+                lda #$56                ; set the P0 color
                 sta COLUP0
-                lda #$67
+
+                lda #$67                ; set the P1 color
                 sta COLUP1
+
+                lda #$08                ; reflect P1
+                sta REFP1
+
+                lda #$07                ; create three copies of P0
+                sta NUSIZ0
 
                 lda #%00000001
                 sta CTRLPF              ; reflect playfield

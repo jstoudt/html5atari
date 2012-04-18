@@ -150,7 +150,7 @@
 //		CPU6507.addEventListener('execloop', showInfo);
 
 		var xhr = new XMLHttpRequest();
-		xhr.open('GET', 'rom/bin/redline.bin', true);
+		xhr.open('GET', 'rom/bin/kernel21.bin', true);
 		xhr.responseType = 'arraybuffer';
 
 		xhr.onerror = function() {
@@ -175,6 +175,8 @@
 
 				breakFlag = false;
 				started = true;
+
+				calcCycleRate();
 
 				// start the magic
 				TIA.start();
@@ -202,8 +204,8 @@
 			stepBtn.removeAttribute('disabled');
 			stepBtn.addEventListener('click', function() {
 				TIA.step();
-//				showInfo();
-				calcCycleRate();
+				showInfo();
+//				calcCycleRate();
 				breakFlag = true;
 				started = false;
 			}, false);
