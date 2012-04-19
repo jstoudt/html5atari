@@ -135,6 +135,35 @@ var TIA = (function() {
 			]
 		],
 
+		generateStatic = function() {
+			var i, j, index, c,
+				data = pixelBuffer.data;
+
+			for (j = 0; j < VIDEO_BUFFER_HEIGHT; j++) {
+				for (i = 0; i < VIDEO_BUFFER_WIDTH; i++) {
+
+					index = (j * VIDEO_BUFFER_WIDTH + i) << 2;
+
+					c = breakFlag === false ? 0x1b :
+						Math.floor(Math.random() * 255);
+
+					data[index]     = c;    // red
+					data[index + 1] = c;    // green
+					data[index + 2] = c;    // blue
+					data[index + 3] = 255;  // alpha
+				}
+			}
+
+			canvasContext.putImageData(pixelBuffer, 0, 0);
+
+			numFrames++;
+
+			if (breakFlag === true) {
+				reqAnimFrame(generateStatic);
+			}
+
+		},
+
 		isPlayfieldAt = function(x) {
 			if (x >= 20) {
 				x = (mmap.readByte(MEM_LOCATIONS.CTRLPF) & 0x01) ? 39 - x : x - 20;
@@ -153,16 +182,14 @@ var TIA = (function() {
 				ref   = mmap.readByte(MEM_LOCATIONS.REFP0);
 				nusiz = mmap.readByte(MEM_LOCATIONS.NUSIZ0) & 0x07;
 //				vdel  = mmap.readByte(MEM_LOCATIONS.VDELP0) & 0x01;
-				pos = p0Pos;
+				pos = x - p0Pos;
 			} else {
 				gr    = mmap.readByte(MEM_LOCATIONS.GRP1);
 				ref   = mmap.readByte(MEM_LOCATIONS.REFP1);
 				nusiz = mmap.readByte(MEM_LOCATIONS.NUSIZ1) & 0x07;
 //				vdel  = mmap.readByte(MEM_LOCATIONS.VDELP1) & 0x01;
-				pos = p1Pos;
+				pos = x - p1Pos;
 			}
-
-			pos = x - pos;
 
 			// if the beam is still to the left of the player, we can
 			// short circuit out here
@@ -172,105 +199,86 @@ var TIA = (function() {
 
 			switch (nusiz) {
 				case 0x00: // one copy -- simplest case
-					return pos > 7 ? false :
-						ref ? !!(gr & (1 << pos)) :
-						!!(gr & (0x80 >>> pos));
+					break;
 
 				case 0x01: // two copies close (8 clocks apart)
-					if (pos < 8) {
-						return ref ? !!(gr & (1 << pos)) :
-							!!(gr & (0x80 >>> pos));
-					} else if (pos >= 16 && pos < 24) {
+					if (pos >= 16 && pos < 24) {
 						pos -= 16;
-						return ref ? !!(gr & (1 << pos)) :
-							!!(gr & (0x80 >>> pos));
-
 					}
-					return false;
+					break;
 
 				case 0x02: // two copies med (24 clocks apart)
-					if (pos < 8) {
-						return ref ? !!(gr & (1 << pos)) :
-							!!(gr & (0x80 >>> pos));
-					} else if (pos >= 32 && pos < 40) {
+					if (pos >= 32 && pos < 40) {
 						pos -= 32;
-						return ref ? !!(gr & (1 << pos)) :
-							!!(gr & (0x80 >>> pos));
 					}
-					return false;
+					break;
 
 				case 0x03: // three copies close (8 clocks apart)
-					if (pos < 8) {
-						return ref ? !!(gr & (1 << pos)) :
-							!!(gr & (0x80 >>> pos));
-					} else if (pos >= 16 && pos < 24) {
+					if (pos >= 16 && pos < 24) {
 						pos -= 16;
-						return ref ? !!(gr & (1 << pos)) :
-							!!(gr & 0x80 >>> pos);
 					} else if (pos >= 32 && pos < 40) {
 						pos -= 32;
-						return ref ? !!(gr & (1 << pos)) :
-							!!(gr & 0x80 >>> pos);
 					}
-					return false;
+					break;
 
 				case 0x04: // two copies wide (56 clocks apart)
-					if (pos < 8) {
-						return ref ? !!(gr & (1 << pos)) :
-							!!(gr & (0x80 >>> pos));
-					} else if (pos >= 64 && pos < 72) {
+					if (pos >= 64 && pos < 72) {
 						pos -= 64;
-						return ref ? !!(gr & (1 << pos)) :
-							!!(gr & (0x80 >>> pos));
 					}
-					return false;
+					break;
+
 				case 0x05: // double size player
 					if (pos < 16) {
 						pos >>>= 1;
-						return ref ? !!(gr & (1 << pos)) :
-							!!(gr & (0x80 >>> pos));
 					}
-					return false;
+					break;
 
 				case 0x06: // 3 copies medium (24 clocks apart)
-					if (pos < 8) {
-						return ref ? !!(gr & (1 << pos)) :
-							!!(gr & (0x80 >>> pos));
-					} else if (pos >= 32 && pos < 40) {
+					if (pos >= 32 && pos < 40) {
 						pos -= 32;
-						return ref ? !!(gr & (1 << pos)) :
-							!!(gr & (0x80 >>> pos));
 					} else if (pos >= 64 && pos < 72) {
 						pos -= 64;
-						return ref ? !!(gr & (1 << pos)) :
-							!!(gr & (0x80 >>> pos));
 					}
-					return false;
+					break;
 
 				case 0x07: // quad size player
 					if (pos < 32) {
 						pos >>>= 2;
-						return ref ? !!(gr & (1 << pos)) :
-							!!(gr & (0x80 >>> pos));
-
 					}
-					return false;
+					break;
+
+				default:
+					throw new Error('Unrecognized value in NUSIZ register');
 			}
 
-			throw new Error('Unrecognized value in NUSIZ register');
+			if (pos < 8) {
+				return ref ? !!(gr & (1 << pos)) :
+					!!(gr & (0x80 >>> pos));
+			}
+			return false;
+
 		},
 
 		isMissleAt = function(x, p) {
-			var enabled, pos, size;
-
-			enabled = p === 0 ? mmap.readByte(MEM_LOCATIONS.ENAM0) & 0x02 :
-				mmap.readByte(MEM_LOCATIONS.ENAM1) & 0x02;
+			var resmp, pos, size,
+				enabled = p === 0 ? mmap.readByte(MEM_LOCATIONS.ENAM0) & 0x02 :
+					mmap.readByte(MEM_LOCATIONS.ENAM1) & 0x02;
 
 			if (enabled) {
 				if (p === 0) {
+					if (mmap.readByte(MEM_LOCATIONS.RESMP0) & 0x02) {
+						m0Pos = p0Pos + 4;
+						return false;
+					}
+
 					pos = m0Pos;
 					size = mmap.readByte(MEM_LOCATIONS.NUSIZ0);
 				} else {
+					if (mmap.readByte(MEM_LOCATIONS.RESMP1) & 0x02) {
+						m1Pos = p1Pos + 4;
+						return false;
+					}
+
 					pos = m1Pos;
 					size = mmap.readByte(MEM_LOCATIONS.NUSIZ1);
 				}
@@ -312,16 +320,12 @@ var TIA = (function() {
 
 			if (mmap.readByte(MEM_LOCATIONS.CTRLPF) & 0x04) {
 				color = pf === true ? mmap.readByte(MEM_LOCATIONS.COLUPF) :
-					p0 === true ? mmap.readByte(MEM_LOCATIONS.COLUP0) :
-					m0 === true ? mmap.readByte(MEM_LOCATIONS.COLUP0) :
-					p1 === true ? mmap.readByte(MEM_LOCATIONS.COLUP1) :
-					m1 === true ? mmap.readByte(MEM_LOCATIONS.COLUP1) :
+					p0 === true || m0 === true ? mmap.readByte(MEM_LOCATIONS.COLUP0) :
+					p1 === true || m1 === true ? mmap.readByte(MEM_LOCATIONS.COLUP1) :
 					mmap.readByte(MEM_LOCATIONS.COLUBK);
 			} else {
-				color = p0 === true ? mmap.readByte(MEM_LOCATIONS.COLUP0) :
-					m0 === true ? mmap.readByte(MEM_LOCATIONS.COLUP0) :
-					p1 === true ? mmap.readByte(MEM_LOCATIONS.COLUP1) :
-					m1 === true ? mmap.readByte(MEM_LOCATIONS.COLUP1) :
+				color = p0 === true || m0 === true ? mmap.readByte(MEM_LOCATIONS.COLUP0) :
+					p1 === true || p1 === true ? mmap.readByte(MEM_LOCATIONS.COLUP1) :
 					pf === true ? mmap.readByte(MEM_LOCATIONS.COLUPF) :
 					mmap.readByte(MEM_LOCATIONS.COLUBK);
 			}
@@ -586,6 +590,8 @@ var TIA = (function() {
 							mmap.writeByte(0, MEM_LOCATIONS.HMBL);
 						}
 
+						// if the CXCLR register has been strobed, clear all
+						// the TIA collision registers
 						if (mmap.isStrobeActive(MEM_LOCATIONS.CXCLR) === true) {
 							mmap.resetStrobe(MEM_LOCATIONS.CXCLR);
 
@@ -608,6 +614,8 @@ var TIA = (function() {
 				}
 			}
 
+			// if we are not in VBLANK or HSYNC	write the pixel to the
+			// canvas at the current color clock
 			if (VBLANK === false && x >= 0 && y >= 34) {
 				writePixel(x, y - 34);
 			}
@@ -626,6 +634,7 @@ var TIA = (function() {
 				y = 0;
 			}
 
+			// return true if this cycle contained a CPU execution completion
 			return proc;
 		},
 
@@ -660,7 +669,7 @@ var TIA = (function() {
 	return {
 
 		init: function(canvas) {
-			var i, j, index, data;
+			
 			// set the canvas reference
 			canvasElement = canvas;
 
@@ -673,17 +682,11 @@ var TIA = (function() {
 				VIDEO_BUFFER_HEIGHT
 			);
 
-			// initialize the pixel buffer
-			data = pixelBuffer.data;
-			for (j = 0; j < VIDEO_BUFFER_HEIGHT; j++) {
-				for (i = 0; i < VIDEO_BUFFER_WIDTH; i++) {
-					index = (j * VIDEO_BUFFER_WIDTH + i) << 2;
-					data[index]     = 24;  // red
-					data[index + 1] = 24;  // green
-					data[index + 2] = 24;  // blue
-					data[index + 3] = 255; // alpha
-				}
-			}
+			// set the break flag until the system is started
+			breakFlag = true;
+
+			// start the drawing static on the canvas
+			generateStatic();
 
 			// Initialize the memory map
 			mmap = MemoryMap.createAtariMemoryMap();
@@ -703,13 +706,9 @@ var TIA = (function() {
 			// initialize the frame counter
 			numFrames = 0;
 
-			// initialize the TIA as being in the off state
-			breakFlag = true;
-
 			// randomize the electron beam position
-			x = Math.floor(Math.random() * 228) - 68;
-			y = Math.floor(Math.random() * 262);
-
+			x = -68;
+			y = 0;
 			// reset VBLANK and RDY and VSYNC
 			VBLANK = !!(mmap.readByte(MEM_LOCATIONS.VBLANK) & 0x02);
 			RDY = false;

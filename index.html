@@ -4,22 +4,60 @@
 <head>
 	<meta charset="UTF-8">
 	<title>6507 Emulation Testing</title>
+	<link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Syncopate:700">
+
 	<link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-	<div role="main">
+	<div class="main" role="main">
 		<div class="main-inner">
-			<div class="controls">
+			<canvas id="television" class="television" width="160" height="222">
+			</canvas>
+			<fieldset class="controls">
+				<!--
+					TODO: some of these controls need to be moved to the new
+						  debug panel, and the rest can be eliminated.
+				-->
+
+				<!--
 				<button id="start" disabled>Start</button>
 				<button id="stop" disabled>Stop</button>
 				<button id="reset" disabled>Reset</button>
 				<button id="step" disabled>Step</button>
-			</div>
-			<canvas id="television" width="160" height="222"></canvas>
+				-->
+
+				<div class="left">
+					<div class="switch power">
+						<label>Power</label>
+						<span class="top">on</span>
+						<span class="bottom">off</span>
+						<input type="range" id="start" min="0" max="1" step="1" 	value="0">
+					</div>
+					<div class="switch tv-type">
+						<label>TV Type</label>
+						<span class="top">color</span>
+						<span class="bottom">b&bull;w</span>
+						<input type="range" id="color" min="0" max="1" step="1" value="0">
+					</div>
+				</div>
+				<div class="right">
+					<div class="switch game-select">
+						<label>Game Select</label>
+						<input type="range" id="game-select" min="0" max="1" step="1" value="0">
+					</div>
+					<div class="switch game-reset">
+						<label>Game Reset</label>
+						<input type="range" id="game-reset" min="0" max="1" step="1" value="0">
+					</div>
+				</div>
+				<h2>Video Computer System&trade;</h2>
+				<div id="cart-slot" class="cart-slot">Drag 'n Drop your ROMs here</div>
+			</fieldset>
 		</div>
 	</div>
 
-	<div id="debug-panel">
+	<!-- Begin the Debug Panel here -->
+	<div id="debug-panel" class="debug">
 		<div class="register-wrapper">
 			<label>Accumulator</label>
 			<div id="ac" class="register"></div>
@@ -44,7 +82,7 @@
 			<span>fps</span>
 		</div>
 
-		<table id="status">
+		<table id="status" class="status">
 			<thead>
 				<tr>
 					<th>N</th>
@@ -70,7 +108,7 @@
 				</tr>
 			</tbody>
 		</table>
-		<div id="beam-position">
+		<div id="beam-position" class="beam-position">
 			<label>Pixel Clock</label>
 			<div id="x-pos" class="register"></div>
 			<br>
@@ -78,13 +116,13 @@
 			<div id="y-pos" class="register"></div>
 		</div>
 
-		<div id="instructions">
+		<div class="instructions">
 			<table id="instructions">
 				<tbody></tbody>
 			</table>
 		</div>
 
-		<table id="memory">
+		<table id="memory" class="memory"
 			<thead>
 				<th>00xx</th>
 				<th>0</th>
@@ -266,6 +304,7 @@
 	<script src="js/riot.js"></script>
 	<script src="js/6507.js"></script>
 	<script src="js/script.js"></script>
+
 <!--
 	<script>
 		window.onload = function() {

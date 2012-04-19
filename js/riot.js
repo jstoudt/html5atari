@@ -15,11 +15,9 @@ var RIOT = (function() {
 
 		TIMINT: 0x285,  // seems to be 0x00 until the timer expires, then 0x80
 
-		TIM1T:  0x294,  // the various input registers for setting the timer
-		TIM8T:  0x295,
-		TIM64T: 0x296,
-		T1024T: 0x297
-		
+		// the various input registers for setting the timer
+		TIM1T:  0x294,		TIM8T:  0x295,
+		TIM64T: 0x296,		T1024T: 0x297
 	},
 
 		// whether divide by 1t, 8t, 64t or 1024t is selected

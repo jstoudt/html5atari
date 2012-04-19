@@ -1,6 +1,16 @@
+/**
+ * script.js
+ *
+ * Date: 19 April 2012
+ * Defines page functionality and ties the Atari 2600 script into
+ * the page DOM.
+ */
+
+
 (function() {
 
-	var ac           = document.getElementById('ac'),
+	var	debugPanel   = document.getElementById('debug-panel'),
+		ac           = document.getElementById('ac'),
 		x            = document.getElementById('x'),
 		y            = document.getElementById('y'),
 		sp           = document.getElementById('sp'),
@@ -10,7 +20,7 @@
 		memTable     = document.getElementById('memory'),
 		cells        = memTable.getElementsByTagName('td'),
 		television   = document.getElementById('television'),
-		debugPanel   = document.getElementById('debug-panel'),
+		cartSlot     = document.getElementById('cart-slot'),
 		tiaTime0     = Date.now(),
 		tiaCycles0   = TIA.getCycleCount(),
 		tiaFrames0   = TIA.getNumFrames(),
@@ -92,25 +102,24 @@
 				tr.classList.remove('active');
 			}
 		}
-
-//		if (breakFlag !== true) {
-//			reqAnimFrame(showInfo);
-//		}
 	}
 
 	function calcCycleRate() {
+		var tiaTime1, tiaCycles1, tiaFrames1;
 
-		var tiaTime1   = Date.now(),
-			tiaCycles1 = TIA.getCycleCount(),
+		if (debugPanel.classList.contains('open')) {
+			tiaTime1   = Date.now();
+			tiaCycles1 = TIA.getCycleCount();
 			tiaFrames1 = TIA.getNumFrames();
 
-		tiaFrequency.innerHTML = Math.round((tiaCycles1 - tiaCycles0) / (tiaTime1 - tiaTime0)) / 1e3;
+			tiaFrequency.innerHTML = Math.round((tiaCycles1 - tiaCycles0) / (tiaTime1 - tiaTime0)) / 1e3;
 
-		frameRate.innerHTML = Math.round((tiaFrames1 - tiaFrames0) / (tiaTime1 - tiaTime0) * 1e6) / 1000;
+			frameRate.innerHTML = Math.round((tiaFrames1 - tiaFrames0) / (tiaTime1 - tiaTime0) * 1e6) / 1000;
 
-		tiaCycles0 = tiaCycles1;
-		tiaTime0   = tiaTime1;
-		tiaFrames0 = tiaFrames1;
+			tiaCycles0 = tiaCycles1;
+			tiaTime0   = tiaTime1;
+			tiaFrames0 = tiaFrames1;
+		}
 
 		if (breakFlag !== true) {
 			setTimeout(calcCycleRate, 1000);
@@ -146,85 +155,14 @@
 
 		TIA.init(television);
 
-		CPU6507.addEventListener('load', listInstructions);
-//		CPU6507.addEventListener('execloop', showInfo);
-
-		var xhr = new XMLHttpRequest();
-		xhr.open('GET', 'rom/bin/kernel21.bin', true);
-		xhr.responseType = 'arraybuffer';
-
-		xhr.onerror = function() {
-			alert('Failed to load resource.');
-		};
-
-		xhr.onload = function() {
-
-			var startBtn = document.getElementById('start'),
-				stopBtn  = document.getElementById('stop'),
-				resetBtn = document.getElementById('reset'),
-				stepBtn  = document.getElementById('step');
-
-			CPU6507.loadProgram(new Uint8Array(xhr.response));
-
-			startBtn.removeAttribute('disabled');
-			startBtn.addEventListener('click', function() {
-				startBtn.setAttribute('disabled', 'disabled');
-				stopBtn.removeAttribute('disabled');
-				resetBtn.setAttribute('disabled', 'disabled');
-				stepBtn.setAttribute('disabled', 'disabled');
-
-				breakFlag = false;
-				started = true;
-
-				calcCycleRate();
-
-				// start the magic
-				TIA.start();
-
-			}, false);
-
-			stopBtn.addEventListener('click', function() {
-				TIA.stop();
-				breakFlag = true;
-				started = false;
-				stopBtn.setAttribute('disabled', 'disabled');
-				startBtn.removeAttribute('disabled');
-				resetBtn.removeAttribute('disabled');
-				stepBtn.removeAttribute('disabled');
-			}, false);
-
-			resetBtn.removeAttribute('disabled');
-			resetBtn.addEventListener('click', function() {
-				TIA.init(television);
-				breakFlag = true;
-				started = false;
-				CPU6507.loadProgram(new Uint8Array(xhr.response));
-			}, false);
-
-			stepBtn.removeAttribute('disabled');
-			stepBtn.addEventListener('click', function() {
-				TIA.step();
-				showInfo();
-//				calcCycleRate();
-				breakFlag = true;
-				started = false;
-			}, false);
-
-		};
-
-		xhr.send();
-
 		window.addEventListener('keyup', function(event) {
 			if (event.keyCode === 192) {
 				if (debugPanel.classList.contains('open')) {
 					debugPanel.classList.remove('open');
-					breakFlag = true;
 					delete localStorage['debug'];
 				} else {
 					debugPanel.classList.add('open');
-					breakFlag = ~started;
 					showInfo();
-					calcCycleRate();
 					localStorage['debug'] = 'open';
 				}
 			}
@@ -234,8 +172,43 @@
 		if (localStorage['debug'] === 'open') {
 			debugPanel.classList.add('open');
 			showInfo();
-			calcCycleRate();
 		}
+
+		// when dragging over the cart-slot, change the border color
+		cartSlot.addEventListener('dragover', function(event) {
+			event.stopPropagation();
+			event.preventDefault();
+			cartSlot.classList.add('dragging');
+			event.dataTransfer.dropEffect = 'copy';
+		}, false);
+
+		// change the border color back
+		cartSlot.addEventListener('dragleave', function(event) {
+			event.stopPropagation();
+			event.preventDefault();
+			cartSlot.classList.remove('dragging');
+		}, false);
+
+		cartSlot.addEventListener('drop', function(event) {
+			var romFile;
+
+			event.stopPropagation();
+			event.preventDefault();
+			cartSlot.classList.remove('dragging');
+			
+			if (event.dataTransfer.files.length !== 1) {
+				return;
+			}
+
+			romFile = event.dataTransfer.files[0];
+			if (romFile.size !== 2048 && romFile.size !== 4096) {
+				alert('This file does not appear to be an acceptable ROM file.');
+				return;
+			}
+
+			cartSlot.innerHTML = 'Loading ' + escape(romFile.name) + '&hellip;';
+
+		}, false);
 
 	}, false);
 

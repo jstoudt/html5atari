@@ -2228,22 +2228,13 @@ var CPU6507 = (function() {
 		},
 
 		removeEventListener: function(type, handler) {
-			var i, l, handlerList;
+			var i = 0,
+				handlerList = handlers[type],
+				l = handlerList.length;
 
-			if (typeof handler !== 'function') {
-				throw new Error('Parameter handler must be of type function.');
-			}
-
-			if (type in handler) {
-				handlerList = handlers[type];
-			} else {
-				throw new Error('Unrecognized event type.');
-			}
-
-			l = handlerList.length;
-			for (i = 0; i < l; i++) {
+			for (; i < l; i++) {
 				if (handlerList[i] === handler) {
-					handlerList.execloop.splice(i, 1);
+					handlerList.splice(i, 1);
 				}
 			}
 		},
