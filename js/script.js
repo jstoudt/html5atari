@@ -21,6 +21,10 @@
 		cells        = memTable.getElementsByTagName('td'),
 		television   = document.getElementById('television'),
 		cartSlot     = document.getElementById('cart-slot'),
+		powerSwitch  = document.getElementById('power-switch'),
+		colorSwitch  = document.getElementById('color-switch'),
+		selectSwitch = document.getElementById('select-switch'),
+		resetSwitch  = document.getElementById('reset-switch'),
 		tiaTime0     = Date.now(),
 		tiaCycles0   = TIA.getCycleCount(),
 		tiaFrames0   = TIA.getNumFrames(),
@@ -174,11 +178,32 @@
 			showInfo();
 		}
 
+		powerSwitch.addEventListener('change', function(event) {
+			console.log(powerSwitch.value);
+			if (powerSwitch.value === '1') {
+				TIA.start();
+			} else {
+				TIA.stop();
+			}
+		}, false);
+
+		selectSwitch.addEventListener('mouseup', function() {
+			setTimeout(function() {
+				selectSwitch.value = '1';
+			}, 100);
+		}, false);
+
+		resetSwitch.addEventListener('mouseup', function() {
+			setTimeout(function() {
+				resetSwitch.value = '1';
+			}, 100);
+		}, false);
+
 		// when dragging over the cart-slot, change the border color
 		cartSlot.addEventListener('dragover', function(event) {
 			event.stopPropagation();
 			event.preventDefault();
-			cartSlot.classList.add('dragging');
+			cartSlot.classList.add('drag-over');
 			event.dataTransfer.dropEffect = 'copy';
 		}, false);
 
@@ -186,15 +211,15 @@
 		cartSlot.addEventListener('dragleave', function(event) {
 			event.stopPropagation();
 			event.preventDefault();
-			cartSlot.classList.remove('dragging');
+			cartSlot.classList.remove('drag-over');
 		}, false);
 
 		cartSlot.addEventListener('drop', function(event) {
-			var romFile;
+			var romFile, reader;
 
 			event.stopPropagation();
 			event.preventDefault();
-			cartSlot.classList.remove('dragging');
+			cartSlot.classList.remove('drag-over');
 			
 			if (event.dataTransfer.files.length !== 1) {
 				return;
@@ -207,6 +232,29 @@
 			}
 
 			cartSlot.innerHTML = 'Loading ' + escape(romFile.name) + '&hellip;';
+			reader = new FileReader();
+
+			reader.onerror = function() {
+				alert('There was an error loading this file as a ROM.');
+				cartSlot.textContent = 'Drag \'n Drop your ROMs here';
+			};
+
+			reader.onabort = function() {
+				cartSlot.textContent = 'Drag \'n Drop your ROMs here';
+			};
+
+			reader.onload = function(event) {
+				CPU6507.loadProgram(new Uint8Array(event.target.result));
+				powerSwitch.removeAttribute('disabled');
+				colorSwitch.removeAttribute('disabled');
+				selectSwitch.removeAttribute('disabled');
+				resetSwitch.removeAttribute('disabled');
+
+				cartSlot.classList.add('file-loaded');
+				cartSlot.innerHTML = escape(romFile.name) + ' loaded';
+			};
+
+			reader.readAsArrayBuffer(romFile);
 
 		}, false);
 

@@ -759,6 +759,7 @@ var TIA = (function() {
 
 		stop: function() {
 			breakFlag = true;
+			generateStatic();
 		},
 
 		addEventHandler: function(type, handler) {

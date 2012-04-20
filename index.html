@@ -3,16 +3,22 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
-	<title>6507 Emulation Testing</title>
-	<link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Syncopate:700">
+	<title>html5atari.com</title>
+	<link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Syncopate:700|Press+Start+2P:400">
 
 	<link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+	<header>
+		<h1>html5atari.com</h1>
+	</header>
 	<div class="main" role="main">
-		<div class="main-inner">
+		<div class="tv-wrapper">
 			<canvas id="television" class="television" width="160" height="222">
+				<p>Your browser does not support the canvas element!!</p>
 			</canvas>
+		</div>
+		<div class="controls-wrapper">
 			<fieldset class="controls">
 				<!--
 					TODO: some of these controls need to be moved to the new
@@ -31,23 +37,23 @@
 						<label>Power</label>
 						<span class="top">on</span>
 						<span class="bottom">off</span>
-						<input type="range" id="start" min="0" max="1" step="1" 	value="0">
+						<input type="range" id="power-switch" min="0" max="1" value="0" disabled>
 					</div>
 					<div class="switch tv-type">
 						<label>TV Type</label>
 						<span class="top">color</span>
 						<span class="bottom">b&bull;w</span>
-						<input type="range" id="color" min="0" max="1" step="1" value="0">
+						<input type="range" id="color-switch" min="0" max="1" value="1" disabled>
 					</div>
 				</div>
 				<div class="right">
 					<div class="switch game-select">
 						<label>Game Select</label>
-						<input type="range" id="game-select" min="0" max="1" step="1" value="0">
+						<input type="range" id="select-switch" min="0" max="1" value="1" disabled>
 					</div>
 					<div class="switch game-reset">
 						<label>Game Reset</label>
-						<input type="range" id="game-reset" min="0" max="1" step="1" value="0">
+						<input type="range" id="reset-switch" min="0" max="1" value="1" disabled>
 					</div>
 				</div>
 				<h2>Video Computer System&trade;</h2>
@@ -55,6 +61,29 @@
 			</fieldset>
 		</div>
 	</div>
+	<footer>
+		<div class="content">
+			<img class="atari-logo" alt="Atari" src="images/atari-logo.png">
+			<img class="html5-logo" alt="HTML5" src="images/html5-logo.png">
+
+			<ul class="gh-btns">
+				<li>
+					<!-- Github Fork Button -->
+					<iframe src="http://markdotto.github.com/github-buttons/github-btn.html?user=jstoudt&repo=html5atari&type=fork"
+  allowtransparency="true" frameborder="0" scrolling="0" width="57px" height="20px"></iframe>
+  				</li>
+				<li>
+					<!-- Github Watch Button -->
+					<iframe src="http://markdotto.github.com/github-buttons/github-btn.html?user=jstoudt&repo=html5atari&type=watch"
+  allowtransparency="true" frameborder="0" scrolling="0" width="62px" height="20px"></iframe>
+				</li>
+				<li>
+					<!-- Github Follow Button -->
+					<iframe src="http://markdotto.github.com/github-buttons/github-btn.html?user=jstoudt&type=follow"
+  allowtransparency="true" frameborder="0" scrolling="0" width="132px" height="20px"></iframe>
+  				</li>
+			</ul>
+	</footer>
 
 	<!-- Begin the Debug Panel here -->
 	<div id="debug-panel" class="debug">

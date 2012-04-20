@@ -10,178 +10,248 @@
 
 /* End of Mixins */
 
+html,
 body {
-	color: #fff;
-	font: 12px/1 'Syncopate', sans-serif;
-	letter-spacing: -1px;
-	background: #000;
+	height: 100%;
+	overflow: hidden;
 }
 
-.main-inner {
-	width: 840px;
-	margin: 0 auto;
-	text-align: center;
+body {
+	color: #fff;
+	background: -webkit-linear-gradient(top, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0) 300px, rgba(0, 0, 0, 1) 500px),
+		url(../images/black-noise.png);
+	background: -moz-linear-gradient(top, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0) 300px, rgba(0, 0, 0, 1) 500px),
+		url(../images/black-noise.png);
+	background: -o-linear-gradient(top, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0) 300px, rgba(0, 0, 0, 1) 500px),
+		url(../images/black-noise.png);
+	background: -ms-linear-gradient(top, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0) 300px, rgba(0, 0, 0, 1) 500px),
+		url(../images/black-noise.png);
+	background: linear-gradient(top, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0) 300px, rgba(0, 0, 0, 1) 500px),
+		url(../images/black-noise.png);
+	font: 12px/1 'Syncopate', sans-serif;
+	letter-spacing: -1px;
+	margin: 0;
+}
 
-	.television {
-		border: 1px solid #333;
-		@include borderRadius(30px);
-		-webkit-transform: scaleX(4.0) scaleY(2.0) translate3d(0, 60px, 0);
-		-moz-transform: scaleX(4.0) scaleY(2.0) translate3d(0, 60px, 0);
-		-o-transform: scaleX(4.0) scaleY(2.0) translate3d(0, 60px, 0);
-		-ms-transform: scaleX(4.0) scaleY(2.0) translate3d(0, 60px, 0);
-		transform: scaleX(4.0) scaleY(2.0) translate3d(0, 60px, 0);
+header {
+	height: 75px;
+
+	h1 {
+		font: 48px/75px 'Press Start 2P';
+		text-align: center;
+		text-shadow: 4px 4px 2px #aaa;
+		letter-spacing: 7px;
+		margin: 0;
+	}
+}
+
+.tv-wrapper {
+	text-align: center;
+}
+
+.television {
+	border: 1px solid #333;
+	@include borderRadius(30px);
+	-webkit-transform: scaleX(4.0) scaleY(2.0) translate3d(0, 60px, 0);
+	-moz-transform: scaleX(4.0) scaleY(2.0) translate3d(0, 60px, 0);
+	-o-transform: scaleX(4.0) scaleY(2.0) translate3d(0, 60px, 0);
+	-ms-transform: scaleX(4.0) scaleY(2.0) translate3d(0, 60px, 0);
+	transform: scaleX(4.0) scaleY(2.0) translate3d(0, 60px, 0);
+	z-index: 100;
+}
+
+.controls-wrapper {
+	background: url(../images/console-bg.jpg) 0 -12px;
+	margin-top: 190px;
+	padding: 20px 0 999em;
+	text-align: center;
+}
+
+.controls {
+	width: 790px;
+	background: #000;
+	color: #af8837;
+	height: 95px;
+	border: 2px ridge #af8837;
+	margin: 50px auto 0;
+	padding-top: 10px;
+
+	h2 {
+		height: 25px;
+		color: #fff;
+		font-weight: bold;
+		font-size: 19px;
+		line-height: 25px;
+		text-transform: uppercase;
+		vertical-align: text-bottom;
+		margin: 0;
 	}
 
-	.controls {
-		color: #af8837;
-		height: 95px;
-		border: 2px ridge #af8837;
-		margin-top: 240px;
-		padding-top: 10px;
+	.left {
+		float: left;
+		height: 100%;
+	}
 
-		h2 {
-			height: 25px;
-			color: #fff;
-			font-weight: bold;
-			font-size: 19px;
-			line-height: 25px;
-			text-transform: uppercase;
-			vertical-align: text-bottom;
-			margin: 0;
-			padding: 0;
-		}
+	.right {
+		float: right;
+		height: 100%;
+	}
 
-		.left {
-			float: left;
-			height: 100%;
-		}
+	.cart-slot {
+		width: 330px;
+		height: 50px;
+		overflow: hidden;
+		border: 5px solid #333;
+		@include borderRadius(11px);
+		color: #c0c0c0;
+		font-weight: bold;
+		font-size: 13px;
+		line-height: 50px;
+		margin: 0 auto;
+	}
 
-		.right {
-			float: right;
-			height: 100%;
-		}
+	.drag-over {
+		border-color: #fff;
+	}
 
-		.cart-slot {
-			width: 330px;
-			height: 50px;
-			overflow: hidden;
-			border: 5px solid #333;
-			@include borderRadius(11px);
-			color: #c0c0c0;
-			font-weight: bold;
-			font-size: 13px;
-			line-height: 50px;
+	.file-loaded {
+		border-color: #0f0;
+	}
+
+	.switch {
+		display: inline-block;
+		height: 100%;
+		font-weight: bold;
+		text-transform: uppercase;
+		text-align: left;
+
+		label,
+		span {
+			display: block;
 			margin: 0 auto;
 		}
 
-		.drag-over {
-			border-color: #fff;
+		label {
+			height: 25px;
 		}
 
-		.file-loaded {
-			border-color: #0f0;
+		span {
+			float: left;
+			clear: left;
+			text-align: right;
 		}
 
-		.switch {
-			display: inline-block;
-			height: 100%;
-			font-weight: bold;
-			text-transform: uppercase;
-			text-align: left;
+		.bottom {
+			margin-top: 30px;
+		}
 
-			label,
-			span {
-				display: block;
-				margin: 0 auto;
-			}
+		input[type=range] {
+			-webkit-appearance: none;
+			position: relative;
+			width: 50px;
+			background: #000;
+			border: 4px solid #333;
+			@include borderRadius(11px);
+			padding: 2px;
+			-webkit-transform: rotate(-90deg);
+			-moz-transform: rotate(-90deg);
+			transform: rotate(-90deg);
 
-			label {
-				height: 25px;
-			}
-
-			span {
-				float: left;
-				clear: left;
-				text-align: right;
-			}
-
-			.bottom {
-				margin-top: 35px;
-			}
-
-			input[type=range] {
+			&::-webkit-slider-thumb {
 				-webkit-appearance: none;
-				position: relative;
-				width: 50px;
-				background: #000;
-				border: 4px solid #333;
-				@include borderRadius(11px);
-				padding: 2px;
-				-webkit-transform: rotate(-90deg);
-				-moz-transform: rotate(-90deg);
-				transform: rotate(-90deg);
-
-				&::-webkit-slider-thumb {
-					-webkit-appearance: none;
-					width: 10px;
-					height: 10px;
-					background: -webkit-linear-gradient(top left, #a0a0a0 0, #efefef 100%);
-					border: 1px solid #888;
-					@include borderRadius(5px);
-				}
-			}
-
-		}
-
-		.power {
-			width: 110px;
-			color: #b04433;
-
-			label {
-				text-indent: 30px;
-			}
-
-			span {
-				width: 40px;
-			}
-
-			input {
-				float: right;
-				left: -20px;
-				top: 5px;
+				width: 10px;
+				height: 10px;
+				background: -webkit-linear-gradient(top left, #a0a0a0 0, #efefef 100%);
+				border: 1px solid #888;
+				@include borderRadius(5px);
 			}
 		}
 
-		.tv-type {
-			width: 115px;
+	}
 
-			label {
-				text-indent: 39px;
-			}
-			span {
-				width: 50px;
-			}
+	.power {
+		width: 110px;
+		color: #b04433;
 
-			input {
-				float: right;
-				left: -12px;
-				top: 5px;
-			}
+		label {
+			text-indent: 30px;
 		}
 
-		.game-select,
-		.game-reset {
-			background: url(../images/switch-label.png) no-repeat 60px 33px;
-			width: 90px;
+		span {
+			width: 40px;
+		}
 
-			label {
-				text-align: center;
-			}
+		input {
+			float: right;
+			left: -20px;
+			top: 5px;
+		}
+	}
 
-			input {
-				float: left;
-				left: 15px;
-				top: 20px;
+	.tv-type {
+		width: 115px;
+
+		label {
+			text-indent: 39px;
+		}
+		span {
+			width: 50px;
+		}
+
+		input {
+			float: right;
+			left: -12px;
+			top: 5px;
+		}
+	}
+
+	.game-select,
+	.game-reset {
+		background: url(../images/switch-label.png) no-repeat 60px 33px;
+		width: 90px;
+
+		label {
+			text-align: center;
+		}
+
+		input {
+			float: left;
+			left: 15px;
+			top: 20px;
+		}
+	}
+}
+
+footer {
+	position: absolute;
+	width: 100%;
+	bottom: 0;
+	height: 150px;
+	padding-top: 10px;
+	border-top: 6px ridge #0a0a0a;
+	background: url(../images/wood_pattern.jpg);
+
+	.content {
+		width: 790px;
+		margin: 0 auto;
+
+		.html5-logo {
+			float: left;
+		}
+
+		.atari-logo {
+			float: right;
+		}
+
+		ul {
+			width: 145px;
+			list-style: none;
+			margin: 0 auto;
+			padding-top: 40px;
+
+			li {
+				display: inline-block;
+				margin: 2px;
 			}
 		}
 	}
