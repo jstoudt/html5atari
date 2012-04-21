@@ -1,0 +1,198 @@
+@import "_normalize";
+
+body {
+	font: 12px/1 Arial,sans-serif;
+	padding: 10px 17px;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+td {
+	width: 2em;
+	height: 24px;
+	font-family: monospace,monospace;
+	line-height: 24px;
+	text-align: center;
+	border: 1px solid #000;
+}
+
+label {
+	vertical-align: middle;
+
+	&:after {
+		content: ":";
+	}
+}
+
+.cpu-left,
+.cpu-right {
+	display: inline-block;
+	vertical-align: top;
+}
+
+.cpu-left {
+	width: 480px;
+}
+
+.cpu-right {
+	width: 440px;
+}
+
+.register {
+	display: inline-block;
+	vertical-align: middle;
+	text-align: center;
+	width: 4em;
+	height: 24px;
+	font: 11px/24px monospace,monospace;
+	border: 1px solid #000;
+	margin-right: 20px;
+}
+
+.status {
+	margin: 15px 20px 0 0;
+}
+.beam-position {
+	float: left;
+	margin-top: 10px;
+
+	label {
+		display: inline-block;
+		text-align: right;
+		width: 80px;
+	}
+
+	.register {
+		margin: 0 0 5px 10px;
+	}
+
+}
+
+.frequency-wrapper {
+	display: inline-block;
+}
+
+#tia-frequency,
+#frame-rate {
+	width: 6em;
+	margin-right: 0.5em;
+}
+
+#frame-rate {
+	margin-left: 25px;
+}
+
+.memory {
+	float: left;
+	clear: left;
+	margin-top: 25px;
+
+	.leftcol {
+		font-family: sans-serif;
+		font-weight: bold;
+		border-width: 0;
+	}
+}
+
+.instructions {
+	width: 430px;
+	height: 325px;
+	border: 1px solid #d0d0d0;
+	overflow: auto;
+	margin-top: 15px;
+
+	table {
+		width: 100%;
+	}
+
+	tr:hover {
+		background-color: #cfd;
+	}
+
+	.active td {
+		border-top: 1px solid #aaa;
+		border-bottom: 1px solid #aaa;
+		padding-top: 0;
+		padding-bottom: 0;
+	}
+
+	td {
+		font: 13px/15px monospace;
+		border: 0;
+		text-align: left;
+		height: 15px;
+		padding: 1px 0;
+	}
+
+	.offset {
+		width: 50px;
+		padding-left: 20px;
+	}
+
+	.abbr {
+		width: 40px;
+	}
+
+	.operand {
+		width: 50px;
+	}
+
+	.cycles {
+		width: 20px;
+	}
+}
+
+.controls {
+	width: 200px;
+	margin-top: 15px;
+	padding: 10px;
+}
+
+.timer {
+	display: inline-block;
+	vertical-align: top;
+	width: 175px;
+
+	ul {
+		list-style: none;
+		padding: 10px 5px 10px 10px;
+		margin: 20px 0;
+
+		li {
+			margin: 4px 0;
+
+			label {
+				display: inline-block;
+				width: 47px;
+				text-align: right;
+			}
+
+			.register {
+				width: 85px;
+			}
+		}
+
+	}
+}
+
+.console-switches {
+	display: inline-block;
+	vertical-align: top;
+	width: 175px;
+
+	ul {
+		list-style: none;
+		padding: 10px 5px 10px 10px;
+
+		li {
+			margin: 4px 0;
+
+			label {
+				display: inline-block;
+				width: 75px;
+			}
+		}
+	}
+}

@@ -7,7 +7,7 @@
  * the Atari 2600.
  */
 
-var TIA = (function() {
+window.TIA = (function() {
 
 	var mmap,          // the memory map to be shared between TIA & CPU
 
@@ -746,6 +746,10 @@ var TIA = (function() {
 			runMainLoop();
 		},
 
+		isStarted: function() {
+			return !breakFlag;
+		},
+
 		step: function() {
 			var y0;
 
@@ -759,10 +763,9 @@ var TIA = (function() {
 
 		stop: function() {
 			breakFlag = true;
-			generateStatic();
 		},
 
-		addEventHandler: function(type, handler) {
+		addEventListener: function(type, handler) {
 			if (typeof handler !== 'function') {
 				throw new Error('Parameter handler must be of type function.');
 			}

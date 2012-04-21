@@ -7,12 +7,19 @@
  * I/O ports in the Atari 2600.
  */
 
-var RIOT = (function() {
+window.RIOT = (function() {
 
 	var MEM_LOCATIONS = {
 
-		INTIM:  0x284,  // the read register
+		// Port A data register for joysticks
+		// bits 4-7 for P0, bits 0-3 for P1
+		SWCHA:  0x280,
+		SWACNT: 0x281,  // Port A data direction register
 
+		SWCHB:  0x282,  // Port B data (console switches)
+		SWBCNT: 0x283,  // Port B data direction register
+
+		INTIM:  0x284,  // the read register
 		TIMINT: 0x285,  // seems to be 0x00 until the timer expires, then 0x80
 
 		// the various input registers for setting the timer
@@ -101,8 +108,57 @@ var RIOT = (function() {
 						timer >> 10,
 					MEM_LOCATIONS.INTIM);
 			}
-		}
+		},
 
+		setConsoleSwitch: function(name, value) {
+			var swchb = mmap.readByte(MEM_LOCATIONS.SWCHB);
+
+			if (value) {
+				swchb |= name === 'reset' ? 0x01 :
+					name === 'select' ? 0x02 :
+					name === 'color' ? 0x08 :
+					name === 'difficulty0' ? 0x40 :
+					name === 'difficulty1' ? 0x80 :
+					(function() {
+						throw new Error('Unknown console switch name');
+					})();
+			} else {
+				swchb &= name === 'reset' ? 0xfe :
+					name === 'select' ? 0xfd :
+					name === 'color' ? 0xf7 :
+					name === 'difficulty0' ? 0xbf :
+					name === 'difficulty1' ? 0x7f :
+					(function() {
+						throw new Error('Unknown console switch name');
+					})();
+			}
+
+			mmap.writeByte(swchb, MEM_LOCATIONS.SWCHB);
+		},
+
+		getTimerRegisters: function() {
+			return {
+				timerMode: intervalMode === INTERVAL_MODE.TIM1T ? 'TIM1T' :
+					intervalMode === INTERVAL_MODE.TIM8T ? 'TIM8T' :
+					intervalMode === INTERVAL_MODE.TIM64T ? 'TIM64T' :
+					intervalMode === INTERVAL_MODE.T1024T ? 'T1024T' :
+					'NONE',
+				intim:     mmap.readByte(MEM_LOCATIONS.INTIM),
+				timint:    mmap.readByte(MEM_LOCATIONS.TIMINT),
+				timer:     timer
+			};
+		},
+
+		getConsoleSwitches: function() {
+			var swchb = mmap.readByte(MEM_LOCATIONS.SWCHB);
+			return {
+				p0difficulty: swchb & 0x80 ? 1 : 0,
+				p1difficulty: swchb & 0x40 ? 1 : 0,
+				color:        swchb & 0x08 ? 1 : 0,
+				select:       swchb & 0x02 ? 1 : 0,
+				reset:        swchb & 0x01 ? 1 : 0
+			};
+		}
 	};
 
 })();

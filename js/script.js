@@ -9,194 +9,96 @@
 
 (function() {
 
-	var	debugPanel   = document.getElementById('debug-panel'),
-		ac           = document.getElementById('ac'),
-		x            = document.getElementById('x'),
-		y            = document.getElementById('y'),
-		sp           = document.getElementById('sp'),
-		pc           = document.getElementById('pc'),
-		pixelClock   = document.getElementById('x-pos'),
-		scanline     = document.getElementById('y-pos'),
-		memTable     = document.getElementById('memory'),
-		cells        = memTable.getElementsByTagName('td'),
-		television   = document.getElementById('television'),
+	var	television   = document.getElementById('television'),
 		cartSlot     = document.getElementById('cart-slot'),
 		powerSwitch  = document.getElementById('power-switch'),
 		colorSwitch  = document.getElementById('color-switch'),
 		selectSwitch = document.getElementById('select-switch'),
 		resetSwitch  = document.getElementById('reset-switch'),
-		tiaTime0     = Date.now(),
-		tiaCycles0   = TIA.getCycleCount(),
-		tiaFrames0   = TIA.getNumFrames(),
-		tiaFrequency = document.getElementById('tia-frequency'),
-		frameRate    = document.getElementById('frame-rate'),
-		instructions = document.getElementById('instructions'),
-		memCells     = [],
-		scrollDown   = null,
-		i            = 0,
-		breakFlag    = true,
-		started      = false,
-
-		sr = {
-			N: document.getElementById('N'),
-			V: document.getElementById('V'),
-			B: document.getElementById('B'),
-			D: document.getElementById('D'),
-			I: document.getElementById('I'),
-			Z: document.getElementById('Z'),
-			C: document.getElementById('C')
-		};
-
-	for (; i < cells.length; i++) {
-		if (cells[i].className !== 'leftcol') {
-			memCells.push(cells[i]);
-		}
-	}
-
-	function showInfo() {
-		var list, tr, i, dataAddr,
-			progCounter = CPU6507.getRegister('pc'),
-			status = CPU6507.getRegister('sr'),
-			mem    = TIA.getMemoryCopy(0x80, 128),
-			len    = mem.length,
-			beamPosition = TIA.getBeamPosition(),
-			toHex  = function(hex, digits) {
-				hex = hex.toString(16);
-				while (hex.length < digits) {
-					hex = '0' + hex;
-				}
-				return hex;
-			},
-			reqAnimFrame = window.requestAnimationFrame ||
-				window.mozRequestAnimationFrame ||
-				window.webkitRequestAnimationFrame;
-
-		ac.innerHTML = toHex(CPU6507.getRegister('ac'), 2);
-		x.innerHTML  = toHex(CPU6507.getRegister('x'), 2);
-		y.innerHTML  = toHex(CPU6507.getRegister('y'), 2);
-		sp.innerHTML = toHex(CPU6507.getRegister('sp'), 2);
-		pc.innerHTML = toHex(progCounter, 2);
-
-		sr.N.innerHTML = status & 0x80 ? 1 : 0;
-		sr.V.innerHTML = status & 0x40 ? 1 : 0;
-		sr.B.innerHTML = status & 0x10 ? 1 : 0;
-		sr.D.innerHTML = status & 0x08 ? 1 : 0;
-		sr.I.innerHTML = status & 0x04 ? 1 : 0;
-		sr.Z.innerHTML = status & 0x02 ? 1 : 0;
-		sr.C.innerHTML = status & 0x01 ? 1 : 0;
-
-		pixelClock.textContent = beamPosition.x;
-		scanline.textContent   = beamPosition.y;
-
-		for (i = 0; i < len; i++) {
-			memCells[i].innerHTML = toHex(mem[i], 2);
-		}
-
-		list = instructions.querySelectorAll('tr');
-		len = list.length;
-		for (i = 0; i < len; i++) {
-			tr = list[i];
-			dataAddr = parseInt(tr.getAttribute('data-addr'), 10);
-			if (dataAddr === progCounter) {
-				tr.classList.add('active');
-				if (tr.offsetTop < instructions.scrollTop || tr.offsetTop > instructions.scrollTop + instructions.offsetHeight) {
-					tr.scrollIntoView();
-				}
-			} else {
-				tr.classList.remove('active');
-			}
-		}
-	}
-
-	function calcCycleRate() {
-		var tiaTime1, tiaCycles1, tiaFrames1;
-
-		if (debugPanel.classList.contains('open')) {
-			tiaTime1   = Date.now();
-			tiaCycles1 = TIA.getCycleCount();
-			tiaFrames1 = TIA.getNumFrames();
-
-			tiaFrequency.innerHTML = Math.round((tiaCycles1 - tiaCycles0) / (tiaTime1 - tiaTime0)) / 1e3;
-
-			frameRate.innerHTML = Math.round((tiaFrames1 - tiaFrames0) / (tiaTime1 - tiaTime0) * 1e6) / 1000;
-
-			tiaCycles0 = tiaCycles1;
-			tiaTime0   = tiaTime1;
-			tiaFrames0 = tiaFrames1;
-		}
-
-		if (breakFlag !== true) {
-			setTimeout(calcCycleRate, 1000);
-		}
-	}
-
-	function listInstructions(program) {
-		var i, item, tr,
-			tbody = instructions.querySelector('tbody'),
-			createCol = function(str, cname, row) {
-				var td = document.createElement('td');
-				td.innerHTML = str;
-				td.className = cname;
-				row.appendChild(td);
-			};
-			
-		for (i in program) {
-			item = program[i];
-
-			tr = document.createElement('tr');
-			tr.setAttribute('data-addr', item.offset);
-
-			createCol(item.offset_str, 'offset', tr);
-			createCol(item.op_abbr, 'abbr', tr);
-			createCol(item.operand, 'operand', tr);
-			createCol(';' + item.cycles, 'cycles', tr);
-			
-			tbody.appendChild(tr);
-		}
-	}
+		activeROM    = null,
+		debugWindow  = null;
 
 	document.addEventListener('DOMContentLoaded', function() {
 
+		// initialize the emulator system and pass in the canvas
 		TIA.init(television);
 
+		// toggle open the debugger window when the ` is pressed
 		window.addEventListener('keyup', function(event) {
 			if (event.keyCode === 192) {
-				if (debugPanel.classList.contains('open')) {
-					debugPanel.classList.remove('open');
-					delete localStorage['debug'];
+				if (!debugWindow || debugWindow.closed) {
+					debugWindow = open('debug.html', 'Debugger',
+						'resizable=yes,scrollbars=yes,status=yes,width=960,height=800');
 				} else {
-					debugPanel.classList.add('open');
-					showInfo();
-					localStorage['debug'] = 'open';
+					debugWindow.close();
 				}
 			}
 		}, false);
 
-		// open the debug panel if it was open previously
-		if (localStorage['debug'] === 'open') {
-			debugPanel.classList.add('open');
-			showInfo();
-		}
+		// when this page is unloaded, close the debug window if open
+		window.addEventListener('unload', function() {
+			if (debugWindow && !debugWindow.closed) {
+				debugWindow.close();
+			}
+		}, false);
 
-		powerSwitch.addEventListener('change', function(event) {
-			console.log(powerSwitch.value);
+		powerSwitch.addEventListener('input', function() {
 			if (powerSwitch.value === '1') {
+				RIOT.setConsoleSwitch('color',
+					colorSwitch.value === '1' ? true : false);
+				RIOT.setConsoleSwitch('select', true);
+				RIOT.setConsoleSwitch('reset', true);
+				RIOT.setConsoleSwitch('difficulty0', false);
+				RIOT.setConsoleSwitch('difficulty1', false);
 				TIA.start();
 			} else {
+				// turn the emulator off
 				TIA.stop();
+
+				// re-intialize the emulator
+				TIA.init(television);
+
+				// reload the ROM after initialization
+				CPU6507.loadProgram(activeROM);
 			}
+		}, false);
+
+		colorSwitch.addEventListener('input', function() {
+			RIOT.setConsoleSwitch('color',
+				colorSwitch.value === '1' ? true : false);
+		}, false);
+
+		selectSwitch.addEventListener('input', function() {
+			RIOT.setConsoleSwitch('select',
+				selectSwitch.value === '1' ? true : false);
 		}, false);
 
 		selectSwitch.addEventListener('mouseup', function() {
 			setTimeout(function() {
-				selectSwitch.value = '1';
-			}, 100);
+				// move the switch back to the normal position
+				selectSwitch.value = 1;
+
+				// create and fire an event to simulate a normal input change
+				var e = document.createEvent('Events');
+				e.initEvent('input', true, false);
+				selectSwitch.dispatchEvent(e);
+			}, 50);
+		}, false);
+
+
+		resetSwitch.addEventListener('input', function() {
+			RIOT.setConsoleSwitch('reset',
+				resetSwitch.value === '1' ? true : false);
 		}, false);
 
 		resetSwitch.addEventListener('mouseup', function() {
 			setTimeout(function() {
-				resetSwitch.value = '1';
-			}, 100);
+				resetSwitch.value = 1;
+
+				var e = document.createEvent('Events');
+				e.initEvent('input', true, false);
+				resetSwitch.dispatchEvent(e);
+			}, 50);
 		}, false);
 
 		// when dragging over the cart-slot, change the border color
@@ -244,7 +146,10 @@
 			};
 
 			reader.onload = function(event) {
-				CPU6507.loadProgram(new Uint8Array(event.target.result));
+				activeROM = new Uint8Array(event.target.result);
+				
+				CPU6507.loadProgram(activeROM);
+
 				powerSwitch.removeAttribute('disabled');
 				colorSwitch.removeAttribute('disabled');
 				selectSwitch.removeAttribute('disabled');

@@ -32,11 +32,12 @@ function MemoryMap(bitWidth) {
 		mask = (mask << 1) | 1;
 	}
 
-	buf = new ArrayBuffer(1 << bitWidth);
-	this._memory = new Uint8Array(buf);
-	this._strobes = [];
-	this._journal = [];
-	this._bitmask = mask;
+	buf            = new ArrayBuffer(1 << bitWidth);
+	this._memory   = new Uint8Array(buf);
+	this._strobes  = [];
+	this._readonly = [];
+	this._journal  = [];
+	this._bitmask  = mask;
 
 	// the only public property of a MemoryMap object created in this constructor
 	this.length = this._memory.length;
@@ -154,6 +155,27 @@ MemoryMap.prototype.resetStrobe = function(addr) {
 	throw new Error('The address specified has not been added as a strobe');
 };
 
+// Marks the given address as a location to which the CPU cannot write to
+// via the journalCommit function
+MemoryMap.prototype.addReadOnly = function(addr) {
+	this._readonly.push(addr);
+};
+
+// returns true if the given address is in the readonly list, and false
+// otherwise
+MemoryMap.prototype.isReadOnly = function(addr) {
+	var i = 0,
+		l = this._readonly.length;
+
+	for (; i < l; i++) {
+		if (this._readonly[i] === addr) {
+			return true;
+		}
+	}
+
+	return false;
+};
+
 // Adds to the journal a byte to be written at a specified location
 // when the next commit is executed
 MemoryMap.prototype.journalAddByte = function(val, addr) {
@@ -175,7 +197,9 @@ MemoryMap.prototype.journalCommit = function() {
 		l = this._journal.length;
 
 	for (; i < l; i++) {
-		this.writeByte(this._journal[i].val, this._journal[i].addr);
+		if (this.isReadOnly(this._journal[i].addr) === false) {
+			this.writeByte(this._journal[i].val, this._journal[i].addr);
+		}
 	}
 
 	this._journal = [];
@@ -187,6 +211,25 @@ MemoryMap.prototype.journalCommit = function() {
 MemoryMap.createAtariMemoryMap = function() {
 	var mmap = new MemoryMap(13),
 		i = 0,
+		readOnlyList = [
+			0x40,   // CXM0P
+			0x41,   // CXM1P
+			0x42,   // CXP0FB
+			0x43,   // CXP1FB
+			0x44,   // CXM0FB
+			0x45,   // CXM1FB
+			0x46,   // CXBLPF
+			0x47,   // CXPPMM
+			0x48,   // INPT0
+			0x49,   // INPT1
+			0x50,   // INPT2
+			0x51,   // INPT3
+			0x52,   // INPT4
+			0x53,   // INPT5
+			0x282,  // SWCHB
+			0x283,  // SWBCNT
+			0x284   // INTIM
+		],
 		strobeList = [
 			0x02, // WSYNC
 			0x03, // RSYNC
@@ -204,6 +247,11 @@ MemoryMap.createAtariMemoryMap = function() {
 	// "Strobes" registers assigned to the TIA
 	for (; i < l; i++)  {
 		mmap.addStrobe(strobeList[i]);
+	}
+
+	l = readOnlyList.length;
+	for (i = 0; i < l; i++) {
+		mmap.addReadOnly(readOnlyList[i]);
 	}
 
 	// Randomize the bits in RAM

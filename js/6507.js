@@ -8,7 +8,7 @@
  * Atari 2600.
  */
 
-var CPU6507 = (function() {
+window.CPU6507 = (function() {
 
 	var ROM_TYPE = {
 			'2K': 1,
@@ -2122,6 +2122,8 @@ var CPU6507 = (function() {
 				initAddr = mmap.readByte(0xf7fc) | mmap.readByte(0xf7fd) << 8;
 			} else if (romType === ROM_TYPE['4K']) {
 				initAddr = mmap.readByte(0xfffc) | mmap.readByte(0xfffd) << 8;
+			} else {
+				return [];
 			}
 
 			parseInstruction(initAddr);
@@ -2281,6 +2283,10 @@ var CPU6507 = (function() {
 
 		getCycleCount: function() {
 			return cycleCount;
+		},
+
+		getProgram: function() {
+			return parseProgram();
 		}
 
 	};
