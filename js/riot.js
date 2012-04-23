@@ -48,11 +48,11 @@ window.RIOT = (function() {
 			
 			mmap = memory;
 
-			timer = Math.round(Math.random() * 0xffffffff);
+			timer = Math.floor(Math.random() * 0xffffffff);
 
 			intervalMode = INTERVAL_MODE.NONE;
 
-			mmap.writeByte(timer & 0xf0000000 ? 0x80 : 0, MEM_LOCATIONS.INTIM);
+			mmap.writeByte(timer < 0 ? 0x80 : 0, MEM_LOCATIONS.TIMINT);
 			mmap.writeByte(timer & 0xff, MEM_LOCATIONS.INTIM);
 			mmap.writeByte(0, MEM_LOCATIONS.TIM1T);
 			mmap.writeByte(0, MEM_LOCATIONS.TIM8T);
@@ -61,13 +61,14 @@ window.RIOT = (function() {
 		},
 
 		cycle: function() {
-			var tim1t  = mmap.readByte(MEM_LOCATIONS.TIM1T),
+			var intim,
+				tim1t  = mmap.readByte(MEM_LOCATIONS.TIM1T),
 				tim8t  = mmap.readByte(MEM_LOCATIONS.TIM8T),
 				tim64t = mmap.readByte(MEM_LOCATIONS.TIM64T),
 				t1024t = mmap.readByte(MEM_LOCATIONS.T1024T);
 
 			// decrement the timer
-			timer = (timer - 1) & 0xffffffff;
+			timer--;
 
 			// check if the TIM1T register has been written to
 			if (tim1t > 0) {
@@ -97,17 +98,14 @@ window.RIOT = (function() {
 				intervalMode = INTERVAL_MODE.T1024T;
 			}
 
-			if (timer < 0) {
-				mmap.writeByte(0x80, MEM_LOCATIONS.TIMINT);
-				mmap.writeByte(-timer & 0xff, MEM_LOCATIONS.INTIM);
-			} else {
-				mmap.writeByte(0, MEM_LOCATIONS.TIMINT);
-				mmap.writeByte(intervalMode === INTERVAL_MODE.TIM1T ? timer :
-						intervalMode === INTERVAL_MODE.TIM8T ? timer >> 3 :
-						intervalMode === INTERVAL_MODE.TIM64T ? timer >> 6 :
-						timer >> 10,
-					MEM_LOCATIONS.INTIM);
-			}
+			mmap.writeByte((timer < 0 ? timer :
+					intervalMode === INTERVAL_MODE.TIM1T ? timer :
+					intervalMode === INTERVAL_MODE.TIM8T ? timer >>> 3 :
+					intervalMode === INTERVAL_MODE.TIM64T ? timer >>> 6 :
+					timer >>> 10) & 0xff,
+				MEM_LOCATIONS.INTIM);
+			
+			mmap.writeByte(timer < 0 ? 0x80 : 0, MEM_LOCATIONS.TIMINT);
 		},
 
 		setConsoleSwitch: function(name, value) {
@@ -151,12 +149,13 @@ window.RIOT = (function() {
 
 		getConsoleSwitches: function() {
 			var swchb = mmap.readByte(MEM_LOCATIONS.SWCHB);
+			
 			return {
-				p0difficulty: swchb & 0x80 ? 1 : 0,
-				p1difficulty: swchb & 0x40 ? 1 : 0,
-				color:        swchb & 0x08 ? 1 : 0,
-				select:       swchb & 0x02 ? 1 : 0,
-				reset:        swchb & 0x01 ? 1 : 0
+				p0difficulty: !!(swchb & 0x80),
+				p1difficulty: !!(swchb & 0x40),
+				color:        !!(swchb & 0x08),
+				select:       !!(swchb & 0x02),
+				reset:        !!(swchb & 0x01)
 			};
 		}
 	};

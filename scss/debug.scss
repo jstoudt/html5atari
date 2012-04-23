@@ -2,7 +2,10 @@
 
 body {
 	font: 12px/1 Arial,sans-serif;
-	padding: 10px 17px;
+}
+
+body > div {
+	width: 920px;
 }
 
 table {
@@ -20,6 +23,7 @@ td {
 
 label {
 	vertical-align: middle;
+	text-align: right;
 
 	&:after {
 		content: ":";
@@ -30,14 +34,16 @@ label {
 .cpu-right {
 	display: inline-block;
 	vertical-align: top;
+	margin: 10px 0;
 }
 
 .cpu-left {
-	width: 480px;
+	width: 455px;
+	padding: 0 10px;
 }
 
 .cpu-right {
-	width: 440px;
+	width: 435px;
 }
 
 .register {
@@ -46,16 +52,25 @@ label {
 	text-align: center;
 	width: 4em;
 	height: 24px;
-	font: 11px/24px monospace,monospace;
+	font: 11px/24px monospace;
 	border: 1px solid #000;
 	margin-right: 20px;
 }
 
-.status {
-	margin: 15px 20px 0 0;
+.swatch {
+	display: inline-block;
+	vertical-align: middle;
+	width: 30px;
+	height: 18px;
+	border: 1px solid #333;
 }
-.beam-position {
+
+.status {
 	float: left;
+	margin: 25px 0;
+}
+
+.beam-position {
 	margin-top: 10px;
 
 	label {
@@ -65,9 +80,8 @@ label {
 	}
 
 	.register {
-		margin: 0 0 5px 10px;
+		margin-bottom: 4px;
 	}
-
 }
 
 .frequency-wrapper {
@@ -85,9 +99,7 @@ label {
 }
 
 .memory {
-	float: left;
-	clear: left;
-	margin-top: 25px;
+	clear: both;
 
 	.leftcol {
 		font-family: sans-serif;
@@ -97,10 +109,11 @@ label {
 }
 
 .instructions {
-	width: 430px;
-	height: 325px;
+	width: 420px;
+	height: 305px;
 	border: 1px solid #d0d0d0;
-	overflow: auto;
+	overflow-y: scroll;
+	overflow-x: hidden;
 	margin-top: 15px;
 
 	table {
@@ -144,55 +157,76 @@ label {
 	}
 }
 
-.controls {
-	width: 200px;
-	margin-top: 15px;
-	padding: 10px;
-}
-
-.timer {
+fieldset {
 	display: inline-block;
 	vertical-align: top;
-	width: 175px;
+	margin: 5px;
 
 	ul {
 		list-style: none;
-		padding: 10px 5px 10px 10px;
-		margin: 20px 0;
+		padding: 0 5px;
+		margin: 10px 0;
 
 		li {
 			margin: 4px 0;
 
 			label {
 				display: inline-block;
-				width: 47px;
 				text-align: right;
 			}
 
 			.register {
-				width: 85px;
+				margin-right: 0;
 			}
 		}
+	}
+}
 
+.controls {
+	display: block;
+	width: 225px;
+}
+
+.timer {
+	width: 155px;
+
+	label {
+		width: 47px;
+	}
+
+	.register {
+		width: 7em;
 	}
 }
 
 .console-switches {
-	display: inline-block;
-	vertical-align: top;
-	width: 175px;
+	width: 140px;
+	
+	label {
+		width: 75px;
+	}
+}
 
-	ul {
-		list-style: none;
-		padding: 10px 5px 10px 10px;
+.player {
+	width: 160px;
 
-		li {
-			margin: 4px 0;
+	label {
+		width: 60px;
+	}
 
-			label {
-				display: inline-block;
-				width: 75px;
-			}
-		}
+	.wide {
+		width: 7em;
+	}
+}
+
+.playfield {
+	width: 160px;
+
+	label {
+		width: 60px;
+	}
+
+	.wide {
+		width: 7em;
 	}
 }

@@ -228,7 +228,8 @@ MemoryMap.createAtariMemoryMap = function() {
 			0x53,   // INPT5
 			0x282,  // SWCHB
 			0x283,  // SWBCNT
-			0x284   // INTIM
+			0x284,  // INTIM
+			0x285   // TIMINT
 		],
 		strobeList = [
 			0x02, // WSYNC
@@ -249,6 +250,7 @@ MemoryMap.createAtariMemoryMap = function() {
 		mmap.addStrobe(strobeList[i]);
 	}
 
+	// Add the readonly memory locations
 	l = readOnlyList.length;
 	for (i = 0; i < l; i++) {
 		mmap.addReadOnly(readOnlyList[i]);

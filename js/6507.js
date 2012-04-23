@@ -2260,8 +2260,8 @@ window.CPU6507 = (function() {
 				mmap.writeByte(program[i], (i + 0xf000));
 			}
 
-			// this is incorrect... supposed to get PC value from reset
-			// value at the end of the ROM
+			// set the program counter register to the reset address
+			// at the end of the ROM
 			if (romType === ROM_TYPE['2K']) {
 				regSet.pc = mmap.readByte(0xf7fc) | mmap.readByte(0xf7fd) << 8;
 			} else if (romType === ROM_TYPE['4K']) {

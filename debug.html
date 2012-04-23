@@ -8,303 +8,405 @@
 	<link rel="stylesheet" href="css/debug.css">
 </head>
 </body>
-<!-- Begin the Debug Panel here -->
-	<div class="cpu-left">
-		<label>AC</label>
-		<div id="ac" class="register"></div>
+	<div role="main">
+		<div class="cpu-left">
+			<label>AC</label>
+			<div id="ac" class="register"></div>
 
-		<label>X</label>
-		<div id="x" class="register"></div>
+			<label>X</label>
+			<div id="x" class="register"></div>
 
-		<label>Y</label>
-		<div id="y" class="register"></div>
+			<label>Y</label>
+			<div id="y" class="register"></div>
 
-		<label>SP</label>
-		<div id="sp" class="register"></div>
+			<label>SP</label>
+			<div id="sp" class="register"></div>
 
-		<label>PC</label>
-		<div id="pc" class="register"></div>
+			<label>PC</label>
+			<div id="pc" class="register"></div>
 
-		<table id="status" class="status">
-			<thead>
-				<tr>
-					<th>N</th>
-					<th>V</th>
-					<th></th>
-					<th>B</th>
-					<th>D</th>
-					<th>I</th>
-					<th>Z</th>
-					<th>C</th>
-				</tr>
-			</thead>
-			<tbody>
-				<tr>
-					<td id="N"></td>
-					<td id="V"></td>
-					<td>X</td>
-					<td id="B"></td>
-					<td id="D"></td>
-					<td id="I"></td>
-					<td id="Z"></td>
-					<td id="C"></td>
-				</tr>
-			</tbody>
-		</table>
+			<table id="status" class="status">
+				<thead>
+					<tr>
+						<th>N</th>
+						<th>V</th>
+						<th></th>
+						<th>B</th>
+						<th>D</th>
+						<th>I</th>
+						<th>Z</th>
+						<th>C</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td id="N"></td>
+						<td id="V"></td>
+						<td>X</td>
+						<td id="B"></td>
+						<td id="D"></td>
+						<td id="I"></td>
+						<td id="Z"></td>
+						<td id="C"></td>
+					</tr>
+				</tbody>
+			</table>
 
-		<div id="beam-position" class="beam-position">
-			<label>Pixel Clock</label>
-			<div id="x-pos" class="register"></div>
-			<br>
-			<label>Scanline</label>
-			<div id="y-pos" class="register"></div>
-		</div>
+			<div id="beam-position" class="beam-position">
+				<label>Pixel Clock</label>
+				<div id="x-pos" class="register"></div>
+				<br>
+				<label>Scanline</label>
+				<div id="y-pos" class="register"></div>
+			</div>
 
-		<table id="memory" class="memory"
-			<thead>
-				<th>00xx</th>
-				<th>0</th>
-				<th>1</th>
-				<th>2</th>
-				<th>3</th>
-				<th>4</th>
-				<th>5</th>
-				<th>6</th>
-				<th>7</th>
-				<th>8</th>
-				<th>9</th>
-				<th>a</th>
-				<th>b</th>
-				<th>c</th>
-				<th>d</th>
-				<th>e</th>
-				<th>f</th>
-			</thead>
-			<tbody>
-				<tr>
-					<td class="leftcol">80</td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-				</tr>
-				<tr>
-					<td class="leftcol">90</td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-				</tr>
-				<tr>
-					<td class="leftcol">a0</td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-				</tr>
-				<tr>
-					<td class="leftcol">b0</td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-				</tr>
-				<tr>
-					<td class="leftcol">c0</td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-				</tr>
-				<tr>
-					<td class="leftcol">d0</td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-				</tr>
-				<tr>
-					<td class="leftcol">e0</td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-				</tr>
-				<tr>
-					<td class="leftcol">f0</td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-				</tr>
-			</tbody>
-		</table>
-	</div>
-
-	<div class="cpu-right">
-		<label>TIA Frequency</label>
-		<div id="tia-frequency" class="register"></div>
-		<span>MHz</span>
-		
-		<div id="frame-rate" class="register"></div>
-		<span>fps</span>
-
-		<div class="instructions">
-			<table id="instructions">
-				<tbody></tbody>
+			<table id="memory" class="memory"
+				<thead>
+					<th>00xx</th>
+					<th>0</th>
+					<th>1</th>
+					<th>2</th>
+					<th>3</th>
+					<th>4</th>
+					<th>5</th>
+					<th>6</th>
+					<th>7</th>
+					<th>8</th>
+					<th>9</th>
+					<th>a</th>
+					<th>b</th>
+					<th>c</th>
+					<th>d</th>
+					<th>e</th>
+					<th>f</th>
+				</thead>
+				<tbody>
+					<tr>
+						<td class="leftcol">80</td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+					</tr>
+					<tr>
+						<td class="leftcol">90</td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+					</tr>
+					<tr>
+						<td class="leftcol">a0</td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+					</tr>
+					<tr>
+						<td class="leftcol">b0</td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+					</tr>
+					<tr>
+						<td class="leftcol">c0</td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+					</tr>
+					<tr>
+						<td class="leftcol">d0</td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+					</tr>
+					<tr>
+						<td class="leftcol">e0</td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+					</tr>
+					<tr>
+						<td class="leftcol">f0</td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+					</tr>
+				</tbody>
 			</table>
 		</div>
+
+		<div class="cpu-right">
+			<label>TIA Frequency</label>
+			<div id="tia-frequency" class="register"></div>
+			<span>MHz</span>
+			
+			<div id="frame-rate" class="register"></div>
+			<span>fps</span>
+
+			<div class="instructions">
+				<table id="instructions">
+					<tbody></tbody>
+				</table>
+			</div>
+		</div>
+
+		<fieldset class="controls">
+			<legend>CPU Controls</legend>
+			<button id="pause-button" disabled>Pause/Resume</button>
+			<button id="step-button" disabled>Step</button>
+			<button id="scan-button" disabled>Scan +1</button>
+		</fieldset>
+
+		<fieldset class="timer">
+			<legend>Timer</legend>
+			<ul>
+				<li>
+					<label>Timer Mode</label>
+					<div id="timer-mode" class="register"></div>
+				</li>
+				<li>
+					<label>INTIM</label>
+					<div id="intim" class="register"></div>
+				</li>
+				<li>
+					<label>TIMINT</label>
+					<div id="timint" class="register"></div>
+				</li>
+				<li>
+					<label>Timer</label>
+					<div id="timer" class="register"></div>
+				</li>
+			</ul>
+		</fieldset>
+		<fieldset class="console-switches">
+			<legend>Console Switches</legend>
+			<ul>
+				<li>
+					<label>P0 Difficulty</label>
+					<input type="checkbox" id="p0-difficulty" readonly>
+				</li>
+				<li>
+					<label>P1 Difficulty</label>
+					<input type="checkbox" id="p1-difficulty" readonly>
+				</li>
+				<li>
+					<label>TV Type</label>
+					<input type="checkbox" id="tv-type" readonly>
+				</li>
+				<li>
+					<label>Select</label>
+					<input type="checkbox" id="select" readonly>
+				</li>
+				<li>
+					<label>Reset</label>
+					<input type="checkbox" id="reset" readonly>
+				</li>
+			</ul>
+		</fieldset>
+		<fieldset class="player">
+			<legend>Player 1</legend>
+			<ul>
+				<li>
+					<label>COLUP0</label>
+					<div id="colup0" class="register"></div>
+					<div id="p0-swatch" class="swatch"></div>
+				</li>
+				<li>
+					<label>Graphics</label>
+					<div id="grp0" class="register wide"></div>
+				</li>
+				<li>
+					<label>Reflect</label>
+					<input type="checkbox" id="refp0" readonly>
+				</li>
+				<li>
+					<label>Delay</label>
+					<input type="checkbox" id="vdelp0" readonly>
+				</li>
+				<li>
+					<label>Num/Size</label>
+					<div id="nusiz0" class="register"></div>
+				</li>
+				<li>
+					<label>Position</label>
+					<div id="p0pos" class="register"></div>
+				</li>
+				<li>
+					<label>HM</label>
+					<div id="p0move" class="register"></div>
+				</li>
+			</ul>
+		</fieldset>
+		<fieldset class="player">
+			<legend>Player 2</legend>
+			<ul>
+				<li>
+					<label>COLUP0</label>
+					<div id="colup1" class="register"></div>
+					<div id="p1-swatch" class="swatch"></div>
+				</li>
+				<li>
+					<label>Graphics</label>
+					<div id="grp1" class="register wide"></div>
+				</li>
+				<li>
+					<label>Reflect</label>
+					<input type="checkbox" id="refp1" readonly>
+				</li>
+				<li>
+					<label>Delay</label>
+					<input type="checkbox" id="vdelp1" readonly>
+				</li>
+				<li>
+					<label>Num/Size</label>
+					<div id="nusiz1" class="register"></div>
+				</li>
+				<li>
+					<label>Position</label>
+					<div id="p1pos" class="register"></div>
+				</li>
+				<li>
+					<label>HM</label>
+					<div id="p1move" class="register"></div>
+				</li>
+			</ul>
+		</fieldset>
+		<fieldset class="playfield">
+			<legend>Playfield</legend>
+			<ul>
+				<li>
+					<label>Color</label>
+					<div id="pf-color" class="register"></div>
+					<div id="pf-swatch" class="swatch"></div>
+				<li>
+					<label>PF0</label>
+					<div id="pf0" class="register"></div>
+				</li>
+				<li>
+					<label>PF1</label>
+					<div id="pf1" class="register wide"></div>
+				</li>
+				<li>
+					<label>PF2</label>
+					<div id="pf2" class="register wide"></div>
+				</li>
+				<li>
+					<label>Reflect</label>
+					<input type="checkbox" id="pf-reflect" readonly>
+				</li>
+				<li>
+					<label>Score</label>
+					<input type="checkbox" id="pf-score" readonly>
+				</li>
+				<li>
+					<label>Priority</label>
+					<input type="checkbox" id="pf-priority" readonly>
+				</li>
+			</ul>
+		</fieldset>
 	</div>
-
-	<fieldset class="controls">
-		<legend>CPU Controls</legend>
-		<button id="pause-button" disabled>Pause/Resume</button>
-		<button id="step-button" disabled>Step</button>
-	</fieldset>
-
-	<fieldset class="timer">
-		<legend>Timer</legend>
-
-		<ul>
-			<li>
-				<label>Timer Mode</label>
-				<div id="timer-mode" class="register"></div>
-			</li>
-			<li>
-				<label>INTIM</label>
-				<div id="intim" class="register"></div>
-			</li>
-			<li>
-				<label>TIMINT</label>
-				<div id="timint" class="register"></div>
-			</li>
-			<li>
-				<label>Timer</label>
-				<div id="timer" class="register"></div>
-			</li>
-		</ul>
-	</fieldset>
-	<fieldset class="console-switches">
-		<legend>Console Switches</legend>
-		<ul>
-			<li>
-				<label>P0 Difficulty</label>
-				<div id="p0-difficulty" class="register"></div>
-			</li>
-			<li>
-				<label>P1 Difficulty</label>
-				<div id="p1-difficulty" class="register"></div>
-			</li>
-			<li>
-				<label>TV Type</label>
-				<div id="tv-type" class="register"></div>
-			</li>
-			<li>
-				<label>Select</label>
-				<div id="select" class="register"></div>
-			</li>
-			<li>
-				<label>Reset</label>
-				<div id="reset" class="register"></div>
-			</li>
-		</ul>
-	</fieldset>
 
 	<script src="js/debug.js"></script>
 

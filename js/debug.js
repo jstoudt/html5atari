@@ -6,7 +6,7 @@
 
 		pauseButton  = document.getElementById('pause-button'),
 		stepButton   = document.getElementById('step-button'),
-		i            = 0,
+		scanButton   = document.getElementById('scan-button'),
 
 		tiaTime0     = Date.now(),
 		tiaCycles0   = TIA.getCycleCount(),
@@ -36,9 +36,38 @@
 		selectSwitch = document.getElementById('select'),
 		resetSwitch  = document.getElementById('reset'),
 
+		colup0       = document.getElementById('colup0'),
+		p0swatch     = document.getElementById('p0-swatch'),
+		grp0         = document.getElementById('grp0'),
+		refp0        = document.getElementById('refp0'),
+		vdelp0       = document.getElementById('vdelp0'),
+		nusiz0       = document.getElementById('nusiz0'),
+		p0pos        = document.getElementById('p0pos'),
+		p0move       = document.getElementById('p0move'),
+
+		colup1       = document.getElementById('colup1'),
+		p1swatch     = document.getElementById('p1-swatch'),
+		grp1         = document.getElementById('grp1'),
+		refp1        = document.getElementById('refp1'),
+		vdelp1       = document.getElementById('vdelp1'),
+		nusiz1       = document.getElementById('nusiz1'),
+		p1pos        = document.getElementById('p1pos'),
+		p1move       = document.getElementById('p1move'),
+
+		pfcolor      = document.getElementById('pf-color'),
+		pfswatch     = document.getElementById('pf-swatch'),
+		pf0          = document.getElementById('pf0'),
+		pf1          = document.getElementById('pf1'),
+		pf2          = document.getElementById('pf2'),
+		pfreflect    = document.getElementById('pf-reflect'),
+		pfscore      = document.getElementById('pf-score'),
+		pfpriority   = document.getElementById('pf-priority'),
+
 		memTable     = document.getElementById('memory'),
 		cells        = memTable.getElementsByTagName('td'),
 		memCells     = [],
+
+		i            = 0,
 		
 		reqAnimFrame = window.requestAnimationFrame ||
 			window.webkitRequestAnimationFrame ||
@@ -57,14 +86,48 @@
 			C: document.getElementById('C')
 		};
 
-		for (; i < cells.length; i++) {
+	for (; i < cells.length; i++) {
 		if (cells[i].className !== 'leftcol') {
 			memCells.push(cells[i]);
 		}
 	}
 
+	function toHex(val, digits) {
+		var fill;
+
+		if (typeof val === 'number') {
+			val = val.toString(16);
+			fill = '0';
+		} else {
+			val  = '';
+			fill = '-';
+		}
+		
+		while (val.length < digits) {
+			val = fill + val;
+		}
+		return val;
+	}
+
+	function toBinary(val, digits) {
+		var fill;
+
+		if (typeof val === 'number') {
+			val = val.toString(2);
+			fill = '0';
+		} else {
+			val  = '';
+			fill = '-';
+		}
+		
+		while (val.length < digits) {
+			val = fill + val;
+		}
+		return val;
+	}
+
 	function showInfo() {
-		var list, tr, i, dataAddr,
+		var list, tr, i, dataAddr, playerInfo,
 			progCounter     = CPU6507.getRegister('pc'),
 			status          = CPU6507.getRegister('sr'),
 			mem             = TIA.getMemoryCopy(0x80, 128),
@@ -72,14 +135,7 @@
 			beamPosition    = TIA.getBeamPosition(),
 			timerInfo       = RIOT.getTimerRegisters(),
 			consoleSwitches = RIOT.getConsoleSwitches(),
-
-			toHex  = function(hex, digits) {
-				hex = hex.toString(16);
-				while (hex.length < digits) {
-					hex = '0' + hex;
-				}
-				return hex;
-			};
+			playfieldInfo   = TIA.getPlayfieldInfo();
 
 		ac.innerHTML = toHex(CPU6507.getRegister('ac'), 2);
 		x.innerHTML  = toHex(CPU6507.getRegister('x'), 2);
@@ -116,15 +172,45 @@
 		}
 
 		timerMode.textContent = timerInfo.timerMode;
-		intim.textContent     = timerInfo.intim.toString(16);
-		timint.textContent    = timerInfo.timint.toString(16);
-		timer.textContent     = timerInfo.timer.toString(16);
+		intim.textContent     = toHex(timerInfo.intim, 2);
+		timint.textContent    = toHex(timerInfo.timint, 2);
+		timer.textContent     = toHex(timerInfo.timer >= 0 ? timerInfo.timer :
+			(0xffffffff + timerInfo.timer + 1), 2);
 
-		p0difficulty.textContent = consoleSwitches.p0difficulty;
-		p1difficulty.textContent = consoleSwitches.p1difficulty;
-		tvType.textContent       = consoleSwitches.color;
-		selectSwitch.textContent = consoleSwitches.select;
-		resetSwitch.textContent  = consoleSwitches.reset;
+		p0difficulty.checked = consoleSwitches.p0difficulty;
+		p1difficulty.checked = consoleSwitches.p1difficulty;
+		tvType.checked       = consoleSwitches.color;
+		selectSwitch.checked = consoleSwitches.select;
+		resetSwitch.checked  = consoleSwitches.reset;
+
+		playerInfo = TIA.getPlayerInfo(0);
+		colup0.textContent             = toHex(playerInfo.color, 2);
+		p0swatch.style.backgroundColor = playerInfo.rgb;
+		grp0.textContent               = toBinary(playerInfo.graphics, 8);
+		refp0.checked                  = playerInfo.reflect;
+		vdelp0.checked                 = playerInfo.delay;
+		nusiz0.textContent             = toHex(playerInfo.nusiz, 2);
+		p0pos.textContent              = playerInfo.position;
+		p0move.textContent             = toHex(playerInfo.hmove, 1);
+		
+		playerInfo = TIA.getPlayerInfo(1);
+		colup1.textContent             = toHex(playerInfo.color, 2);
+		p1swatch.style.backgroundColor = playerInfo.rgb;
+		grp1.textContent               = toBinary(playerInfo.graphics, 8);
+		refp1.checked                  = playerInfo.reflect;
+		vdelp1.checked                 = playerInfo.delay;
+		nusiz1.textContent             = toHex(playerInfo.nusiz, 2);
+		p1pos.textContent              = playerInfo.position;
+		p1move.textContent             = toHex(playerInfo.hmove, 1);
+		
+		pfcolor.textContent = toHex(playfieldInfo.color, 2);
+		pfswatch.style.backgroundColor = playfieldInfo.rgb;
+		pf0.textContent                = toBinary(playfieldInfo.pf0, 4);
+		pf1.textContent                = toBinary(playfieldInfo.pf1, 8);
+		pf2.textContent                = toBinary(playfieldInfo.pf2, 8);
+		pfreflect.checked              = playfieldInfo.reflect;
+		pfscore.checked                = playfieldInfo.score;
+		pfpriority.checked             = playfieldInfo.priority;
 
 		reqAnimFrame(showInfo);
 	}
@@ -167,6 +253,9 @@
 			createCol(';' + item.cycles, 'cycles', tr);
 			
 			tbody.appendChild(tr);
+
+			stepButton.removeAttribute('disabled');
+			scanButton.removeAttribute('disabled');
 		}
 	}
 
@@ -181,17 +270,20 @@
 			pauseButton.removeAttribute('disabled');
 			pauseButton.textContent = 'Pause';
 			stepButton.setAttribute('disabled', 'disabled');
+			scanButton.setAttribute('disabled', 'disabled');
 		}
 
 		TIA.addEventListener('start', function() {
 			pauseButton.removeAttribute('disabled');
 			pauseButton.textContent = 'Pause';
 			stepButton.setAttribute('disabled', 'disabled');
+			scanButton.setAttribute('disabled', 'disabled');
 		});
 
 		TIA.addEventListener('stop', function() {
 			pauseButton.removeAttribute('disabled');
 			stepButton.removeAttribute('disabled');
+			scanButton.removeAttribute('disabled');
 			pauseButton.textContent = 'Resume';
 		});
 
@@ -222,6 +314,17 @@
 			e.stopPropagation();
 			e.preventDefault();
 			TIA.step();
+		}, false);
+
+		scanButton.addEventListener('click', function(e) {
+			var scanline = TIA.getBeamPosition().y;
+
+			e.stopPropagation();
+			e.preventDefault();
+
+			while (TIA.getBeamPosition().y === scanline) {
+				TIA.step();
+			}
 		}, false);
 
 	}, false);
