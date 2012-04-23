@@ -1531,7 +1531,7 @@ window.CPU6507 = (function() {
 			},
 
 			0xb1: { // LDA ind,Y
-				op: operation.LDY,
+				op: operation.LDA,
 				addressing: 'indirectYIndexed',
 				cycles: 5,
 				abbr: 'LDA',
