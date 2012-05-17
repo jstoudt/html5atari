@@ -2204,17 +2204,18 @@ window.CPU6507 = (function() {
 
 		// execute a single cycle
 		cycle: function() {
+			var commit = false;
 			if (cyclesToWait < 1) {
 				if (waiting === true) {
 					commitOperation();
+					commit = true;
 				}
 				executeInstruction();
-				return true;
+			} else {
+				cyclesToWait--;
 			}
-
-			cyclesToWait--;
 			
-			return false;
+			return commit;
 		},
 
 		addEventListener: function(type, handler) {

@@ -72,9 +72,9 @@
 		reqAnimFrame = window.requestAnimationFrame ||
 			window.webkitRequestAnimationFrame ||
 			window.mozRequestAnimationFrame ||
-			(function fRAF(f) {
-				setTimeout(f, Math.floor(1000 / 60));
-			})(),
+			function(f) {
+				setTimeout(f, 16);
+			},
 
 		sr = {
 			N: document.getElementById('N'),
@@ -190,7 +190,7 @@
 		refp0.checked                  = playerInfo.reflect;
 		vdelp0.checked                 = playerInfo.delay;
 		nusiz0.textContent             = toHex(playerInfo.nusiz, 2);
-		p0pos.textContent              = playerInfo.position;
+		p0pos.textContent              = toHex(playerInfo.position, 2);
 		p0move.textContent             = toHex(playerInfo.hmove, 1);
 		
 		playerInfo = TIA.getPlayerInfo(1);
@@ -200,14 +200,14 @@
 		refp1.checked                  = playerInfo.reflect;
 		vdelp1.checked                 = playerInfo.delay;
 		nusiz1.textContent             = toHex(playerInfo.nusiz, 2);
-		p1pos.textContent              = playerInfo.position;
+		p1pos.textContent              = toHex(playerInfo.position, 2);
 		p1move.textContent             = toHex(playerInfo.hmove, 1);
 		
 		pfcolor.textContent = toHex(playfieldInfo.color, 2);
 		pfswatch.style.backgroundColor = playfieldInfo.rgb;
-		pf0.textContent                = toBinary(playfieldInfo.pf0, 4);
-		pf1.textContent                = toBinary(playfieldInfo.pf1, 8);
-		pf2.textContent                = toBinary(playfieldInfo.pf2, 8);
+		pf0.textContent                = playfieldInfo.pf0;
+		pf1.textContent                = playfieldInfo.pf1;
+		pf2.textContent                = playfieldInfo.pf2;
 		pfreflect.checked              = playfieldInfo.reflect;
 		pfscore.checked                = playfieldInfo.score;
 		pfpriority.checked             = playfieldInfo.priority;

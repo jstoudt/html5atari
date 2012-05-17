@@ -31,7 +31,7 @@ header {
 	height: 75px;
 
 	h1 {
-		font: 48px/75px 'Press Start 2P';
+		font: 48px/75px 'Press Start 2P', monospace;
 		text-align: center;
 		text-shadow: 4px 4px 2px #aaa;
 		letter-spacing: 7px;
@@ -44,19 +44,18 @@ header {
 }
 
 .television {
-	@include borderRadius(20px, 30px);
-	-webkit-transform: scaleX(4.0) scaleY(2.0) translate3d(0, 60px, 0);
-	-moz-transform: scaleX(4.0) scaleY(2.0) translate3d(0, 60px, 0);
-	-o-transform: scaleX(4.0) scaleY(2.0) translate3d(0, 60px, 0);
-	-ms-transform: scaleX(4.0) scaleY(2.0) translate3d(0, 60px, 0);
-	transform: scaleX(4.0) scaleY(2.0) translate3d(0, 60px, 0);
-	z-index: 100;
+	@include borderRadius(12px, 20px);
+	-webkit-transform: scale(4.0, 2.0) translateY(60px);
+	-moz-transform: scale(4.0, 2.0) translateY(60px);
+	-o-transform: scale(4.0, 2.0) translateY(60px);
+	-ms-transform: scale(4.0, 2.0) translateY(60px);
+	transform: scale(4.0, 2.0) translateY(60px);
 }
 
 .controls-wrapper {
 	background: url(../images/console-bg.jpg) 0 -12px;
-	margin-top: 190px;
-	padding: 20px 0 140px;
+	margin-top: 200px;
+	padding: 20px 0 100px;
 	text-align: center;
 
 	.controls {
@@ -224,8 +223,9 @@ footer {
 	bottom: 0;
 	height: 115px;
 	padding-top: 10px;
-	border-top: 6px ridge #0a0a0a;
-	margin-bottom: 10px;
+	-webkit-box-shadow: 0 -8px 10px 8px rgba(203, 138, 95, 0.75);
+	-moz-box-shadow: 0 -8px 10px 8px rgba(203, 138, 95, 0.75);
+	box-shadow: 0 -8px 10px 8px rgba(203, 138, 95, 0.75);
 	background: url(../images/wood_pattern.jpg);
 
 	.content {
@@ -242,14 +242,19 @@ footer {
 		}
 
 		ul {
-			width: 145px;
+			width: 350px;
 			list-style: none;
 			margin: 0 auto;
-			padding-top: 10px;
+			padding: 10px 0 0;
 
 			li {
+				width: 100px;
 				display: inline-block;
-				margin: 2px;
+				margin: 6px 2px;
+			}
+
+			.follow {
+				width: 200px;
 			}
 		}
 	}

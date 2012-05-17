@@ -22,12 +22,17 @@ window.TIA = (function() {
 			stop: []
 		},
 
-		reqAnimFrame = window.requestAnimationFrame ||
-			window.webkitRequestAnimationFrame ||
-			window.mozRequestAnimationFrame ||
-			function fRAF(f) {
-				setTimeout(f, Math.floor(1000 / 60));
-			},
+		reqAnimFrame = (function() {
+			return window.requestAnimationFrame ||
+				window.webkitRequestAnimationFrame ||
+				window.mozRequestAnimationFrame ||
+				window.oRequestAnimationFrame ||
+				window.msRequestAnimationFrame ||
+				function(callback) {
+					window.setTimeout(callback, 1000 / 60);
+				};
+
+		})(),
 
 		tiaCycles, // the number of cycles executed by the TIA
 
@@ -39,7 +44,7 @@ window.TIA = (function() {
 
 		// the dimensions of the output video buffer -- NTSC only for now
 		VIDEO_BUFFER_WIDTH  = 160,
-		VIDEO_BUFFER_HEIGHT = 222,
+		VIDEO_BUFFER_HEIGHT = 300,
 
 		// locations of TIA registers on the system bus
 		MEM_LOCATIONS = {
@@ -138,22 +143,17 @@ window.TIA = (function() {
 		],
 
 		generateStatic = function() {
-			var i, j, index, c,
-				data = pixelBuffer.data;
+			var color,
+				index = 0,
+				data  = pixelBuffer.data,
+				len   = data.length;
 
-			for (j = 0; j < VIDEO_BUFFER_HEIGHT; j++) {
-				for (i = 0; i < VIDEO_BUFFER_WIDTH; i++) {
+			while (index < len) {
+				color = breakFlag === false ? 0x1b :
+					Math.floor(Math.random() * 0xff);
 
-					index = (j * VIDEO_BUFFER_WIDTH + i) << 2;
-
-					c = breakFlag === false ? 0x1b :
-						Math.floor(Math.random() * 255);
-
-					data[index]     = c;    // red
-					data[index + 1] = c;    // green
-					data[index + 2] = c;    // blue
-					data[index + 3] = 255;  // alpha
-				}
+				data[index++] = data[index++] = data[index++] = color;
+				data[index++] = 255;  // alpha
 			}
 
 			canvasContext.putImageData(pixelBuffer, 0, 0);
@@ -163,7 +163,6 @@ window.TIA = (function() {
 			if (breakFlag === true) {
 				reqAnimFrame(generateStatic);
 			}
-
 		},
 
 		isPlayfieldAt = function(x) {
@@ -200,9 +199,6 @@ window.TIA = (function() {
 			}
 
 			switch (nusiz) {
-				case 0x00: // one copy -- simplest case
-					break;
-
 				case 0x01: // two copies close (8 clocks apart)
 					if (pos >= 16 && pos < 24) {
 						pos -= 16;
@@ -248,14 +244,11 @@ window.TIA = (function() {
 						pos >>>= 2;
 					}
 					break;
-
-				default:
-					throw new Error('Unrecognized value in NUSIZ register');
 			}
 
 			if (pos < 8) {
-				return ref ? !!(gr & (1 << pos)) :
-					!!(gr & (0x80 >>> pos));
+				return !!(ref ? gr & (1 << pos) :
+					gr & (0x80 >>> pos));
 			}
 			return false;
 
@@ -269,7 +262,7 @@ window.TIA = (function() {
 			if (enabled) {
 				if (p === 0) {
 					if (mmap.readByte(MEM_LOCATIONS.RESMP0) & 0x02) {
-						m0Pos = p0Pos + 4;
+						m0Pos = p0Pos + 3;
 						return false;
 					}
 
@@ -277,7 +270,7 @@ window.TIA = (function() {
 					size = mmap.readByte(MEM_LOCATIONS.NUSIZ0);
 				} else {
 					if (mmap.readByte(MEM_LOCATIONS.RESMP1) & 0x02) {
-						m1Pos = p1Pos + 4;
+						m1Pos = p1Pos + 3;
 						return false;
 					}
 
@@ -323,7 +316,7 @@ window.TIA = (function() {
 			if (mmap.readByte(MEM_LOCATIONS.CTRLPF) & 0x04) {
 				if (pf === true) {
 					if (mmap.readByte(MEM_LOCATIONS.CTRLPF) & 0x02) {
-						color = mmap.readByte(x < 20 ? MEM_LOCATIONS.COLUP0 :
+						color = mmap.readByte(x < 80 ? MEM_LOCATIONS.COLUP0 :
 							MEM_LOCATIONS.COLUP1);
 					} else {
 						color = mmap.readByte(MEM_LOCATIONS.COLUPF);
@@ -342,7 +335,7 @@ window.TIA = (function() {
 					color = mmap.readByte(MEM_LOCATIONS.COLUP1);
 				} else if (pf === true) {
 					if (mmap.readByte(MEM_LOCATIONS.CTRLPF) & 0x02) {
-						color = mmap.readByte(x < 20 ? MEM_LOCATIONS.COLUP0 :
+						color = mmap.readByte(x < 80 ? MEM_LOCATIONS.COLUP0 :
 							MEM_LOCATIONS.COLUP1);
 					} else {
 						color = mmap.readByte(MEM_LOCATIONS.COLUPF);
@@ -503,7 +496,6 @@ window.TIA = (function() {
 			// the beam is automatically reset back to HBLANK when
 			// we get to the right edge of the frame
 			if (x >= 160) {
-				tiaClock = 0;
 				x = -68;
 
 				// reset the RDY flag so the CPU can begin cycling again
@@ -544,19 +536,19 @@ window.TIA = (function() {
 
 						// same for missle 0
 						if (mmap.isStrobeActive(MEM_LOCATIONS.RESM0) === true) {
-							m0Pos = Math.max(0, x + 8);
+							m0Pos = Math.max(0, x);
 							mmap.resetStrobe(MEM_LOCATIONS.RESM0);
 						}
 
 						// same for missle 1
 						if (mmap.isStrobeActive(MEM_LOCATIONS.RESM1) === true) {
-							m1Pos = Math.max(0, x + 8);
+							m1Pos = Math.max(0, x);
 							mmap.resetStrobe(MEM_LOCATIONS.RESM1);
 						}
 
 						// same for ball
 						if (mmap.isStrobeActive(MEM_LOCATIONS.RESBL) === true) {
-							blPos = Math.max(0, x + 8);
+							blPos = Math.max(0, x);
 							mmap.resetStrobe(MEM_LOCATIONS.RESBL);
 						}
 
@@ -577,11 +569,12 @@ window.TIA = (function() {
 						if (mmap.isStrobeActive(MEM_LOCATIONS.HMCLR) === true) {
 							mmap.resetStrobe(MEM_LOCATIONS.HMCLR);
 
-							mmap.writeByte(0, MEM_LOCATIONS.HMP0);
-							mmap.writeByte(0, MEM_LOCATIONS.HMP1);
-							mmap.writeByte(0, MEM_LOCATIONS.HMM0);
-							mmap.writeByte(0, MEM_LOCATIONS.HMM1);
-							mmap.writeByte(0, MEM_LOCATIONS.HMBL);
+							(function(loc, i) {
+								var l = loc.length;
+								for (; i < l; i++) {
+									mmap.writeByte(0, MEM_LOCATIONS[loc[i]]);
+								}
+							})(['HMP0', 'HMP1', 'HMM0', 'HMM1', 'HMBL'], 0);
 						}
 
 						// if the CXCLR register has been strobed, clear all
@@ -589,14 +582,12 @@ window.TIA = (function() {
 						if (mmap.isStrobeActive(MEM_LOCATIONS.CXCLR) === true) {
 							mmap.resetStrobe(MEM_LOCATIONS.CXCLR);
 
-							mmap.writeByte(0, MEM_LOCATIONS.CXM0P);
-							mmap.writeByte(0, MEM_LOCATIONS.CXM1P);
-							mmap.writeByte(0, MEM_LOCATIONS.CXP0FB);
-							mmap.writeByte(0, MEM_LOCATIONS.CXP1FB);
-							mmap.writeByte(0, MEM_LOCATIONS.CXM0FB);
-							mmap.writeByte(0, MEM_LOCATIONS.CXM1FB);
-							mmap.writeByte(0, MEM_LOCATIONS.CXBLPF);
-							mmap.writeByte(0, MEM_LOCATIONS.CXPPMM);
+							(function(loc, i) {
+								var l = loc.length;
+								for (; i < l; i++) {
+									mmap.writeByte(0, MEM_LOCATIONS[loc[i]]);
+								}
+							})(['CXM0P', 'CXM1P', 'CXP0FB', 'CXP1FB', 'CXM0FB', 'CXM1FB', 'CXBLPF', 'CXPPMM'], 0);
 						}
 
 						// check if VBLANK was turned on or off
