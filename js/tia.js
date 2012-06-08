@@ -13,8 +13,6 @@ window.TIA = (function() {
 
 		pixelBuffer,   // the array of pixel colors representing the video output
 
-		canvasElement, // a reference to the canvas element for video output
-
 		canvasContext, // the context of the canvas element for video output
 
 		handlers = {
@@ -22,19 +20,11 @@ window.TIA = (function() {
 			stop: []
 		},
 
-		reqAnimFrame = (function() {
-			return window.requestAnimationFrame ||
-				window.webkitRequestAnimationFrame ||
-				window.mozRequestAnimationFrame ||
-				window.oRequestAnimationFrame ||
-				window.msRequestAnimationFrame ||
-				function(callback) {
-					window.setTimeout(callback, 1000 / 60);
-				};
-
-		})(),
-
-		tiaCycles, // the number of cycles executed by the TIA
+		reqAnimFrame = window.requestAnimationFrame ||
+			window.webkitRequestAnimationFrame ||
+			window.mozRequestAnimationFrame ||
+			window.oRequestAnimationFrame ||
+			window.msRequestAnimationFrame,
 
 		numFrames, // the number of frames written to the canvas
 
@@ -42,9 +32,9 @@ window.TIA = (function() {
 
 //		TARGET_CYCLE_RATE = 3579.545, // frequency of the TIA clock in kHz
 
-		// the dimensions of the output video buffer -- NTSC only for now
-		VIDEO_BUFFER_WIDTH  = 160,
-		VIDEO_BUFFER_HEIGHT = 300,
+		// the dimensions of the output video buffer -- NTSC-only for now
+		VIDEO_BUFFER_WIDTH,
+		VIDEO_BUFFER_HEIGHT,
 
 		// locations of TIA registers on the system bus
 		MEM_LOCATIONS = {
@@ -142,18 +132,19 @@ window.TIA = (function() {
 			]
 		],
 
-		generateStatic = function() {
+		drawStaticFrame = function() {
 			var color,
-				index = 0,
+				i = 0,
 				data  = pixelBuffer.data,
 				len   = data.length;
 
-			while (index < len) {
-				color = breakFlag === false ? 0x1b :
-					Math.floor(Math.random() * 0xff);
+			for (; i < len; i += 4) {
+				color = Math.floor(Math.random() * 0xff);
 
-				data[index++] = data[index++] = data[index++] = color;
-				data[index++] = 255;  // alpha
+				data[i]     = color; // red channel
+				data[i + 1] = color; // green channel
+				data[i + 2] = color; // blue channel
+				data[i + 3] = 255;   // alpha channel (always opaque)
 			}
 
 			canvasContext.putImageData(pixelBuffer, 0, 0);
@@ -161,7 +152,7 @@ window.TIA = (function() {
 			numFrames++;
 
 			if (breakFlag === true) {
-				reqAnimFrame(generateStatic);
+				reqAnimFrame(drawStaticFrame);
 			}
 		},
 
@@ -601,7 +592,7 @@ window.TIA = (function() {
 
 			// if we are not in VBLANK or HSYNC	write the pixel to the
 			// canvas at the current color clock
-			if (VBLANK === false && y >= 34 & x >= 0) {
+			if (VBLANK === false && y >= 34 && x >= 0) {
 				writePixel(x, y - 34);
 			}
 			
@@ -609,10 +600,8 @@ window.TIA = (function() {
 			x++;
 
 			// increment/cycle the TIA clock
-			tiaClock = tiaClock > 1 ? 0 : tiaClock + 1;
-
-			// incremennt the TIA clock counter
-			tiaCycles++;
+			tiaClock = tiaClock === 0 ? 1 :
+				tiaClock === 1 ? 2 : 0;
 
 			// reset the beam to the top of the frame when VSYNC has been detected
 			if (VSYNC === true) {
@@ -655,11 +644,12 @@ window.TIA = (function() {
 
 		init: function(canvas) {
 			
-			// set the canvas reference
-			canvasElement = canvas;
-
 			// store a reference to the canvas's context
 			canvasContext = canvas.getContext('2d');
+
+			// set the video buffer dimensions to the canvas size
+			VIDEO_BUFFER_WIDTH = parseInt(canvas.width, 10);
+			VIDEO_BUFFER_HEIGHT = parseInt(canvas.height, 10);
 
 			// create a pixel buffer to hold the raw data
 			pixelBuffer = canvasContext.createImageData(
@@ -671,7 +661,7 @@ window.TIA = (function() {
 			breakFlag = true;
 
 			// start the drawing static on the canvas
-			generateStatic();
+			reqAnimFrame(drawStaticFrame);
 
 			// Initialize the memory map
 			mmap = MemoryMap.createAtariMemoryMap();
@@ -681,9 +671,6 @@ window.TIA = (function() {
 
 			// initialize and pass the memory map to the RIOT
 			RIOT.init(mmap);
-
-			// initialize the TIA's cycle count
-			tiaCycles = 0;
 
 			// initialize the TIA clock
 			tiaClock = 0;
@@ -759,10 +746,6 @@ window.TIA = (function() {
 
 		getMemoryCopy: function(offset, len) {
 			return mmap.getCopy(offset, len);
-		},
-
-		getCycleCount: function() {
-			return tiaCycles;
 		},
 
 		getNumFrames: function() {

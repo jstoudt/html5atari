@@ -44,7 +44,7 @@ header {
 }
 
 .television {
-	@include borderRadius(12px, 20px);
+//	@include borderRadius(12px, 20px);
 	-webkit-transform: scale(4.0, 2.0) translateY(60px);
 	-moz-transform: scale(4.0, 2.0) translateY(60px);
 	-o-transform: scale(4.0, 2.0) translateY(60px);
@@ -93,7 +93,7 @@ header {
 			height: 50px;
 			overflow: hidden;
 			border: 5px solid #333;
-			@include borderRadius(11px);
+			@include borderRadius(10px);
 			color: #c0c0c0;
 			font-weight: bold;
 			font-size: 13px;

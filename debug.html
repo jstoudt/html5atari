@@ -42,7 +42,7 @@
 					<tr>
 						<td id="N"></td>
 						<td id="V"></td>
-						<td>X</td>
+						<td class="unused"></td>
 						<td id="B"></td>
 						<td id="D"></td>
 						<td id="I"></td>
@@ -52,15 +52,7 @@
 				</tbody>
 			</table>
 
-			<div id="beam-position" class="beam-position">
-				<label>Pixel Clock</label>
-				<div id="x-pos" class="register"></div>
-				<br>
-				<label>Scanline</label>
-				<div id="y-pos" class="register"></div>
-			</div>
-
-			<table id="memory" class="memory"
+			<table id="memory" class="memory">
 				<thead>
 					<th>00xx</th>
 					<th>0</th>
@@ -238,17 +230,17 @@
 		</div>
 
 		<div class="cpu-right">
-			<label>TIA Frequency</label>
-			<div id="tia-frequency" class="register"></div>
-			<span>MHz</span>
+			<label>Pixel Clock</label>
+			<div id="x-pos" class="register"></div>
 			
+			<label>Scanline</label>
+			<div id="y-pos" class="register"></div>
+
 			<div id="frame-rate" class="register"></div>
 			<span>fps</span>
-
+			
 			<div class="instructions">
-				<table id="instructions">
-					<tbody></tbody>
-				</table>
+				<table id="instructions"></table>
 			</div>
 		</div>
 

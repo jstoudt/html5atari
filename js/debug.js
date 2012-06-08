@@ -9,9 +9,7 @@
 		scanButton   = document.getElementById('scan-button'),
 
 		tiaTime0     = Date.now(),
-		tiaCycles0   = TIA.getCycleCount(),
 		tiaFrames0   = TIA.getNumFrames(),
-		tiaFrequency = document.getElementById('tia-frequency'),
 		frameRate    = document.getElementById('frame-rate'),
 
 		instructions = document.getElementById('instructions'),
@@ -217,14 +215,10 @@
 
 	function calcCycleRate() {
 		var tiaTime1   = Date.now(),
-			tiaCycles1 = TIA.getCycleCount(),
 			tiaFrames1 = TIA.getNumFrames();
-
-		tiaFrequency.innerHTML = Math.round((tiaCycles1 - tiaCycles0) / (tiaTime1 - tiaTime0)) / 1e3;
 
 		frameRate.innerHTML = Math.round((tiaFrames1 - tiaFrames0) / (tiaTime1 - tiaTime0) * 1e6) / 1000;
 
-		tiaCycles0 = tiaCycles1;
 		tiaTime0   = tiaTime1;
 		tiaFrames0 = tiaFrames1;
 
@@ -233,7 +227,6 @@
 
 	function listInstructions(program) {
 		var i, item, tr,
-			tbody = instructions.querySelector('tbody'),
 			createCol = function(str, cname, row) {
 				var td = document.createElement('td');
 				td.innerHTML = str;
@@ -252,7 +245,7 @@
 			createCol(item.operand, 'operand', tr);
 			createCol(';' + item.cycles, 'cycles', tr);
 			
-			tbody.appendChild(tr);
+			instructions.appendChild(tr);
 
 			stepButton.removeAttribute('disabled');
 			scanButton.removeAttribute('disabled');

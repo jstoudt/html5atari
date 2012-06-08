@@ -44,6 +44,7 @@ label {
 
 .cpu-right {
 	width: 435px;
+
 }
 
 .register {
@@ -68,34 +69,14 @@ label {
 .status {
 	float: left;
 	margin: 25px 0;
+
+	.unused {
+		background: #eee;	}
 }
 
-.beam-position {
-	margin-top: 10px;
-
-	label {
-		display: inline-block;
-		text-align: right;
-		width: 80px;
-	}
-
-	.register {
-		margin-bottom: 4px;
-	}
-}
-
-.frequency-wrapper {
-	display: inline-block;
-}
-
-#tia-frequency,
 #frame-rate {
 	width: 6em;
-	margin-right: 0.5em;
-}
-
-#frame-rate {
-	margin-left: 25px;
+	margin: 0 0.5em 0 5.5em;
 }
 
 .memory {
@@ -208,7 +189,7 @@ fieldset {
 }
 
 .player {
-	width: 160px;
+	width: 155px;
 
 	label {
 		width: 60px;
