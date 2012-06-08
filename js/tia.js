@@ -26,15 +26,23 @@ window.TIA = (function() {
 			window.oRequestAnimationFrame ||
 			window.msRequestAnimationFrame,
 
-		numFrames, // the number of frames written to the canvas
+		cancelAnimFrame = window.cancelAnimationFrame ||
+			window.webkitCancelAnimationFrame ||
+			window.mozCancelAnimationFrame ||
+			window.oCancelAnimationFrame ||
+			window.msCancelAnimationFrame,
 
-		breakFlag, // set to stop the TIA execution loop
+		rafId = null,
+
+		numFrames = 0, // the number of frames written to the canvas
+
+		started = false,
 
 //		TARGET_CYCLE_RATE = 3579.545, // frequency of the TIA clock in kHz
 
 		// the dimensions of the output video buffer -- NTSC-only for now
-		VIDEO_BUFFER_WIDTH,
-		VIDEO_BUFFER_HEIGHT,
+		VIDEO_BUFFER_WIDTH = 0,
+		VIDEO_BUFFER_HEIGHT = 0,
 
 		// locations of TIA registers on the system bus
 		MEM_LOCATIONS = {
@@ -151,9 +159,7 @@ window.TIA = (function() {
 
 			numFrames++;
 
-			if (breakFlag === true) {
-				reqAnimFrame(drawStaticFrame);
-			}
+			rafId = reqAnimFrame(drawStaticFrame);
 		},
 
 		isPlayfieldAt = function(x) {
@@ -456,7 +462,7 @@ window.TIA = (function() {
 			return x;
 		},
 
-		// a value that cycles between 0, 1 and 2... 6507 is cycled on 0
+		// a value that cycles between 0, 1 and 2 -- 6507 is cycled on 0
 		tiaClock,
 
 		// the position of the beam on the x-axis from -68 to 159
@@ -596,7 +602,7 @@ window.TIA = (function() {
 				writePixel(x, y - 34);
 			}
 			
-			// draw the next pixel
+			// increment to draw the next pixel
 			x++;
 
 			// increment/cycle the TIA clock
@@ -613,17 +619,7 @@ window.TIA = (function() {
 		},
 
 		runMainLoop = function() {
-			var y0, i, l;
-
-			// if the main loop was stopped, run any handlers that were bound
-			// to the stop event and return
-			if (breakFlag === true) {
-				l = handlers.stop.length;
-				for (i = 0; i < l; i++) {
-					handlers.stop[i]();
-				}
-				return;
-			}
+			var y0;
 
 			// run the code until VSYNC is enabled, then draw the frame
 			// and request another execution of this function
@@ -631,12 +627,11 @@ window.TIA = (function() {
 				y0 = y;
 				execClockCycle();
 				if (VSYNC === true && y0 > 0) {
+					rafId = reqAnimFrame(runMainLoop);
 					drawCanvas();
-					reqAnimFrame(runMainLoop);
 					break;
 				}
 			}
-			
 		};
 
 
@@ -657,11 +652,14 @@ window.TIA = (function() {
 				VIDEO_BUFFER_HEIGHT
 			);
 
-			// set the break flag until the system is started
-			breakFlag = true;
+			// reset the started flag
+			started = false;
+
+			// cancel any frame drawing taking place
+			cancelAnimFrame(rafId);
 
 			// start the drawing static on the canvas
-			reqAnimFrame(drawStaticFrame);
+			rafId = reqAnimFrame(drawStaticFrame);
 
 			// Initialize the memory map
 			mmap = MemoryMap.createAtariMemoryMap();
@@ -700,8 +698,7 @@ window.TIA = (function() {
 			var i = 0,
 				l = handlers.start.length;
 
-			// reset the break flag
-			breakFlag = false;
+			cancelAnimFrame(rafId);
 
 			// loop through and execute each of the handlers that have been
 			// binded to the start event
@@ -709,12 +706,14 @@ window.TIA = (function() {
 				handlers.start[i]();
 			}
 
-			// start running the main loop
-			runMainLoop();
+			// schecule the start of the main loop
+			rafId = reqAnimFrame(runMainLoop);
+
+			started = true;
 		},
 
 		isStarted: function() {
-			return !breakFlag;
+			return started;
 		},
 
 		step: function() {
@@ -729,7 +728,18 @@ window.TIA = (function() {
 		},
 
 		stop: function() {
-			breakFlag = true;
+			var i = 0,
+				len = handlers.stop.length;
+
+			cancelAnimFrame(rafId);
+			rafId = reqAnimFrame(drawStaticFrame);
+
+			started = false;
+
+			// run any handlers that were bound to the stop event
+			for (; i < len; i++) {
+				handlers.stop[i]();
+			}
 		},
 
 		addEventListener: function(type, handler) {
