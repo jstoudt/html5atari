@@ -163,7 +163,6 @@
 				return;
 			}
 
-			cartSlot.innerHTML = 'Loading ' + escape(romFile.name) + '&hellip;';
 			reader = new FileReader();
 
 			reader.onerror = function() {
@@ -187,7 +186,7 @@
 				resetSwitch.removeAttribute('disabled');
 
 				cartSlot.classList.add('file-loaded');
-				cartSlot.innerHTML = escape(romFile.name) + ' loaded';
+				cartSlot.innerHTML = romFile.name + ' loaded';
 			};
 
 			reader.readAsArrayBuffer(romFile);

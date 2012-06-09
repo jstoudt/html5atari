@@ -2162,7 +2162,7 @@ window.CPU6507 = (function() {
 			instCycles = cycleCount - cycles0;
 
 			// wait for how many cycles this operation took
-			cyclesToWait = instCycles - 1;
+			cyclesToWait = instCycles - 2;
 
 			// update the instruction info with the number of cycles
 			// the execution actually required
@@ -2204,18 +2204,18 @@ window.CPU6507 = (function() {
 
 		// execute a single cycle
 		cycle: function() {
-			var commit = false;
-			if (cyclesToWait < 1) {
-				if (waiting === true) {
+			if (waiting === true) {
+				if (cyclesToWait > 0) {
+					cyclesToWait--;
+					return false;
+				} else {
 					commitOperation();
-					commit = true;
+					return true;
 				}
-				executeInstruction();
-			} else {
-				cyclesToWait--;
 			}
-			
-			return commit;
+
+			executeInstruction();
+			return false;
 		},
 
 		addEventListener: function(type, handler) {

@@ -462,7 +462,7 @@ window.TIA = (function() {
 			return x;
 		},
 
-		// a value that cycles between 0, 1 and 2 -- 6507 is cycled on 0
+		// a value that cycles between 0, 1 and 2 -- 6507 is cycled on 2
 		tiaClock,
 
 		// the position of the beam on the x-axis from -68 to 159
@@ -502,7 +502,7 @@ window.TIA = (function() {
 				y++;
 			}
 
-			if (tiaClock === 0) {
+			if (tiaClock === 2) {
 				// cycle the RIOT, update the timer
 				RIOT.cycle();
 
@@ -598,7 +598,7 @@ window.TIA = (function() {
 
 			// if we are not in VBLANK or HSYNC	write the pixel to the
 			// canvas at the current color clock
-			if (VBLANK === false && y >= 34 && x >= 0) {
+			if (VBLANK === false && y >= 34 && y < VIDEO_BUFFER_HEIGHT + 34 && x >= 0) {
 				writePixel(x, y - 34);
 			}
 			
@@ -717,10 +717,9 @@ window.TIA = (function() {
 		},
 
 		step: function() {
-			var y0;
-
 			while(1) {
 				if (execClockCycle() === true) {
+					cancelAnimFrame(rafId);
 					drawCanvas();
 					break;
 				}
@@ -732,7 +731,6 @@ window.TIA = (function() {
 				len = handlers.stop.length;
 
 			cancelAnimFrame(rafId);
-			rafId = reqAnimFrame(drawStaticFrame);
 
 			started = false;
 
