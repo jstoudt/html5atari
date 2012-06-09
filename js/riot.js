@@ -52,6 +52,10 @@ window.RIOT = (function() {
 			mmap.writeByte(0xff, MEM_LOCATIONS.SWCHA);
 			mmap.writeByte(0, MEM_LOCATIONS.SWACNT);
 
+			// initialize the SWCHB and SWBCNT registers
+			mmap.writeByte(0xff, MEM_LOCATIONS.SWCHB);
+			mmap.writeByte(0, MEM_LOCATIONS.SWBCNT);
+
 			timer = Math.floor(Math.random() * 0xffffffff);
 
 			intervalMode = INTERVAL_MODE.NONE;

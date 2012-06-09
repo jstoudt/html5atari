@@ -301,14 +301,14 @@ window.TIA = (function() {
 		writePixel = function(x, y) {
 			// determine what color the pixel at the present coordinates should be
 			var color,
-				i     = (y * VIDEO_BUFFER_WIDTH + x) << 2,
-				data  = pixelBuffer.data,
-				pf    = isPlayfieldAt(x >>> 2),
-				p0    = isPlayerAt(x, 0),
-				p1    = isPlayerAt(x, 1),
-				m0    = isMissleAt(x, 0),
-				m1    = isMissleAt(x, 1),
-				bl    = isBallAt(x);
+				i    = (y * VIDEO_BUFFER_WIDTH + x) << 2,
+				data = pixelBuffer.data,
+				pf   = isPlayfieldAt(x >>> 2),
+				p0   = isPlayerAt(x, 0),
+				p1   = isPlayerAt(x, 1),
+				m0   = isMissleAt(x, 0),
+				m1   = isMissleAt(x, 1),
+				bl   = isBallAt(x);
 
 			if (mmap.readByte(MEM_LOCATIONS.CTRLPF) & 0x04) {
 				if (pf === true) {
@@ -503,9 +503,8 @@ window.TIA = (function() {
 			}
 
 			if (tiaClock === 2) {
-				// cycle the RIOT, update the timer
-				RIOT.cycle();
 
+				// cycle the 6507 unless the RDY latch is set
 				if (RDY === false) {
 					proc = CPU6507.cycle();
 
@@ -594,6 +593,9 @@ window.TIA = (function() {
 						VSYNC = !!(mmap.readByte(MEM_LOCATIONS.VSYNC) & 0x02);
 					}
 				}
+
+				// cycle the RIOT, update the timer
+				RIOT.cycle();
 			}
 
 			// if we are not in VBLANK or HSYNC	write the pixel to the
