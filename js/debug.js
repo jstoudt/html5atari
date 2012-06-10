@@ -61,6 +61,12 @@
 		pfscore      = document.getElementById('pf-score'),
 		pfpriority   = document.getElementById('pf-priority'),
 
+		blenabled    = document.getElementById('blenabled'),
+		blpos        = document.getElementById('blpos'),
+		blmove       = document.getElementById('blmove'),
+		blsize       = document.getElementById('blsize'),
+		bldelay      = document.getElementById('bldelay'),
+
 		memTable     = document.getElementById('memory'),
 		cells        = memTable.getElementsByTagName('td'),
 		memCells     = [],
@@ -133,7 +139,8 @@
 			beamPosition    = TIA.getBeamPosition(),
 			timerInfo       = RIOT.getTimerRegisters(),
 			consoleSwitches = RIOT.getConsoleSwitches(),
-			playfieldInfo   = TIA.getPlayfieldInfo();
+			playfieldInfo   = TIA.getPlayfieldInfo(),
+			ballInfo        = TIA.getBallInfo();
 
 		ac.innerHTML = toHex(CPU6507.getRegister('ac'), 2);
 		x.innerHTML  = toHex(CPU6507.getRegister('x'), 2);
@@ -203,12 +210,18 @@
 		
 		pfcolor.textContent = toHex(playfieldInfo.color, 2);
 		pfswatch.style.backgroundColor = playfieldInfo.rgb;
-		pf0.textContent                = playfieldInfo.pf0;
-		pf1.textContent                = playfieldInfo.pf1;
-		pf2.textContent                = playfieldInfo.pf2;
+		pf0.textContent                = toBinary(playfieldInfo.pf0, 4);
+		pf1.textContent                = toBinary(playfieldInfo.pf1, 8);
+		pf2.textContent                = toBinary(playfieldInfo.pf2, 8);
 		pfreflect.checked              = playfieldInfo.reflect;
 		pfscore.checked                = playfieldInfo.score;
 		pfpriority.checked             = playfieldInfo.priority;
+
+		blenabled.checked  = ballInfo.enabled;
+		blpos.textContent  = toHex(ballInfo.position);
+		blmove.textContent = toHex(ballInfo.hmove);
+		blsize.textContent = toHex(ballInfo.size);
+		bldelay.checked    = ballInfo.delay;
 
 		reqAnimFrame(showInfo);
 	}

@@ -181,7 +181,7 @@ window.TIA = (function() {
 				nusiz = mmap.readByte(MEM_LOCATIONS.NUSIZ0) & 0x07;
 //				vdel  = mmap.readByte(MEM_LOCATIONS.VDELP0) & 0x01;
 				pos = x - p0Pos;
-			} else {
+			} else { // p === 1
 				gr    = mmap.readByte(MEM_LOCATIONS.GRP1);
 				ref   = mmap.readByte(MEM_LOCATIONS.REFP1);
 				nusiz = mmap.readByte(MEM_LOCATIONS.NUSIZ1) & 0x07;
@@ -291,7 +291,7 @@ window.TIA = (function() {
 			if (mmap.readByte(MEM_LOCATIONS.ENABL) & 0x02) {
 				size = 1 << ((mmap.readByte(MEM_LOCATIONS.CTRLPF) >>> 4) & 0x03);
 				
-				if (x >= blPos && x <= blPos + size) {
+				if (x >= blPos && x < blPos + size) {
 					return true;
 				}
 			}
@@ -300,18 +300,18 @@ window.TIA = (function() {
 
 		writePixel = function(x, y) {
 			// determine what color the pixel at the present coordinates should be
-			var color,
-				i    = (y * VIDEO_BUFFER_WIDTH + x) << 2,
+			var i    = (y * VIDEO_BUFFER_WIDTH + x) << 2,
 				data = pixelBuffer.data,
 				pf   = isPlayfieldAt(x >>> 2),
 				p0   = isPlayerAt(x, 0),
 				p1   = isPlayerAt(x, 1),
 				m0   = isMissleAt(x, 0),
 				m1   = isMissleAt(x, 1),
-				bl   = isBallAt(x);
+				bl   = isBallAt(x),
+				color;
 
 			if (mmap.readByte(MEM_LOCATIONS.CTRLPF) & 0x04) {
-				if (pf === true) {
+				if (pf === true || bl === true) {
 					if (mmap.readByte(MEM_LOCATIONS.CTRLPF) & 0x02) {
 						color = mmap.readByte(x < 80 ? MEM_LOCATIONS.COLUP0 :
 							MEM_LOCATIONS.COLUP1);
@@ -330,7 +330,7 @@ window.TIA = (function() {
 					color = mmap.readByte(MEM_LOCATIONS.COLUP0);
 				} else if (p1 === true || m1 === true) {
 					color = mmap.readByte(MEM_LOCATIONS.COLUP1);
-				} else if (pf === true) {
+				} else if (pf === true || bl === true) {
 					if (mmap.readByte(MEM_LOCATIONS.CTRLPF) & 0x02) {
 						color = mmap.readByte(x < 80 ? MEM_LOCATIONS.COLUP0 :
 							MEM_LOCATIONS.COLUP1);
@@ -520,13 +520,13 @@ window.TIA = (function() {
 						// set the horizontal position for player 0 on the next
 						// scanline
 						if (mmap.isStrobeActive(MEM_LOCATIONS.RESP0) === true) {
-							p0Pos = Math.max(0, x + 8);
+							p0Pos = Math.max(0, x + 6);
 							mmap.resetStrobe(MEM_LOCATIONS.RESP0);
 						}
 
 						// same for player 1
 						if (mmap.isStrobeActive(MEM_LOCATIONS.RESP1) === true) {
-							p1Pos = Math.max(0, x + 8);
+							p1Pos = Math.max(0, x + 6);
 							mmap.resetStrobe(MEM_LOCATIONS.RESP1);
 						}
 
@@ -544,7 +544,7 @@ window.TIA = (function() {
 
 						// same for ball
 						if (mmap.isStrobeActive(MEM_LOCATIONS.RESBL) === true) {
-							blPos = Math.max(0, x);
+							blPos = Math.max(0, x + 5);
 							mmap.resetStrobe(MEM_LOCATIONS.RESBL);
 						}
 
@@ -678,7 +678,7 @@ window.TIA = (function() {
 			// initialize the frame counter
 			numFrames = 0;
 
-			// randomize the electron beam position
+			// initialize the electron beam position
 			x = -68;
 			y = 0;
 			// reset VBLANK and RDY and VSYNC
@@ -813,14 +813,24 @@ window.TIA = (function() {
 				rgb = COLOR_PALETTE[(color & 0xf0) >>> 4][(color & 0x0f) >>> 1];
 
 			return {
-				pf0: mmap.readByte(MEM_LOCATIONS.PF0) >>> 4,
-				pf1: mmap.readByte(MEM_LOCATIONS.PF1),
-				pf2: mmap.readByte(MEM_LOCATIONS.PF2),
-				reflect: !!(ctrlpf & 0x01),
-				score: !!(ctrlpf & 0x02),
+				pf0:      mmap.readByte(MEM_LOCATIONS.PF0) >>> 4,
+				pf1:      mmap.readByte(MEM_LOCATIONS.PF1),
+				pf2:      mmap.readByte(MEM_LOCATIONS.PF2),
+				reflect:  !!(ctrlpf & 0x01),
+				score:    !!(ctrlpf & 0x02),
 				priority: !!(ctrlpf & 0x04),
-				color: color,
-				rgb: 'rgb(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ')'
+				color:    color,
+				rgb:      'rgb(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ')'
+			};
+		},
+
+		getBallInfo: function() {
+			return {
+				enabled:  !!(mmap.readByte(MEM_LOCATIONS.ENABL) & 0x02),
+				position: blPos,
+				hmove:    mmap.readByte(MEM_LOCATIONS.HMBL) >>> 4,
+				size:     (mmap.readByte(MEM_LOCATIONS.CTRLPF) >>> 4) & 0x03,
+				delay:    !!(mmap.readByte(MEM_LOCATIONS.VDELBL) & 0X01)
 			};
 		}
 
