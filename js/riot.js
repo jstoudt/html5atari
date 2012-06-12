@@ -45,8 +45,22 @@ window.RIOT = (function() {
 	return {
 
 		init: function(memory) {
-			
+			var readonlyList = [
+					'SWCHA', 'SWACNT', 'SWCHB', 'SWBCNT', 'INITIM', 'TIMINT'
+				],
+				i = 0,
+				len = readonlyList.length;
+
 			mmap = memory;
+
+			for (; i < len; i++) {
+				mmap.addReadOnly(MEM_LOCATIONS[readonlyList[i]]);
+			}
+
+			// randomize the RIOT RAM
+			for (i = 0x80; i <= 0xff; i++) {
+				mmap.writeByte(i, Math.floor(Math.random() * 0xff));
+			}
 
 			// initialize the SWCHA and SWACNT registers
 			mmap.writeByte(0xff, MEM_LOCATIONS.SWCHA);

@@ -34,7 +34,7 @@ function MemoryMap(bitWidth) {
 
 	buf            = new ArrayBuffer(1 << bitWidth);
 	this._memory   = new Uint8Array(buf);
-	this._strobes  = [];
+	this._strobes  = {};
 	this._readonly = [];
 	this._journal  = [];
 	this._bitmask  = mask;
@@ -50,19 +50,20 @@ function MemoryMap(bitWidth) {
 
 // Changes the memory at the specified address location to the specified value
 MemoryMap.prototype.writeByte = function(val, addr) {
-	var i = 0,
-		len = this._strobes.length;
+	var strobes = this._strobes,
+		i, list;
 
 	addr &= this._bitmask;
+	val &= 0xff;
 
-	for (; i < len; i++) {
-		if (this._strobes[i].address === addr) {
-			this._strobes[i].active = true;
-			return;
+	if (addr in strobes) {
+		list = strobes[addr];
+		for (i = 0; i < list.length; i++) {
+			list[i](val);
 		}
+	} else {
+		this._memory[addr] = val;
 	}
-
-	this._memory[addr] = val & 0xff;
 };
 
 // Returns the byte in memory at the specified address location
@@ -110,50 +111,47 @@ MemoryMap.prototype.getCopy = function(offset, len) {
 
 // Indicates that the byte at the specified address location is a strobe
 // rather than a conventional read-write byte on the memory bus
-MemoryMap.prototype.addStrobe = function(addr) {
+MemoryMap.prototype.addStrobeCallback = function(addr, f) {
+	var strobes = this._strobes;
 	addr &= this._bitmask;
 
-	this._strobes.push({
-		address: addr,
-		active: false
-	});
-};
-
-// Indicates if the strobe at the specifed location was triggered as active
-// by a write to that location
-MemoryMap.prototype.isStrobeActive = function(addr) {
-	var i = 0,
-		strobes = this._strobes,
-		len = strobes.length;
-
-	addr &= this._bitmask;
-
-	for (; i < len; i++) {
-		if (strobes[i].address === addr) {
-			return strobes[i].active;
-		}
+	if (!(addr in strobes)) {
+		strobes[addr] = [];
 	}
 
-	throw new Error('The address specified has not been added as a strobe.');
+	strobes[addr].push(f);
 };
 
-// Marks the strobe at the specifed location as inactive
-MemoryMap.prototype.resetStrobe = function(addr) {
-	var i = 0,
-		strobes = this._strobes,
-		len = strobes.length;
+MemoryMap.prototype.removeStrobeCallback = function(addr, f) {
+	var strobes = this._strobes,
+		list, i;
 
-	addr &= this._bitmask;
-
-	for (; i < len; i++) {
-		if (strobes[i].address === addr) {
-			strobes[i].active = false;
-			return;
+	if (arguments.length === 1 && typeof addr === 'number') {
+		if (addr in strobes) {
+			delete strobes[addr];
+		}
+	} else if (arguments.length === 1 && typeof addr === 'function') {
+		f = addr;
+		for (i in strobes) {
+			list = strobes[i];
+			for (i = list.length - 1; i >= 0; i--) {
+				if (list[i] === f) {
+					list.splice(i, 1);
+				}
+			}
+		}
+	} else if (arguments.length === 2) {
+		if (addr in strobes) {
+			list = strobes[addr];
+			for (i = list.length - 1; i >= 0; i--) {
+				if (list[i] === f) {
+					list.splice(i, 1);
+				}
+			}
 		}
 	}
-
-	throw new Error('The address specified has not been added as a strobe');
 };
+
 
 // Marks the given address as a location to which the CPU cannot write to
 // via the journalCommit function
@@ -203,63 +201,4 @@ MemoryMap.prototype.journalCommit = function() {
 	}
 
 	this._journal = [];
-};
-
-
-// "static" function to create the Atari memory map with it's less than
-// subtle quirks and irregularities
-MemoryMap.createAtariMemoryMap = function() {
-	var mmap = new MemoryMap(13),
-		i = 0,
-		readOnlyList = [
-			0x40,   // CXM0P
-			0x41,   // CXM1P
-			0x42,   // CXP0FB
-			0x43,   // CXP1FB
-			0x44,   // CXM0FB
-			0x45,   // CXM1FB
-			0x46,   // CXBLPF
-			0x47,   // CXPPMM
-			0x48,   // INPT0
-			0x49,   // INPT1
-			0x50,   // INPT2
-			0x51,   // INPT3
-			0x52,   // INPT4
-			0x53,   // INPT5
-			0x282,  // SWCHB
-			0x283,  // SWBCNT
-			0x284,  // INTIM
-			0x285   // TIMINT
-		],
-		strobeList = [
-			0x02, // WSYNC
-			0x03, // RSYNC
-			0x10, // RESP0
-			0x11, // RESP1
-			0x12, // RESM0
-			0x13, // RESM1
-			0x14, // RESBL
-			0x2a, // HMOVE
-			0x2b, // HMCLR
-			0x2c  // CXCLR
-		],
-		l = strobeList.length;
-
-	// "Strobes" registers assigned to the TIA
-	for (; i < l; i++)  {
-		mmap.addStrobe(strobeList[i]);
-	}
-
-	// Add the readonly memory locations
-	l = readOnlyList.length;
-	for (i = 0; i < l; i++) {
-		mmap.addReadOnly(readOnlyList[i]);
-	}
-
-	// Randomize the bits in RAM
-	for (i = 0x80; i < 0xff; i++) {
-		mmap.writeByte(i, (Math.random() * 1000) & 0xff);
-	}
-
-	return mmap;
 };

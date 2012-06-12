@@ -51,6 +51,9 @@ Clear           sta 0,x
                 lda #%00000001
                 sta CTRLPF              ; reflect playfield
 
+                lda #%00000011          ; 3 copies - close
+                sta NUSIZ0
+
         ;------------------------------------------------
 
 StartOfFrame

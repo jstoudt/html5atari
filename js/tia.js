@@ -38,10 +38,49 @@ window.TIA = (function() {
 
 		started = false,
 
+		// a value that cycles between 0, 1 and 2 -- 6507 is cycled on 2
+		tiaClock = 0,
+
+		// the position of the beam on the x-axis from -68 to 159
+		x = -68,
+
+		// the position of the beam on the y-axis
+		y = 0,
+
+		// when this is true, the CPU does not cycle
+		RDY = false,
+
+		// when set, a signal is being sent to reset the beam to the top of the frame
+		VSYNC = false,
+
+		VBLANK = false,
+
+		// horizontal positions for moveable game graphics
+		p0Pos = 0,
+		p1Pos = 0,
+		m0Pos = 0,
+		m1Pos = 0,
+		blPos = 0,
+
+		p0Clock = 0,
+		p1Clock = 0,
+		m0Clock = 0,
+		m1Clock = 0,
+		blClock = 0,
+
+		p0Start = false,
+		p1Start = false,
+
+		// internal registers for the GRP0 and GRP1 values
+		oldGRP0 = 0x00,
+		newGRP0 = 0x00,
+		oldGRP1 = 0x00,
+		newGRP1 = 0x00,
+
 //		TARGET_CYCLE_RATE = 3579.545, // frequency of the TIA clock in kHz
 
 		// the dimensions of the output video buffer -- NTSC-only for now
-		VIDEO_BUFFER_WIDTH = 0,
+		VIDEO_BUFFER_WIDTH  = 0,
 		VIDEO_BUFFER_HEIGHT = 0,
 
 		// locations of TIA registers on the system bus
@@ -140,6 +179,137 @@ window.TIA = (function() {
 			]
 		],
 
+		initMemoryMap = function() {
+			function hmove(x, d) {
+				// only bits D7 to D4 affect horizontal motion, so confine
+				// just those bits
+				d >>>= 4;
+
+				// if d is negative, move that many pixels to the right
+				if (d & 0x08) {
+					x += (~d & 0x0f) + 1;
+
+					// wrap around if we went passed the right of the canvas
+					if (x > 159) {
+						x -= 160;
+					}
+				} else { // d is nonnegative - move to the left
+					x -= d;
+
+					// wrap around if we passed the left side of the canvas
+					if (x < 0) {
+						x = 160 - x;
+					}
+				}
+
+				return x;
+			}
+
+			var readonlyList = [
+					'CXM0P', 'CXM1P', 'CXP0FB', 'CXP1FB', 'CXM0FB',
+					'CXM1FB', 'CXBLPF', 'CXPPMM',
+					'INPT0', 'INPT1', 'INPT2', 'INPT3', 'INPT4', 'INPT5'
+				],
+				i = 0,
+				len = readonlyList.length;
+
+			mmap = new MemoryMap(13);
+			// add the readonly memory locations
+			for (; i < len; i++) {
+				mmap.addReadOnly(MEM_LOCATIONS[readonlyList[i]]);
+			}
+
+			// set the RDY latch when the WSYNC address is strobed
+			mmap.addStrobeCallback(MEM_LOCATIONS.WSYNC, function() {
+				RDY = true;
+			});
+
+			// reset the TIA clock when RSYNC is strobed
+			mmap.addStrobeCallback(MEM_LOCATIONS.RSYNC, function() {
+				tiaClock = 0;
+			});
+
+			// reset the P0 graphics position when RESP0 is strobed
+			mmap.addStrobeCallback(MEM_LOCATIONS.RESP0, function() {
+				p0Pos = x + 8;
+				p0Start = false;
+			});
+
+			// reset the P1 graphics position when RESP1 is strobed
+			mmap.addStrobeCallback(MEM_LOCATIONS.RESP1, function() {
+				p1Pos = x + 8;
+				p1Start = false;
+			});
+
+			// reset the M0 graphics position when RESM0 is strobed
+			mmap.addStrobeCallback(MEM_LOCATIONS.RESM0, function() {
+				m0Pos = x + 7;
+			});
+
+			// reset the M1 graphics position when RESM1 is strobed
+			mmap.addStrobeCallback(MEM_LOCATIONS.RESM1, function() {
+				m1Pos = x + 7;
+			});
+
+			// reset the BL graphics position when RESBL is strobed
+			mmap.addStrobeCallback(MEM_LOCATIONS.RESBL, function() {
+				blPos = x + 7;
+			});
+
+			// adjust the position of each of the graphics when the HMOVE
+			// memory address is strobed
+			mmap.addStrobeCallback(MEM_LOCATIONS.HMOVE, function() {
+				p0Pos = hmove(p0Pos, mmap.readByte(MEM_LOCATIONS.HMP0));
+				p1Pos = hmove(p1Pos, mmap.readByte(MEM_LOCATIONS.HMP1));
+				m0Pos = hmove(m0Pos, mmap.readByte(MEM_LOCATIONS.HMM0));
+				m1Pos = hmove(m1Pos, mmap.readByte(MEM_LOCATIONS.HMM1));
+				blPos = hmove(blPos, mmap.readByte(MEM_LOCATIONS.HMBL));
+			});
+
+			// store the new GRP0 value and copy the old one
+			mmap.addStrobeCallback(MEM_LOCATIONS.GRP0, function(val) {
+				oldGRP0 = newGRP0;
+				newGRP0 = val;
+			});
+
+			// store the new GRP1 value and copy the old one
+			mmap.addStrobeCallback(MEM_LOCATIONS.GRP1, function(val) {
+				oldGRP1 = newGRP1;
+				newGRP1 = val;
+			});
+
+			// clear all the horizintal movement registers when HMCLR is strobed
+			mmap.addStrobeCallback(MEM_LOCATIONS.HMCLR, function() {
+				var i = 0,
+					list = ['HMP0', 'HMP1', 'HMM0', 'HMM1', 'HMBL'],
+					len = list.length;
+
+				for (; i < len; i++) {
+					mmap.writeByte(0, MEM_LOCATIONS[list[i]]);
+				}
+			});
+
+			// clear all the collision registers when CXCLR is strobed
+			mmap.addStrobeCallback(MEM_LOCATIONS.CXCLR, function() {
+				var i = 0,
+					list = ['CXM0P', 'CXM1P', 'CXP0FB', 'CXP1FB', 'CXM0FB', 'CXM1FB', 'CXBLPF', 'CXPPMM'],
+					len = list.length;
+
+				for (; i < len; i++) {
+					mmap.writeByte(0, MEM_LOCATIONS[list[i]]);
+				}
+			});
+
+		},
+
+		drawCanvas = function() {
+			// draw the current pixel buffer to the canvas
+			canvasContext.putImageData(pixelBuffer, 0, 0);
+
+			// increment the number of frames drawn
+			numFrames++;
+		},
+
 		drawStaticFrame = function() {
 			var color,
 				i = 0,
@@ -147,7 +317,7 @@ window.TIA = (function() {
 				len   = data.length;
 
 			for (; i < len; i += 4) {
-				color = Math.floor(Math.random() * 0xff);
+				color = Math.floor(Math.random() * 0x100);
 
 				data[i]     = color; // red channel
 				data[i + 1] = color; // green channel
@@ -155,9 +325,7 @@ window.TIA = (function() {
 				data[i + 3] = 255;   // alpha channel (always opaque)
 			}
 
-			canvasContext.putImageData(pixelBuffer, 0, 0);
-
-			numFrames++;
+			drawCanvas();
 
 			rafId = reqAnimFrame(drawStaticFrame);
 		},
@@ -172,130 +340,136 @@ window.TIA = (function() {
 				(mmap.readByte(MEM_LOCATIONS.PF0) >>> 4) & (1 << x));
 		},
 
-		isPlayerAt = function(x, p) {
-			var gr, ref, nusiz, vdel, pos;
+		procPlayerClock = function(x, p) {
+			function startClock() {
+				if (p === 0) {
+					p0Start = true;
+				} else {
+					p1Start = true;
+				}
+			}
+
+			var i, clock, start, nusiz, ref, gr,
+				draw = false;
 
 			if (p === 0) {
-				gr    = mmap.readByte(MEM_LOCATIONS.GRP0);
-				ref   = mmap.readByte(MEM_LOCATIONS.REFP0);
+				if (x === p0Pos) {
+					p0Clock = 0;
+				}
+				clock = p0Clock;
+				start = p0Start;
 				nusiz = mmap.readByte(MEM_LOCATIONS.NUSIZ0) & 0x07;
-//				vdel  = mmap.readByte(MEM_LOCATIONS.VDELP0) & 0x01;
-				pos = x - p0Pos;
-			} else { // p === 1
-				gr    = mmap.readByte(MEM_LOCATIONS.GRP1);
-				ref   = mmap.readByte(MEM_LOCATIONS.REFP1);
+				ref   = mmap.readByte(MEM_LOCATIONS.REFP0) & 0x08;
+				gr    = (mmap.readByte(MEM_LOCATIONS.VDELP0) & 0x08) ?
+					oldGRP0 :
+					newGRP0;
+			} else {
+				if (x === p1Pos) {
+					p1Clock = 0;
+				}
+				clock = p1Clock;
+				start = p1Start;
 				nusiz = mmap.readByte(MEM_LOCATIONS.NUSIZ1) & 0x07;
-//				vdel  = mmap.readByte(MEM_LOCATIONS.VDELP1) & 0x01;
-				pos = x - p1Pos;
+				ref   = mmap.readByte(MEM_LOCATIONS.REFP1) & 0x08;
+				gr    = (mmap.readByte(MEM_LOCATIONS.VDELP1) & 0x08) ?
+					oldGRP1 :
+					newGRP1;
+			}
+			
+			// treat NUSIZ=101 (double-size player) as a special case
+			if (nusiz === 0x05) {
+				if (start === true && clock >= 1 && clock <= 16) {
+					i = (clock - 1) >>> 1;
+					draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
+				}
+			} else if (nusiz === 0x07) {
+				// treat NUSIZ=111 (quad-sized player) as another special case
+				if (start === true && clock >= 1 && clock <= 32) {
+					i = (clock - 1) >>> 2;
+					draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
+				}
+			} else {
+				if (start === true) {
+					if (clock >= 1 && clock <= 8) {
+						i = clock - 1;
+						draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
+					} else if (nusiz === 0x01 || nusiz === 0x03 || nusiz === 0x07) {
+						if (clock >= 17 && clock <= 24) {
+							i = clock - 17;
+							draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
+						}
+					} else if (nusiz === 0x02 || nusiz === 0x03 || nusiz === 0x06) {
+						if (clock >= 33 && clock <= 40) {
+							i = clock - 33;
+							draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
+						}
+					} else if (nusiz === 0x04 || nusiz === 0x06) {
+						if (clock >= 65 && clock <= 72) {
+							i = clock - 65;
+							draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
+						}
+					}
+				} else if (clock === 12 && (nusiz === 0x01 || nusiz === 0x03)) {
+					startClock();
+				} else if (clock === 28 && (nusiz === 0x02 || nusiz === 0x03 || nusiz === 0x06)) {
+					startClock();
+				} else if (clock === 60 && (nusiz === 0x04 || nusiz === 0x06)) {
+					startClock();
+				}
 			}
 
-			// if the beam is still to the left of the player, we can
-			// short circuit out here
-			if (pos < 0) {
-				return false;
+			// increment the clock, and reset at 160 color clocks
+			if (p === 0) {
+				p0Clock++;
+				if (p0Clock > 159) {
+					p0Start = true;
+					p0Clock = 0;
+				}
+			} else {
+				p1Clock++;
+				if (p1Clock > 159) {
+					p1Start = true;
+					p1Clock = 0;
+				}
 			}
 
-			switch (nusiz) {
-				case 0x01: // two copies close (8 clocks apart)
-					if (pos >= 16 && pos < 24) {
-						pos -= 16;
-					}
-					break;
-
-				case 0x02: // two copies med (24 clocks apart)
-					if (pos >= 32 && pos < 40) {
-						pos -= 32;
-					}
-					break;
-
-				case 0x03: // three copies close (8 clocks apart)
-					if (pos >= 16 && pos < 24) {
-						pos -= 16;
-					} else if (pos >= 32 && pos < 40) {
-						pos -= 32;
-					}
-					break;
-
-				case 0x04: // two copies wide (56 clocks apart)
-					if (pos >= 64 && pos < 72) {
-						pos -= 64;
-					}
-					break;
-
-				case 0x05: // double size player
-					if (pos < 16) {
-						pos >>>= 1;
-					}
-					break;
-
-				case 0x06: // 3 copies medium (24 clocks apart)
-					if (pos >= 32 && pos < 40) {
-						pos -= 32;
-					} else if (pos >= 64 && pos < 72) {
-						pos -= 64;
-					}
-					break;
-
-				case 0x07: // quad size player
-					if (pos < 32) {
-						pos >>>= 2;
-					}
-					break;
-			}
-
-			if (pos < 8) {
-				return !!(ref ? gr & (1 << pos) :
-					gr & (0x80 >>> pos));
-			}
-			return false;
-
+			return !!draw;
 		},
 
 		isMissleAt = function(x, p) {
-			var resmp, pos, size,
-				enabled = p === 0 ? mmap.readByte(MEM_LOCATIONS.ENAM0) & 0x02 :
-					mmap.readByte(MEM_LOCATIONS.ENAM1) & 0x02;
+			var resmp, pos, size;
 
-			if (enabled) {
-				if (p === 0) {
-					if (mmap.readByte(MEM_LOCATIONS.RESMP0) & 0x02) {
-						m0Pos = p0Pos + 3;
-						return false;
-					}
-
-					pos = m0Pos;
-					size = mmap.readByte(MEM_LOCATIONS.NUSIZ0);
-				} else {
-					if (mmap.readByte(MEM_LOCATIONS.RESMP1) & 0x02) {
-						m1Pos = p1Pos + 3;
-						return false;
-					}
-
-					pos = m1Pos;
-					size = mmap.readByte(MEM_LOCATIONS.NUSIZ1);
+			if (p === 0) {
+				if (mmap.readByte(MEM_LOCATIONS.RESMP0) & 0x02) {
+					m0Pos = p0Pos;
+					return false;
 				}
-				
-				size = 1 << ((size >>> 4) & 0x03);
 
-				if (x >= pos && x <= pos + size) {
-					return true;
+				pos = m0Pos;
+				size = (mmap.readByte(MEM_LOCATIONS.NUSIZ0) >>> 4) & 0x03;
+			} else {
+				if (mmap.readByte(MEM_LOCATIONS.RESMP1) & 0x02) {
+					m1Pos = p1Pos;
+					return false;
 				}
+
+				pos = m1Pos;
+				size = (mmap.readByte(MEM_LOCATIONS.NUSIZ1) >>> 4) & 0x03;
+			}
+			
+			size = 0x01 << (size >>> 4);
+
+			if (x >= pos && x <= pos + size) {
+				return true;
 			}
 
 			return false;
 		},
 
 		isBallAt = function(x) {
-			var size;
-
-			if (mmap.readByte(MEM_LOCATIONS.ENABL) & 0x02) {
-				size = 1 << ((mmap.readByte(MEM_LOCATIONS.CTRLPF) >>> 4) & 0x03);
-				
-				if (x >= blPos && x < blPos + size) {
-					return true;
-				}
-			}
-			return false;
+			var size = 0x01 << ((mmap.readByte(MEM_LOCATIONS.CTRLPF) >>> 4) & 0x03);
+			
+			return !!(x >= blPos && x < blPos + size);
 		},
 
 		writePixel = function(x, y) {
@@ -303,14 +477,19 @@ window.TIA = (function() {
 			var i    = (y * VIDEO_BUFFER_WIDTH + x) << 2,
 				data = pixelBuffer.data,
 				pf   = isPlayfieldAt(x >>> 2),
-				p0   = isPlayerAt(x, 0),
-				p1   = isPlayerAt(x, 1),
-				m0   = isMissleAt(x, 0),
-				m1   = isMissleAt(x, 1),
-				bl   = isBallAt(x),
+				p0   = procPlayerClock(x, 0),
+				p1   = procPlayerClock(x, 1),
+				m0   = mmap.readByte(MEM_LOCATIONS.ENAM0) & 0x02 ? isMissleAt(x, 0) :
+					false,
+				m1   = mmap.readByte(MEM_LOCATIONS.ENAM1) & 0x02 ? isMissleAt(x, 1) :
+					false,
+				bl   = mmap.readByte(MEM_LOCATIONS.ENABL) & 0x02 ? isBallAt(x) :
+					false,
 				color;
 
-			if (mmap.readByte(MEM_LOCATIONS.CTRLPF) & 0x04) {
+			if (VBLANK === true) {
+				color = 0x00;
+			} else if (mmap.readByte(MEM_LOCATIONS.CTRLPF) & 0x04) {
 				if (pf === true || bl === true) {
 					if (mmap.readByte(MEM_LOCATIONS.CTRLPF) & 0x02) {
 						color = mmap.readByte(x < 80 ? MEM_LOCATIONS.COLUP0 :
@@ -429,70 +608,12 @@ window.TIA = (function() {
 			}
 		},
 
-		drawCanvas = function() {
-			// draw the current pixel buffer to the canvas
-			canvasContext.putImageData(pixelBuffer, 0, 0);
-
-			// increment the number of frames drawn
-			numFrames++;
-		},
-
-		calcHorizMotion = function(x, d) {
-			// only bits D7 to D4 affect horizontal motion, so confine
-			// just those bits
-			d = (d >>> 4) & 0x0f;
-
-			// if d is negative, move that many pixels to the right
-			if (d & 0x08) {
-				x += (~d & 0x0f) + 1;
-
-				// wrap around if we went passed the right of the canvas
-				if (x > 0x9f) {
-					x -= 0xa0;
-				}
-			} else { // d is nonnegative - move to the left
-				x -= d;
-
-				// wrap around if we passed the left side of the canvas
-				if (x < 0) {
-					x = 0xa0 - x;
-				}
-			}
-
-			return x;
-		},
-
-		// a value that cycles between 0, 1 and 2 -- 6507 is cycled on 2
-		tiaClock,
-
-		// the position of the beam on the x-axis from -68 to 159
-		x,
-
-		// the position of the beam on the y-axis
-		y,
-
-		// when this is true, the CPU does not cycle
-		RDY,
-
-		// the beam is turned off when this flag is set
-		VBLANK,
-
-		// when set, a signal is being sent to reset the beam to the top of the frame
-		VSYNC,
-
-		// horizontal positions for moveable game graphics
-		p0Pos,
-		p1Pos,
-		m0Pos,
-		m1Pos,
-		blPos,
-
 		execClockCycle = function() {
 			var proc;
 
 			// the beam is automatically reset back to HBLANK when
 			// we get to the right edge of the frame
-			if (x >= 160) {
+			if (x > 159) {
 				x = -68;
 
 				// reset the RDY flag so the CPU can begin cycling again
@@ -500,10 +621,11 @@ window.TIA = (function() {
 
 				// start drawing on the next scanline
 				y++;
+
+				tiaClock = 0;
 			}
 
-			if (tiaClock === 2) {
-
+			if (tiaClock === 0) {
 				// cycle the 6507 unless the RDY latch is set
 				if (RDY === false) {
 					proc = CPU6507.cycle();
@@ -511,86 +633,11 @@ window.TIA = (function() {
 					// if an instruction has been commited, check memory for
 					// changes to TIA registers
 					if (proc === true) {
-						// set the RDY latch if the WSYNC byte was written to
-						if (mmap.isStrobeActive(MEM_LOCATIONS.WSYNC) === true) {
-							RDY = true;
-							mmap.resetStrobe(MEM_LOCATIONS.WSYNC);
-						}
-
-						// set the horizontal position for player 0 on the next
-						// scanline
-						if (mmap.isStrobeActive(MEM_LOCATIONS.RESP0) === true) {
-							p0Pos = Math.max(0, x + 6);
-							mmap.resetStrobe(MEM_LOCATIONS.RESP0);
-						}
-
-						// same for player 1
-						if (mmap.isStrobeActive(MEM_LOCATIONS.RESP1) === true) {
-							p1Pos = Math.max(0, x + 6);
-							mmap.resetStrobe(MEM_LOCATIONS.RESP1);
-						}
-
-						// same for missle 0
-						if (mmap.isStrobeActive(MEM_LOCATIONS.RESM0) === true) {
-							m0Pos = Math.max(0, x);
-							mmap.resetStrobe(MEM_LOCATIONS.RESM0);
-						}
-
-						// same for missle 1
-						if (mmap.isStrobeActive(MEM_LOCATIONS.RESM1) === true) {
-							m1Pos = Math.max(0, x);
-							mmap.resetStrobe(MEM_LOCATIONS.RESM1);
-						}
-
-						// same for ball
-						if (mmap.isStrobeActive(MEM_LOCATIONS.RESBL) === true) {
-							blPos = Math.max(0, x + 5);
-							mmap.resetStrobe(MEM_LOCATIONS.RESBL);
-						}
-
-						// turn on horizontal motion if the HMOVE register
-						// was strobed
-						if (mmap.isStrobeActive(MEM_LOCATIONS.HMOVE) === true) {
-							mmap.resetStrobe(MEM_LOCATIONS.HMOVE);
-
-							p0Pos = calcHorizMotion(p0Pos, mmap.readByte(MEM_LOCATIONS.HMP0));
-							p1Pos = calcHorizMotion(p1Pos, mmap.readByte(MEM_LOCATIONS.HMP1));
-							m0Pos = calcHorizMotion(m0Pos, mmap.readByte(MEM_LOCATIONS.HMM0));
-							m1Pos = calcHorizMotion(m1Pos, mmap.readByte(MEM_LOCATIONS.HMM1));
-							blPos = calcHorizMotion(blPos, mmap.readByte(MEM_LOCATIONS.HMBL));
-						}
-
-						// check the HMOVE register, if strobed, reset all
-						// the horizontal motion registers
-						if (mmap.isStrobeActive(MEM_LOCATIONS.HMCLR) === true) {
-							mmap.resetStrobe(MEM_LOCATIONS.HMCLR);
-
-							(function(loc, i) {
-								var l = loc.length;
-								for (; i < l; i++) {
-									mmap.writeByte(0, MEM_LOCATIONS[loc[i]]);
-								}
-							})(['HMP0', 'HMP1', 'HMM0', 'HMM1', 'HMBL'], 0);
-						}
-
-						// if the CXCLR register has been strobed, clear all
-						// the TIA collision registers
-						if (mmap.isStrobeActive(MEM_LOCATIONS.CXCLR) === true) {
-							mmap.resetStrobe(MEM_LOCATIONS.CXCLR);
-
-							(function(loc, i) {
-								var l = loc.length;
-								for (; i < l; i++) {
-									mmap.writeByte(0, MEM_LOCATIONS[loc[i]]);
-								}
-							})(['CXM0P', 'CXM1P', 'CXP0FB', 'CXP1FB', 'CXM0FB', 'CXM1FB', 'CXBLPF', 'CXPPMM'], 0);
-						}
-
-						// check if VBLANK was turned on or off
-						VBLANK = !!(mmap.readByte(MEM_LOCATIONS.VBLANK) & 0x02);
-
 						// check if the VSYNC signal has been turned on or off
 						VSYNC = !!(mmap.readByte(MEM_LOCATIONS.VSYNC) & 0x02);
+
+						// check if the VBLANK signal has been altered
+						VBLANK = !!(mmap.readByte(MEM_LOCATIONS.VBLANK) & 0x02);
 					}
 				}
 
@@ -598,9 +645,9 @@ window.TIA = (function() {
 				RIOT.cycle();
 			}
 
-			// if we are not in VBLANK or HSYNC	write the pixel to the
+			// if we are not in VBLANK or HBLANK write the pixel to the
 			// canvas at the current color clock
-			if (VBLANK === false && y >= 34 && y < VIDEO_BUFFER_HEIGHT + 34 && x >= 0) {
+			if (y >= 34 && y < VIDEO_BUFFER_HEIGHT + 34 && x >= 0 && x < 160) {
 				writePixel(x, y - 34);
 			}
 			
@@ -664,7 +711,7 @@ window.TIA = (function() {
 			rafId = reqAnimFrame(drawStaticFrame);
 
 			// Initialize the memory map
-			mmap = MemoryMap.createAtariMemoryMap();
+			initMemoryMap();
 
 			// pass the memory map on to the CPU
 			CPU6507.init(mmap);
@@ -681,10 +728,10 @@ window.TIA = (function() {
 			// initialize the electron beam position
 			x = -68;
 			y = 0;
-			// reset VBLANK and RDY and VSYNC
+			// reset VBLANK, RDY and VSYNC internal registers
+			RDY    = false;
+			VSYNC  = !!(mmap.readByte(MEM_LOCATIONS.VSYNC) & 0x02);
 			VBLANK = !!(mmap.readByte(MEM_LOCATIONS.VBLANK) & 0x02);
-			RDY = false;
-			VSYNC = !!(mmap.readByte(MEM_LOCATIONS.VSYNC) & 0x02);
 
 			// initialize horizontal positions for players, missiles and ball
 			p0Pos = 0;
@@ -692,8 +739,6 @@ window.TIA = (function() {
 			m0Pos = 0;
 			m1Pos = 0;
 			blPos = 0;
-
-			hmove = false;
 		},
 
 		start: function() {
@@ -779,10 +824,10 @@ window.TIA = (function() {
 				return {
 					color:    color,
 					rgb:      'rgb(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ')',
-					graphics: mmap.readByte(MEM_LOCATIONS.GRP0),
+					graphics: newGRP0,
 					reflect:  !!(mmap.readByte(MEM_LOCATIONS.REFP0) & 0x08),
 					delay:    !!(mmap.readByte(MEM_LOCATIONS.VDELP0) & 0x01),
-					nusiz:    mmap.readByte(MEM_LOCATIONS.NUSIZ0),
+					nusiz:    mmap.readByte(MEM_LOCATIONS.NUSIZ0) & 0x07,
 					position: p0Pos,
 					hmove:    mmap.readByte(MEM_LOCATIONS.HMP0) >>> 4
 				};
@@ -795,16 +840,14 @@ window.TIA = (function() {
 				return {
 					color:    mmap.readByte(MEM_LOCATIONS.COLUP1),
 					rgb:      'rgb(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ')',
-					graphics: mmap.readByte(MEM_LOCATIONS.GRP1),
+					graphics: newGRP1,
 					reflect:  !!(mmap.readByte(MEM_LOCATIONS.REFP1) & 0x08),
 					delay:    !!(mmap.readByte(MEM_LOCATIONS.VDELP1) & 0x01),
-					nusiz:    mmap.readByte(MEM_LOCATIONS.NUSIZ1),
+					nusiz:    mmap.readByte(MEM_LOCATIONS.NUSIZ1) & 0x07,
 					position: p1Pos,
 					hmove:    mmap.readByte(MEM_LOCATIONS.HMP1) >>> 4
 				};
 			}
-
-			throw new Error('Parameter is an incorrect player number');
 		},
 
 		getPlayfieldInfo: function() {

@@ -76,9 +76,14 @@
 		reqAnimFrame = window.requestAnimationFrame ||
 			window.webkitRequestAnimationFrame ||
 			window.mozRequestAnimationFrame ||
-			function(f) {
-				setTimeout(f, 16);
-			},
+			window.oRequestAnimationFrame ||
+			window.msRequestAnimationFrame,
+
+		cancelAnimFrame = window.cancelAnimationFrame ||
+			window.webkitCancelAnimationFrame ||
+			window.mozCancelAnimationFrame ||
+			window.oCancelAnimationFrame ||
+			window.msCancelAnimationFrame,
 
 		sr = {
 			N: document.getElementById('N'),
@@ -131,7 +136,8 @@
 	}
 
 	function showInfo() {
-		var list, tr, i, dataAddr, playerInfo,
+		var list, tr, dataAddr, playerInfo,
+			i               = 0,
 			progCounter     = CPU6507.getRegister('pc'),
 			status          = CPU6507.getRegister('sr'),
 			mem             = TIA.getMemoryCopy(0x80, 128),
@@ -159,7 +165,7 @@
 		pixelClock.textContent = beamPosition.x;
 		scanline.textContent   = beamPosition.y;
 
-		for (i = 0; i < len; i++) {
+		for (; i < len; i++) {
 			memCells[i].textContent = toHex(mem[i], 2);
 		}
 
@@ -194,7 +200,7 @@
 		grp0.textContent               = toBinary(playerInfo.graphics, 8);
 		refp0.checked                  = playerInfo.reflect;
 		vdelp0.checked                 = playerInfo.delay;
-		nusiz0.textContent             = toHex(playerInfo.nusiz, 2);
+		nusiz0.textContent             = toHex(playerInfo.nusiz, 1);
 		p0pos.textContent              = toHex(playerInfo.position, 2);
 		p0move.textContent             = toHex(playerInfo.hmove, 1);
 		
@@ -204,7 +210,7 @@
 		grp1.textContent               = toBinary(playerInfo.graphics, 8);
 		refp1.checked                  = playerInfo.reflect;
 		vdelp1.checked                 = playerInfo.delay;
-		nusiz1.textContent             = toHex(playerInfo.nusiz, 2);
+		nusiz1.textContent             = toHex(playerInfo.nusiz, 1);
 		p1pos.textContent              = toHex(playerInfo.position, 2);
 		p1move.textContent             = toHex(playerInfo.hmove, 1);
 		
