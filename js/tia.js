@@ -72,6 +72,8 @@ window.TIA = (function() {
 
 		p0Start = false,
 		p1Start = false,
+		m0Start = false,
+		m1Start = false,
 
 		// internal registers for the GRP0 and GRP1 values
 		oldGRP0 = 0x00,
@@ -245,17 +247,19 @@ window.TIA = (function() {
 
 			// reset the M0 graphics position when RESM0 is strobed
 			mmap.addStrobeCallback(MEM_LOCATIONS.RESM0, function() {
-				m0Pos = x + 5;
+				m0Pos = x + 6;
+				m0Start = false;
 			});
 
 			// reset the M1 graphics position when RESM1 is strobed
 			mmap.addStrobeCallback(MEM_LOCATIONS.RESM1, function() {
-				m1Pos = x + 5;
+				m1Pos = x + 6;
+				m1Start = false;
 			});
 
 			// reset the BL graphics position when RESBL is strobed
 			mmap.addStrobeCallback(MEM_LOCATIONS.RESBL, function() {
-				blPos = x + 5;
+				blPos = x + 6;
 			});
 
 			// adjust the position of each of the graphics when the HMOVE
@@ -334,15 +338,16 @@ window.TIA = (function() {
 
 		isPlayfieldAt = function(x) {
 			if (x >= 20) {
-				x = (mmap.readByte(MEM_LOCATIONS.CTRLPF) & 0x01) ? 39 - x : x - 20;
+				x = mmap.readByte(MEM_LOCATIONS.CTRLPF) & 0x01 ? 39 - x :
+					x - 20;
 			}
 
 			return !!(x >= 12 ? mmap.readByte(MEM_LOCATIONS.PF2) & (1 << (x - 12)) :
-				x >= 4 ? mmap.readByte(MEM_LOCATIONS.PF1) & (0x80 >> (x - 4)) :
-				(mmap.readByte(MEM_LOCATIONS.PF0) >>> 4) & (1 << x));
+				x >= 4 ? mmap.readByte(MEM_LOCATIONS.PF1) & (0x80 >>> (x - 4)) :
+				(mmap.readByte(MEM_LOCATIONS.PF0) >>> 4) & (0x01 << x));
 		},
 
-		procPlayerClock = function(x, p) {
+		procPlayerClock = function(p) {
 			function startClock() {
 				if (p === 0) {
 					p0Start = true;
@@ -378,41 +383,9 @@ window.TIA = (function() {
 					newGRP1;
 			}
 			
-			if (clock === 156) {
-				startClock();
-			} else if (nusiz === 0x05) {
-				// treat NUSIZ=101 (double-size player) as a special case
-				if (start === true && clock >= 1 && clock <= 16) {
-					i = (clock - 1) >>> 1;
-					draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
-				}
-			} else if (nusiz === 0x07) {
-				// treat NUSIZ=111 (quad-sized player) as another special case
-				if (start === true && clock >= 1 && clock <= 32) {
-					i = (clock - 1) >>> 2;
-					draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
-				}
-			} else {
-				if (start === true) {
-					if (clock >= 1 && clock <= 8) {
-						i = clock - 1;
-						draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
-					} else if (clock >= 17 && clock <= 24) {
-						if (nusiz === 0x01 || nusiz === 0x03 || nusiz === 0x07) {
-							i = clock - 17;
-							draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
-						}
-					} else if (clock >= 33 && clock <= 40) {
-						if (nusiz === 0x02 || nusiz === 0x03 || nusiz === 0x06) {
-							i = clock - 33;
-							draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
-						}
-					} else if (clock >= 65 && clock <= 72) {
-						if (nusiz === 0x04 || nusiz === 0x06) {
-							i = clock - 65;
-							draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
-						}
-					}
+			if (start === false) {
+				if (clock === 156) {
+					startClock();
 				} else if (clock === 12 && (nusiz === 0x01 || nusiz === 0x03)) {
 					startClock();
 				} else if (clock === 28 && (nusiz === 0x02 || nusiz === 0x03 || nusiz === 0x06)) {
@@ -420,7 +393,35 @@ window.TIA = (function() {
 				} else if (clock === 60 && (nusiz === 0x04 || nusiz === 0x06)) {
 					startClock();
 				}
+			} else {
+				if (nusiz === 0x05 && clock >= 1 && clock <= 16) {
+					i = (clock - 1) >>> 1;
+					draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
+				} else if (nusiz === 0x07 && clock >= 1 && clock <= 32) {
+					i = (clock - 1) >>> 2;
+					draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
+				} else if (clock >= 1 && clock <= 8) {
+					i = clock - 1;
+					draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
+				} else if (clock >= 17 && clock <= 24) {
+					if (nusiz === 0x01 || nusiz === 0x03 || nusiz === 0x07) {
+						i = clock - 17;
+						draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
+					}
+				} else if (clock >= 33 && clock <= 40) {
+					if (nusiz === 0x02 || nusiz === 0x03 || nusiz === 0x06) {
+						i = clock - 33;
+						draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
+
+					}
+				} else if (clock >= 65 && clock <= 72) {
+					if (nusiz === 0x04 || nusiz === 0x06) {
+						i = clock - 65;
+						draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
+					}
+				}
 			}
+
 
 			// increment the clock, and reset at 160 color clocks
 			if (p === 0) {
@@ -432,55 +433,110 @@ window.TIA = (function() {
 			return !!draw;
 		},
 
-		isMissleAt = function(x, p) {
-			var resmp, pos, size;
+		procMissleClock = function(p) {
+			function startClock() {
+				if (p === 0) {
+					m0Start = true;
+				} else {
+					m1Start = true;
+				}
+			}
+
+			var enabled, start, clock, nusiz, size,
+				draw = false;
 
 			if (p === 0) {
-				if (mmap.readByte(MEM_LOCATIONS.RESMP0) & 0x02) {
-					m0Pos = p0Pos;
-					return false;
+				if (m0Pos === x) {
+					m0Clock = 0;
 				}
-
-				pos = m0Pos;
-				size = (mmap.readByte(MEM_LOCATIONS.NUSIZ0) >>> 4) & 0x03;
+				clock = m0Clock;
+				start = m0Start;
+				enabled = mmap.readByte(MEM_LOCATIONS.ENAM0) & 0x02;
+				nusiz = mmap.readByte(MEM_LOCATIONS.NUSIZ0);
 			} else {
-				if (mmap.readByte(MEM_LOCATIONS.RESMP1) & 0x02) {
-					m1Pos = p1Pos;
-					return false;
+				if (m1Pos === x) {
+					m1Clock = 0;
 				}
-
-				pos = m1Pos;
-				size = (mmap.readByte(MEM_LOCATIONS.NUSIZ1) >>> 4) & 0x03;
-			}
-			
-			size = 0x01 << (size >>> 4);
-
-			if (x >= pos && x <= pos + size) {
-				return true;
+				clock = m1Clock;
+				start = m1Start;
+				enabled = mmap.readByte(MEM_LOCATIONS.ENAM1) & 0x02;
+				nusiz = mmap.readByte(MEM_LOCATIONS.NUSIZ1);
 			}
 
-			return false;
+			if (start === false) {
+				if (clock === 12 && (nusiz === 0x01 || nusiz === 0x03)) {
+					startClock();
+				} else if (clock === 28 && (nusiz === 0x02 || nusiz === 0x03 || nusiz === 0x06)) {
+					startClock();
+				} else if (clock === 60 && (nusiz === 0x04 || nusiz === 0x06)) {
+					startClock();
+				} else if (clock === 156) {
+					startClock();
+				}
+			} else if (enabled) {
+				size = 0x01 << ((nusiz >>> 4) & 0x03);
+				nusiz &= 0x07;
+
+				if (clock >= 0 && clock < 8) {
+					draw = clock <= size;
+				}
+				else if (clock >= 16 && clock < 24) {
+					if (nusiz === 0x01 || nusiz === 0x03 || nusiz === 0x07) {
+						draw = (clock - 16) <= size;
+					}
+				} else if (clock >= 32 && clock < 40) {
+					if (nusiz === 0x02 || nusiz === 0x03 || nusiz === 0x06) {
+						draw = (clock - 32) <= size;
+					}
+				} else if (clock >= 64 && clock < 72) {
+					if (nusiz === 0x04 || nusiz === 0x06) {
+						draw = (clock - 64) <= size;
+					}
+				}
+			}
+
+			if (p === 0) {
+				m0Clock++;
+			} else {
+				m1Clock++;
+			}
+
+			return !!draw;
 		},
 
-		isBallAt = function(x) {
-			var size = 0x01 << ((mmap.readByte(MEM_LOCATIONS.CTRLPF) >>> 4) & 0x03);
+
+		procBallClock = function() {
+			var size, vdel,
+				draw = false;
+
+			if (blPos === x) {
+				blClock = 0;
+			}
+
+			if (mmap.readByte(MEM_LOCATIONS.ENABL) & 0x02) {
+//				vdel = !!(mmap.readByte(MEM_LOCATIONS.VDELBL) & 0x01);
 			
-			return !!(x >= blPos && x < blPos + size);
+				size = 0x01 << ((mmap.readByte(MEM_LOCATIONS.CTRLPF) >>> 4) & 0x03);
+				if (blClock <= size) {
+					draw = true;
+				}
+			}
+
+			blClock++;
+
+			return draw;
 		},
 
-		writePixel = function(x, y) {
+		writePixel = function(y) {
 			// determine what color the pixel at the present coordinates should be
 			var i    = (y * VIDEO_BUFFER_WIDTH + x) << 2,
 				data = pixelBuffer.data,
 				pf   = isPlayfieldAt(x >>> 2),
-				p0   = procPlayerClock(x, 0),
-				p1   = procPlayerClock(x, 1),
-				m0   = mmap.readByte(MEM_LOCATIONS.ENAM0) & 0x02 ? isMissleAt(x, 0) :
-					false,
-				m1   = mmap.readByte(MEM_LOCATIONS.ENAM1) & 0x02 ? isMissleAt(x, 1) :
-					false,
-				bl   = mmap.readByte(MEM_LOCATIONS.ENABL) & 0x02 ? isBallAt(x) :
-					false,
+				p0   = procPlayerClock(0),
+				p1   = procPlayerClock(1),
+				m0   = procMissleClock(0),
+				m1   = procMissleClock(1),
+				bl   = procBallClock(),
 				color;
 
 			if (VBLANK === true) {
@@ -630,7 +686,7 @@ window.TIA = (function() {
 			// if we are not in VBLANK or HBLANK write the pixel to the
 			// canvas at the current color clock
 			if (y >= 34 && y < VIDEO_BUFFER_HEIGHT + 34 && x >= 0 && x < 160) {
-				writePixel(x, y - 34);
+				writePixel(y - 34);
 			}
 			
 			// increment to draw the next pixel
@@ -664,8 +720,9 @@ window.TIA = (function() {
 		},
 
 		runMainLoop = function() {
-			// run the code until VSYNC is enabled, then draw the frame
-			// and request another execution of this function
+			// run the code until VSYNC is enabled, then reset the VSYNC
+			// counters and scanline, draw the frame and request another
+			// execution of this function
 			while(1) {
 				execClockCycle();
 				if (vsyncCount === 3 && VSYNC === false) {
@@ -870,6 +927,26 @@ window.TIA = (function() {
 				size:     (mmap.readByte(MEM_LOCATIONS.CTRLPF) >>> 4) & 0x03,
 				delay:    !!(mmap.readByte(MEM_LOCATIONS.VDELBL) & 0X01)
 			};
+		},
+
+		getMissleInfo: function(p) {
+			if (p === 0) {
+				return {
+					enabled:  !!(mmap.readByte(MEM_LOCATIONS.ENAM0) & 0x02),
+					position: m0Pos,
+					hmove:    mmap.readByte(MEM_LOCATIONS.HMM0) >>> 4,
+					size:     (mmap.readByte(MEM_LOCATIONS.NUSIZ0) >>> 4) & 0x03,
+					reset:    !!(mmap.readByte(MEM_LOCATIONS.RESMP0) & 0x02)
+				};
+			} else {
+				return {
+					enabled:  !!(mmap.readByte(MEM_LOCATIONS.ENAM1) & 0x02),
+					position: m1Pos,
+					hmove:    mmap.readByte(MEM_LOCATIONS.HMM1) >>> 4,
+					size:     (mmap.readByte(MEM_LOCATIONS.NUSIZ1) >>> 4) & 0x03,
+					reset:    !!(mmap.readByte(MEM_LOCATIONS.RESMP1) & 0x02)
+				};
+			}
 		}
 
 	};

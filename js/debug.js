@@ -67,6 +67,18 @@
 		blsize       = document.getElementById('blsize'),
 		bldelay      = document.getElementById('bldelay'),
 
+		m0enabled    = document.getElementById('m0enabled'),
+		m0pos        = document.getElementById('m0pos'),
+		m0move       = document.getElementById('m0move'),
+		m0size       = document.getElementById('m0size'),
+		m0reset      = document.getElementById('m0reset'),
+
+		m1enabled    = document.getElementById('m1enabled'),
+		m1pos        = document.getElementById('m1pos'),
+		m1move       = document.getElementById('m1move'),
+		m1size       = document.getElementById('m1size'),
+		m1reset      = document.getElementById('m1reset'),
+
 		memTable     = document.getElementById('memory'),
 		cells        = memTable.getElementsByTagName('td'),
 		memCells     = [],
@@ -136,7 +148,7 @@
 	}
 
 	function showInfo() {
-		var list, tr, dataAddr, playerInfo,
+		var list, tr, dataAddr, playerInfo, missleInfo,
 			i               = 0,
 			progCounter     = CPU6507.getRegister('pc'),
 			status          = CPU6507.getRegister('sr'),
@@ -228,6 +240,20 @@
 		blmove.textContent = toHex(ballInfo.hmove);
 		blsize.textContent = toHex(ballInfo.size);
 		bldelay.checked    = ballInfo.delay;
+
+		missleInfo = TIA.getMissleInfo(0);
+		m0enabled.checked      = missleInfo.enabled;
+		m0pos.textContent      = toHex(missleInfo.position, 2);
+		m0move.textContent     = toHex(missleInfo.hmove, 1);
+		m0size.textContent     = toHex(missleInfo.size, 1);
+		m0reset.checked        = missleInfo.reset;
+
+		missleInfo = TIA.getMissleInfo(1);
+		m1enabled.checked      = missleInfo.enabled;
+		m1pos.textContent      = toHex(missleInfo.position, 2);
+		m1move.textContent     = toHex(missleInfo.hmove, 1);
+		m1size.textContent     = toHex(missleInfo.size, 1);
+		m1reset.checked        = missleInfo.reset;
 
 		reqAnimFrame(showInfo);
 	}
