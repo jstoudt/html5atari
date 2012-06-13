@@ -53,6 +53,8 @@ window.TIA = (function() {
 		// when set, a signal is being sent to reset the beam to the top of the frame
 		VSYNC = false,
 
+		vsyncCount = 0,
+
 		VBLANK = false,
 
 		// horizontal positions for moveable game graphics
@@ -231,29 +233,29 @@ window.TIA = (function() {
 
 			// reset the P0 graphics position when RESP0 is strobed
 			mmap.addStrobeCallback(MEM_LOCATIONS.RESP0, function() {
-				p0Pos = x + 8;
+				p0Pos = x + 6;
 				p0Start = false;
 			});
 
 			// reset the P1 graphics position when RESP1 is strobed
 			mmap.addStrobeCallback(MEM_LOCATIONS.RESP1, function() {
-				p1Pos = x + 8;
+				p1Pos = x + 6;
 				p1Start = false;
 			});
 
 			// reset the M0 graphics position when RESM0 is strobed
 			mmap.addStrobeCallback(MEM_LOCATIONS.RESM0, function() {
-				m0Pos = x + 7;
+				m0Pos = x + 5;
 			});
 
 			// reset the M1 graphics position when RESM1 is strobed
 			mmap.addStrobeCallback(MEM_LOCATIONS.RESM1, function() {
-				m1Pos = x + 7;
+				m1Pos = x + 5;
 			});
 
 			// reset the BL graphics position when RESBL is strobed
 			mmap.addStrobeCallback(MEM_LOCATIONS.RESBL, function() {
-				blPos = x + 7;
+				blPos = x + 5;
 			});
 
 			// adjust the position of each of the graphics when the HMOVE
@@ -423,20 +425,8 @@ window.TIA = (function() {
 			// increment the clock, and reset at 160 color clocks
 			if (p === 0) {
 				p0Clock++;
-				/*
-				if (p0Clock > 159) {
-					p0Start = true;
-					p0Clock = 0;
-				}
-				*/
 			} else {
 				p1Clock++;
-				/*
-				if (p1Clock > 159) {
-					p1Start = true;
-					p1Clock = 0;
-				}
-				*/
 			}
 
 			return !!draw;
@@ -617,21 +607,7 @@ window.TIA = (function() {
 		execClockCycle = function() {
 			var proc;
 
-			// the beam is automatically reset back to HBLANK when
-			// we get to the right edge of the frame
-			if (x > 159) {
-				x = -68;
-
-				// reset the RDY flag so the CPU can begin cycling again
-				RDY = false;
-
-				// start drawing on the next scanline
-				y++;
-
-				tiaClock = 0;
-			}
-
-			if (tiaClock === 0) {
+			if (tiaClock === 2) {
 				// cycle the 6507 unless the RDY latch is set
 				if (RDY === false) {
 					proc = CPU6507.cycle();
@@ -664,24 +640,37 @@ window.TIA = (function() {
 			tiaClock = tiaClock === 0 ? 1 :
 				tiaClock === 1 ? 2 : 0;
 
-			// reset the beam to the top of the frame when VSYNC has been detected
-			if (VSYNC === true) {
-				y = 0;
+			// the beam is automatically reset back to HBLANK when
+			// we get to the right edge of the frame
+			if (x > 159) {
+				x = -68;
+
+				// reset the RDY flag so the CPU can begin cycling again
+				RDY = false;
+
+				// start drawing on the next scanline
+				y++;
+
+				if (VSYNC === true) {
+					vsyncCount++;
+				}
+
+				tiaClock = 0;
 			}
+
 
 			// return true if this cycle contained a CPU execution completion
 			return proc;
 		},
 
 		runMainLoop = function() {
-			var y0;
-
 			// run the code until VSYNC is enabled, then draw the frame
 			// and request another execution of this function
 			while(1) {
-				y0 = y;
 				execClockCycle();
-				if (VSYNC === true && y0 > 0) {
+				if (vsyncCount === 3 && VSYNC === false) {
+					vsyncCount = 0;
+					y = 0;
 					rafId = reqAnimFrame(runMainLoop);
 					drawCanvas();
 					break;
