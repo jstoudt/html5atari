@@ -376,8 +376,10 @@ window.TIA = (function() {
 					newGRP1;
 			}
 			
-			// treat NUSIZ=101 (double-size player) as a special case
-			if (nusiz === 0x05) {
+			if (clock === 156) {
+				startClock();
+			} else if (nusiz === 0x05) {
+				// treat NUSIZ=101 (double-size player) as a special case
 				if (start === true && clock >= 1 && clock <= 16) {
 					i = (clock - 1) >>> 1;
 					draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
@@ -393,18 +395,18 @@ window.TIA = (function() {
 					if (clock >= 1 && clock <= 8) {
 						i = clock - 1;
 						draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
-					} else if (nusiz === 0x01 || nusiz === 0x03 || nusiz === 0x07) {
-						if (clock >= 17 && clock <= 24) {
+					} else if (clock >= 17 && clock <= 24) {
+						if (nusiz === 0x01 || nusiz === 0x03 || nusiz === 0x07) {
 							i = clock - 17;
 							draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
 						}
-					} else if (nusiz === 0x02 || nusiz === 0x03 || nusiz === 0x06) {
-						if (clock >= 33 && clock <= 40) {
+					} else if (clock >= 33 && clock <= 40) {
+						if (nusiz === 0x02 || nusiz === 0x03 || nusiz === 0x06) {
 							i = clock - 33;
 							draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
 						}
-					} else if (nusiz === 0x04 || nusiz === 0x06) {
-						if (clock >= 65 && clock <= 72) {
+					} else if (clock >= 65 && clock <= 72) {
+						if (nusiz === 0x04 || nusiz === 0x06) {
 							i = clock - 65;
 							draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
 						}
@@ -421,16 +423,20 @@ window.TIA = (function() {
 			// increment the clock, and reset at 160 color clocks
 			if (p === 0) {
 				p0Clock++;
+				/*
 				if (p0Clock > 159) {
 					p0Start = true;
 					p0Clock = 0;
 				}
+				*/
 			} else {
 				p1Clock++;
+				/*
 				if (p1Clock > 159) {
 					p1Start = true;
 					p1Clock = 0;
 				}
+				*/
 			}
 
 			return !!draw;
