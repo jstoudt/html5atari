@@ -79,6 +79,24 @@
 		m1size       = document.getElementById('m1size'),
 		m1reset      = document.getElementById('m1reset'),
 
+		cxList = {
+			'p0-pf': document.getElementById('p0-pf'),
+			'p0-bl': document.getElementById('p0-bl'),
+			'p0-m1': document.getElementById('p0-m1'),
+			'p0-m0': document.getElementById('p0-m1'),
+			'p0-p1': document.getElementById('p0-p1'),
+			'p1-pf': document.getElementById('p1-pf'),
+			'p1-bl': document.getElementById('p1-bl'),
+			'p1-m1': document.getElementById('p1-m1'),
+			'p1-m0': document.getElementById('p1-m0'),
+			'm0-pf': document.getElementById('m0-pf'),
+			'm0-bl': document.getElementById('m0-bl'),
+			'm0-m1': document.getElementById('m0-m1'),
+			'm1-pf': document.getElementById('m1-pf'),
+			'm1-bl': document.getElementById('m1-bl'),
+			'bl-pf': document.getElementById('bl-pf')
+		},
+
 		memTable     = document.getElementById('memory'),
 		cells        = memTable.getElementsByTagName('td'),
 		memCells     = [],
@@ -148,7 +166,7 @@
 	}
 
 	function showInfo() {
-		var list, tr, dataAddr, playerInfo, missleInfo,
+		var list, tr, dataAddr, playerInfo, missleInfo, collisionInfo,
 			i               = 0,
 			progCounter     = CPU6507.getRegister('pc'),
 			status          = CPU6507.getRegister('sr'),
@@ -254,6 +272,11 @@
 		m1move.textContent     = toHex(missleInfo.hmove, 1);
 		m1size.textContent     = toHex(missleInfo.size, 1);
 		m1reset.checked        = missleInfo.reset;
+
+		collisionInfo = TIA.getCollisionInfo();
+		for (i in collisionInfo) {
+			cxList[i].checked = collisionInfo[i];
+		}
 
 		reqAnimFrame(showInfo);
 	}

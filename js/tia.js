@@ -247,19 +247,19 @@ window.TIA = (function() {
 
 			// reset the M0 graphics position when RESM0 is strobed
 			mmap.addStrobeCallback(MEM_LOCATIONS.RESM0, function() {
-				m0Pos = x + 6;
+				m0Pos = x + 4;
 				m0Start = false;
 			});
 
 			// reset the M1 graphics position when RESM1 is strobed
 			mmap.addStrobeCallback(MEM_LOCATIONS.RESM1, function() {
-				m1Pos = x + 6;
+				m1Pos = x + 4;
 				m1Start = false;
 			});
 
 			// reset the BL graphics position when RESBL is strobed
 			mmap.addStrobeCallback(MEM_LOCATIONS.RESBL, function() {
-				blPos = x + 6;
+				blPos = x + 4;
 			});
 
 			// adjust the position of each of the graphics when the HMOVE
@@ -947,6 +947,35 @@ window.TIA = (function() {
 					reset:    !!(mmap.readByte(MEM_LOCATIONS.RESMP1) & 0x02)
 				};
 			}
+		},
+
+		getCollisionInfo: function() {
+			var cxm0p  = mmap.readByte(MEM_LOCATIONS.CXM0P),
+				cxm1p  = mmap.readByte(MEM_LOCATIONS.CXM1P),
+				cxp0fb = mmap.readByte(MEM_LOCATIONS.CXP0FB),
+				cxp1fb = mmap.readByte(MEM_LOCATIONS.CXP1FB),
+				cxm0fb = mmap.readByte(MEM_LOCATIONS.CXM0FB),
+				cxm1fb = mmap.readByte(MEM_LOCATIONS.CXM1FB),
+				cxblpf = mmap.readByte(MEM_LOCATIONS.CXBLPF),
+				cxppmm = mmap.readByte(MEM_LOCATIONS.CXPPMM);
+
+			return {
+				'p0-pf': !!(cxp0fb & 0x80),
+				'p0-bl': !!(cxp0fb & 0x40),
+				'p0-m1': !!(cxm1p & 0x80),
+				'p0-m0': !!(cxm0p & 0x40),
+				'p0-p1': !!(cxppmm & 0x80),
+				'p1-pf': !!(cxp1fb & 0x80),
+				'p1-bl': !!(cxp1fb & 0x40),
+				'p1-m1': !!(cxm1p & 0x40),
+				'p1-m0': !!(cxm0p & 0x80),
+				'm0-pf': !!(cxm0fb & 0x80),
+				'm0-bl': !!(cxm0fb & 0x40),
+				'm0-m1': !!(cxppmm & 0x40),
+				'm1-pf': !!(cxm1fb & 0x80),
+				'm1-bl': !!(cxm1fb & 0x40),
+				'bl-pf': !!(cxblpf & 0x80)
+			};
 		}
 
 	};
