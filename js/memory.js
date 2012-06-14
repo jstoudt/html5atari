@@ -49,7 +49,7 @@ function MemoryMap(bitWidth) {
 }
 
 // Changes the memory at the specified address location to the specified value
-MemoryMap.prototype.writeByte = function(val, addr) {
+MemoryMap.prototype.writeByte = function(val, addr, cycles) {
 	var strobes = this._strobes,
 		i, list;
 
@@ -59,7 +59,7 @@ MemoryMap.prototype.writeByte = function(val, addr) {
 	if (addr in strobes) {
 		list = strobes[addr];
 		for (i = 0; i < list.length; i++) {
-			list[i](val);
+			list[i](val, cycles);
 		}
 	} else {
 		this._memory[addr] = val;
@@ -190,13 +190,13 @@ MemoryMap.prototype.journalReset = function() {
 
 // Writes all the bytes in the journal to the specified address location
 // and clears the journal
-MemoryMap.prototype.journalCommit = function() {
+MemoryMap.prototype.journalCommit = function(cycles) {
 	var i = 0,
 		l = this._journal.length;
 
 	for (; i < l; i++) {
 		if (this.isReadOnly(this._journal[i].addr) === false) {
-			this.writeByte(this._journal[i].val, this._journal[i].addr);
+			this.writeByte(this._journal[i].val, this._journal[i].addr, cycles);
 		}
 	}
 

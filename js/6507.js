@@ -91,9 +91,7 @@ window.CPU6507 = (function() {
 			absolute: function() {
 				var addr = mmap.readWord(regSet.pc);
 				regSet.pc = (regSet.pc + 2) & 0xffff;
-	
-				currentInstruction.operand = addr.toString(16);
-	
+		
 				return addr;
 			},
 
@@ -101,8 +99,6 @@ window.CPU6507 = (function() {
 			absoluteX: function() {
 				var pre = mmap.readWord(regSet.pc),
 					post = (pre + regSet.x) & 0xffff;
-
-				currentInstruction.operand = pre.toString(16);
 
 				regSet.pc = (regSet.pc + 2) & 0xffff;
 
@@ -119,8 +115,6 @@ window.CPU6507 = (function() {
 				var pre = mmap.readWord(regSet.pc),
 					post = (pre + regSet.y) & 0xffff;
 
-				currentInstruction.operand = pre.toString(16);
-
 				regSet.pc = (regSet.pc + 2) & 0xffff;
 
 				// if the indexed address crosses a page boundy, add
@@ -135,8 +129,6 @@ window.CPU6507 = (function() {
 			xIndexedIndirect: function() {
 				var addr = (mmap.readByte(regSet.pc));
 
-				currentInstruction.operand = addr.toString(16);
-
 				addr += regSet.x;
 
 				regSet.pc = (regSet.pc + 1) & 0xffff;
@@ -148,8 +140,6 @@ window.CPU6507 = (function() {
 			indirectYIndexed: function() {
 				var pre = mmap.readByte(regSet.pc),
 					post;
-
-				currentInstruction.operand = pre.toString(16);
 
 				pre = mmap.readWord(pre);
 				post = (pre + regSet.y) & 0xffff;
@@ -169,8 +159,6 @@ window.CPU6507 = (function() {
 			zeroPage: function() {
 				var addr = fetchInstruction();
 
-				currentInstruction.operand = addr.toString(16);
-
 				return addr;
 			},
 
@@ -178,16 +166,12 @@ window.CPU6507 = (function() {
 			zeroPageX: function() {
 				var addr = fetchInstruction();
 
-				currentInstruction.operand = addr.toString(16);
-
 				return (addr + regSet.x) & 0xff;
 			},
 
 			// zpg,Y
 			zeroPageY: function() {
 				var addr = fetchInstruction();
-
-				currentInstruction.operand = addr.toString(16);
 
 				return (addr + regSet.y) & 0xff;
 			},
@@ -207,8 +191,6 @@ window.CPU6507 = (function() {
 				if ((regSet.pc & 0xff00) !== (addr & 0xff00)) {
 					cycleCount++;
 				}
-
-				currentInstruction.operand = addr.toString(16);
 
 				return addr & 0xffff;
 			}
@@ -566,8 +548,6 @@ window.CPU6507 = (function() {
 					stack.pushByte(regSet.sr);
 					status.set('I', true);
 					regSet.pc = 0x00; // need to figure this out
-
-					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 7,
@@ -594,7 +574,7 @@ window.CPU6507 = (function() {
 			0x06: { // ASL zpg
 				op: operation.ASL,
 				addressing: 'zeroPage',
-				cycles: 2,
+				cycles: 5,
 				abbr: 'ASL',
 				bytes: 2
 			},
@@ -602,7 +582,6 @@ window.CPU6507 = (function() {
 			0x08: { // PHP impl
 				op: function() {
 					stack.pushByte(regSet.sr);
-					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 5,
@@ -613,7 +592,6 @@ window.CPU6507 = (function() {
 			0x09: { // ORA #
 				op: function() {
 					var val = fetchInstruction();
-					currentInstruction.operand = val.toString(16);
 					regSet.ac |= val;
 					status.setFlagsNZ(regSet.ac);
 				},
@@ -626,7 +604,6 @@ window.CPU6507 = (function() {
 			0x0a: { // ASL A
 				op: function() {
 					regSet.ac = arithmeticShiftLeft(regSet.ac);
-					currentInstruction.operand = 'A';
 				},
 				addressing: 'accumulator',
 				cycles: 2,
@@ -691,7 +668,6 @@ window.CPU6507 = (function() {
 			0x18: { // CLC impl
 				op: function() {
 					status.set('C', false);
-					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -766,7 +742,6 @@ window.CPU6507 = (function() {
 			0x28: { // PLP impl
 				op: function() {
 					regSet.sr = stack.popByte();
-					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 4,
@@ -777,7 +752,6 @@ window.CPU6507 = (function() {
 			0x29: { // AND #
 				op: function() {
 					var val = fetchInstruction();
-					currentInstruction.operand = val.toString(16);
 					regSet.ac &= val;
 					status.setFlagsNZ(regSet.ac);
 				},
@@ -790,7 +764,6 @@ window.CPU6507 = (function() {
 			0x2a: { // ROL A
 				op: function() {
 					regSet.ac = rotateLeft(regSet.ac);
-					currentInstruction.operand = 'A';
 				},
 				addressing: 'accumulator',
 				cycles: 2,
@@ -896,7 +869,6 @@ window.CPU6507 = (function() {
 				op: function() {
 					regSet.sr = stack.popByte();
 					regSet.pc = stack.popWord();
-					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 6,
@@ -931,7 +903,6 @@ window.CPU6507 = (function() {
 			0x48: { // PHA A
 				op: function() {
 					stack.pushByte(regSet.ac);
-					currentInstruction.operand = 'A';
 				},
 				addressing: 'implied',
 				cycles: 3,
@@ -944,7 +915,6 @@ window.CPU6507 = (function() {
 					var val = fetchInstruction();
 					regSet.ac ^= val;
 					status.setFlagsNZ(regSet.ac);
-					currentInstruction.operand = val.toString(16);
 				},
 				addressing: 'immediate',
 				cycles: 2,
@@ -955,7 +925,6 @@ window.CPU6507 = (function() {
 			0x4a: { // LSR A
 				op: function() {
 					regSet.ac = logicalShiftRight(regSet.ac);
-					currentInstruction.operand = 'A';
 				},
 				addressing: 'accumulator',
 				cycles: 2,
@@ -1030,7 +999,6 @@ window.CPU6507 = (function() {
 			0x58: { // CLI impl
 				op: function() {
 					status.set('I', false);
-					currentInstruction.operation = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -1065,7 +1033,6 @@ window.CPU6507 = (function() {
 			0x60: { // RTS impl
 				op: function() {
 					regSet.pc = (stack.popWord() + 1) & 0xffff;
-					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 6,
@@ -1100,7 +1067,6 @@ window.CPU6507 = (function() {
 			0x68: { // PLA impl
 				op: function() {
 					regSet.ac = stack.popByte();
-					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 4,
@@ -1111,7 +1077,6 @@ window.CPU6507 = (function() {
 			0x69: { // ADC #
 				op: function() {
 					var val = fetchInstruction();
-					currentInstruction.operand = val.toString(16);
 					addWithCarry(val);
 				},
 				addressing: 'immediate',
@@ -1123,7 +1088,6 @@ window.CPU6507 = (function() {
 			0x6a: { // ROR A
 				op: function() {
 					regSet.ac = rotateRight(regSet.ac);
-					currentInstruction.operand = 'A';
 				},
 				addressing: 'accumulator',
 				cycles: 2,
@@ -1134,7 +1098,6 @@ window.CPU6507 = (function() {
 			0x6c: { // JMP ind
 				op: function() {
 					var addr = mmap.readWord(regSet.pc);
-					currentInstruction.operand = addr.toString(16);
 					regSet.pc = mmap.readWord(addr);
 				},
 				addressing: 'indirect',
@@ -1200,7 +1163,6 @@ window.CPU6507 = (function() {
 			0x78: { // SEI impl
 				op: function() {
 					status.set('I');
-					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -1268,7 +1230,6 @@ window.CPU6507 = (function() {
 				op: function() {
 					regSet.y = (regSet.y - 1) & 0xff;
 					status.setFlagsNZ(regSet.y);
-					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -1280,7 +1241,6 @@ window.CPU6507 = (function() {
 				op: function() {
 					regSet.ac = regSet.x;
 					status.setFlagsNZ(regSet.ac);
-					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -1362,7 +1322,6 @@ window.CPU6507 = (function() {
 				op: function() {
 					regSet.ac = regSet.y;
 					status.setFlagsNZ(regSet.ac);
-					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -1381,7 +1340,6 @@ window.CPU6507 = (function() {
 			0x9a: { // TXS impl
 				op: function() {
 					regSet.sp = regSet.x;
-					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -1400,7 +1358,6 @@ window.CPU6507 = (function() {
 			0xa0: { // LDY #
 				op: function() {
 					var val = fetchInstruction();
-					currentInstruction.operand = val.toString(16);
 					regSet.y = val;
 					status.setFlagsNZ(val);
 				},
@@ -1421,7 +1378,6 @@ window.CPU6507 = (function() {
 			0xa2: { // LDX #
 				op: function() {
 					var val = fetchInstruction();
-					currentInstruction.operand = val.toString(16);
 					regSet.x = val;
 					status.setFlagsNZ(val);
 				},
@@ -1459,7 +1415,6 @@ window.CPU6507 = (function() {
 				op: function() {
 					regSet.y = regSet.ac;
 					status.setFlagsNZ(regSet.y);
-					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -1470,7 +1425,6 @@ window.CPU6507 = (function() {
 			0xa9: { // LDA #
 				op: function() {
 					var val = fetchInstruction();
-					currentInstruction.operand = val.toString(16);
 					regSet.ac = val;
 					status.setFlagsNZ(val);
 				},
@@ -1484,7 +1438,6 @@ window.CPU6507 = (function() {
 				op: function() {
 					regSet.x = regSet.ac;
 					status.setFlagsNZ(regSet.x);
-					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -1566,7 +1519,6 @@ window.CPU6507 = (function() {
 			0xb8: { // CLV impl
 				op: function() {
 					status.set('V', false);
-					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -1586,7 +1538,6 @@ window.CPU6507 = (function() {
 				op: function() {
 					regSet.x = regSet.sp;
 					status.setFlagsNZ(regSet.x);
-					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -1625,8 +1576,6 @@ window.CPU6507 = (function() {
 					status.set('Z', regSet.y === val);
 					status.set('C', regSet.y >= val);
 					status.set('N', regSet.y < val);
-
-					currentInstruction.operand = val.toString(16);
 				},
 				addressing: 'immediate',
 				cycles: 2,
@@ -1670,7 +1619,6 @@ window.CPU6507 = (function() {
 				op: function() {
 					regSet.y = (regSet.y + 1) & 0xff;
 					status.setFlagsNZ(regSet.y);
-					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -1685,8 +1633,6 @@ window.CPU6507 = (function() {
 					status.set('Z', regSet.ac === val);
 					status.set('C', regSet.ac >= val);
 					status.set('N', regSet.ac < val);
-
-					currentInstruction.operand = val.toString(16);
 				},
 				addressing: 'immediate',
 				cycles: 2,
@@ -1771,7 +1717,6 @@ window.CPU6507 = (function() {
 			0xd8: { // CLD impl
 				op: function() {
 					status.set('D', false);
-					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -1810,8 +1755,6 @@ window.CPU6507 = (function() {
 					status.set('Z', regSet.x === val);
 					status.set('C', regSet.x >= val);
 					status.set('N', regSet.x < val);
-
-					currentInstruction.operand = val;
 				},
 				addressing: 'immediate',
 				cycles: 2,
@@ -1855,7 +1798,6 @@ window.CPU6507 = (function() {
 				op: function() {
 					regSet.x = (regSet.x + 1) & 0xff;
 					status.setFlagsNZ(regSet.x);
-					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -1867,7 +1809,6 @@ window.CPU6507 = (function() {
 				op: function() {
 					var val = fetchInstruction();
 					subtractWithCarry(val);
-					currentInstruction.operand = val.toString(16);
 				},
 				addressing: 'immediate',
 				cycles: 2,
@@ -1948,7 +1889,6 @@ window.CPU6507 = (function() {
 			0xf8: { // SED impl
 				op: function() {
 					status.set('D');
-					currentInstruction.operand = 'impl';
 				},
 				addressing: 'implied',
 				cycles: 2,
@@ -2132,25 +2072,16 @@ window.CPU6507 = (function() {
 
 		},
 
-		currentInstruction = null,
+		instCycles,
 
 		executeInstruction = function() {
 			var offset = regSet.pc,
 				opcode = fetchInstruction(),
 				inst = instruction[opcode],
-				cycles0 = cycleCount,
-				instCycles;
+				cycles0 = cycleCount;
 
 			// set the waiting flag
 			waiting = true;
-
-			// save some information about the current operation
-			currentInstruction = {
-				offset: offset,
-				opcode: opcode,
-				addressing: inst.addressing,
-				abbr: inst.abbr
-			};
 
 			// execute the operation -- memory map has not been committed
 			inst.op(addrMode[inst.addressing]);
@@ -2163,25 +2094,6 @@ window.CPU6507 = (function() {
 
 			// wait for how many cycles this operation took
 			cyclesToWait = instCycles - 2;
-
-			// update the instruction info with the number of cycles
-			// the execution actually required
-			currentInstruction.cycles = instCycles;
-		},
-
-		commitOperation = function() {
-			var handlerLength = handlers.execloop.length,
-				i = 0;
-
-			mmap.journalCommit();
-
-			waiting = false; // reset the waiting flag
-
-			for (; i < handlerLength; i++) {
-				handlers.execloop[i](currentInstruction);
-			}
-
-			currentInstruction = null;
 		};
 
 	return {
@@ -2209,7 +2121,8 @@ window.CPU6507 = (function() {
 					cyclesToWait--;
 					return false;
 				} else {
-					commitOperation();
+					mmap.journalCommit(instCycles);
+					waiting = false;
 					return true;
 				}
 			}

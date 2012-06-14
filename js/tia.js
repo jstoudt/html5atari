@@ -234,32 +234,47 @@ window.TIA = (function() {
 			});
 
 			// reset the P0 graphics position when RESP0 is strobed
-			mmap.addStrobeCallback(MEM_LOCATIONS.RESP0, function() {
-				p0Pos = x + 6;
+			mmap.addStrobeCallback(MEM_LOCATIONS.RESP0, function(v, cycles) {
+				p0Pos = Math.max(0, x - cycles + 7);
+				if (p0Pos > 160) {
+					p0Pos -= 160;
+				}
 				p0Start = false;
 			});
 
 			// reset the P1 graphics position when RESP1 is strobed
-			mmap.addStrobeCallback(MEM_LOCATIONS.RESP1, function() {
-				p1Pos = x + 6;
+			mmap.addStrobeCallback(MEM_LOCATIONS.RESP1, function(v, cycles) {
+				p1Pos = Math.max(0, x - cycles + 7);
+				if (p1Pos > 159) {
+					p1Pos -= 160;
+				}
 				p1Start = false;
 			});
 
 			// reset the M0 graphics position when RESM0 is strobed
-			mmap.addStrobeCallback(MEM_LOCATIONS.RESM0, function() {
-				m0Pos = x + 4;
+			mmap.addStrobeCallback(MEM_LOCATIONS.RESM0, function(v, cycles) {
+				m0Pos = Math.max(0, x - cycles + 8);
+				if (m0Pos > 159) {
+					m0Pos -= 160;
+				}
 				m0Start = false;
 			});
 
 			// reset the M1 graphics position when RESM1 is strobed
-			mmap.addStrobeCallback(MEM_LOCATIONS.RESM1, function() {
-				m1Pos = x + 4;
+			mmap.addStrobeCallback(MEM_LOCATIONS.RESM1, function(v, cycles) {
+				m1Pos = Math.max(x - cycles + 8);
+				if (m1Pos > 159) {
+					m1Pos -= 160;
+				}
 				m1Start = false;
 			});
 
 			// reset the BL graphics position when RESBL is strobed
-			mmap.addStrobeCallback(MEM_LOCATIONS.RESBL, function() {
-				blPos = x + 5;
+			mmap.addStrobeCallback(MEM_LOCATIONS.RESBL, function(v, cycles) {
+				blPos = Math.max(0, x - cycles + 8);
+				if (blPos > 159) {
+					blPos -= 160;
+				}
 			});
 
 			// adjust the position of each of the graphics when the HMOVE
@@ -308,14 +323,6 @@ window.TIA = (function() {
 
 		},
 
-		drawCanvas = function() {
-			// draw the current pixel buffer to the canvas
-			canvasContext.putImageData(pixelBuffer, 0, 0);
-
-			// increment the number of frames drawn
-			numFrames++;
-		},
-
 		drawStaticFrame = function() {
 			var color,
 				i = 0,
@@ -331,7 +338,9 @@ window.TIA = (function() {
 				data[i + 3] = 255;   // alpha channel (always opaque)
 			}
 
-			drawCanvas();
+			canvasContext.putImageData(pixelBuffer, 0, 0);
+
+			numFrames++;
 
 			rafId = reqAnimFrame(drawStaticFrame);
 		},
@@ -412,7 +421,6 @@ window.TIA = (function() {
 					if (nusiz === 0x02 || nusiz === 0x03 || nusiz === 0x06) {
 						i = clock - 33;
 						draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
-
 					}
 				} else if (clock >= 65 && clock <= 72) {
 					if (nusiz === 0x04 || nusiz === 0x06) {
@@ -702,7 +710,10 @@ window.TIA = (function() {
 				x = -68;
 
 				// reset the RDY flag so the CPU can begin cycling again
-				RDY = false;
+				if (RDY === true) {
+					tiaClock = 0;
+					RDY = false;
+				}
 
 				// start drawing on the next scanline
 				y++;
@@ -711,7 +722,7 @@ window.TIA = (function() {
 					vsyncCount++;
 				}
 
-				tiaClock = 0;
+//				tiaClock = 0;
 			}
 
 
@@ -729,7 +740,8 @@ window.TIA = (function() {
 					vsyncCount = 0;
 					y = 0;
 					rafId = reqAnimFrame(runMainLoop);
-					drawCanvas();
+					canvasContext.putImageData(pixelBuffer, 0, 0);
+					numFrames++;
 					break;
 				}
 			}
@@ -819,7 +831,7 @@ window.TIA = (function() {
 			while(1) {
 				if (execClockCycle() === true) {
 					cancelAnimFrame(rafId);
-					drawCanvas();
+					canvasContext.putImageData(pixelBuffer, 0, 0);
 					break;
 				}
 			}
