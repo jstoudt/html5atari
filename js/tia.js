@@ -228,51 +228,46 @@ window.TIA = (function() {
 				RDY = true;
 			});
 
-			// reset the TIA clock when RSYNC is strobed
-			mmap.addStrobeCallback(MEM_LOCATIONS.RSYNC, function() {
-				tiaClock = 0;
-			});
-
 			// reset the P0 graphics position when RESP0 is strobed
-			mmap.addStrobeCallback(MEM_LOCATIONS.RESP0, function(v, cycles) {
-				p0Pos = Math.max(0, x - cycles + 7);
-				if (p0Pos > 160) {
+			mmap.addStrobeCallback(MEM_LOCATIONS.RESP0, function() {
+				p0Pos = Math.max(0, x + 5);
+				if (p0Pos >= 160) {
 					p0Pos -= 160;
 				}
 				p0Start = false;
 			});
 
 			// reset the P1 graphics position when RESP1 is strobed
-			mmap.addStrobeCallback(MEM_LOCATIONS.RESP1, function(v, cycles) {
-				p1Pos = Math.max(0, x - cycles + 7);
-				if (p1Pos > 159) {
+			mmap.addStrobeCallback(MEM_LOCATIONS.RESP1, function() {
+				p1Pos = Math.max(0, x + 5);
+				if (p1Pos >= 160) {
 					p1Pos -= 160;
 				}
 				p1Start = false;
 			});
 
 			// reset the M0 graphics position when RESM0 is strobed
-			mmap.addStrobeCallback(MEM_LOCATIONS.RESM0, function(v, cycles) {
-				m0Pos = Math.max(0, x - cycles + 8);
-				if (m0Pos > 159) {
+			mmap.addStrobeCallback(MEM_LOCATIONS.RESM0, function() {
+				m0Pos = Math.max(0, x + 4);
+				if (m0Pos >= 160) {
 					m0Pos -= 160;
 				}
 				m0Start = false;
 			});
 
 			// reset the M1 graphics position when RESM1 is strobed
-			mmap.addStrobeCallback(MEM_LOCATIONS.RESM1, function(v, cycles) {
-				m1Pos = Math.max(x - cycles + 8);
-				if (m1Pos > 159) {
+			mmap.addStrobeCallback(MEM_LOCATIONS.RESM1, function() {
+				m1Pos = Math.max(0, x + 4);
+				if (m1Pos >= 160) {
 					m1Pos -= 160;
 				}
 				m1Start = false;
 			});
 
 			// reset the BL graphics position when RESBL is strobed
-			mmap.addStrobeCallback(MEM_LOCATIONS.RESBL, function(v, cycles) {
-				blPos = Math.max(0, x - cycles + 8);
-				if (blPos > 159) {
+			mmap.addStrobeCallback(MEM_LOCATIONS.RESBL, function() {
+				blPos = Math.max(0, x + 4);
+				if (blPos >= 160) {
 					blPos -= 160;
 				}
 			});
@@ -402,7 +397,7 @@ window.TIA = (function() {
 				} else if (clock === 60 && (nusiz === 0x04 || nusiz === 0x06)) {
 					startClock();
 				}
-			} else {
+			} else if (gr !== 0x00) {
 				if (nusiz === 0x05 && clock >= 1 && clock <= 16) {
 					i = (clock - 1) >>> 1;
 					draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
@@ -669,22 +664,19 @@ window.TIA = (function() {
 		},
 
 		execClockCycle = function() {
-			var proc;
+			// if we are on a clock cycle divisible by 3 and RDY latch is
+			// not set, cycle the 6507
+			if (tiaClock === 0 && RDY === false) {
+				// if an instruction has been commited, check memory for
+				// changes to TIA registers
+				if (CPU6507.cycle() === true) {
+					// check if the VSYNC signal has been turned on or off
+					VSYNC = !!(mmap.readByte(MEM_LOCATIONS.VSYNC) & 0x02);
 
-			if (tiaClock === 2) {
-				// cycle the 6507 unless the RDY latch is set
-				if (RDY === false) {
-					proc = CPU6507.cycle();
+					// check if the VBLANK signal has been altered
+					VBLANK = !!(mmap.readByte(MEM_LOCATIONS.VBLANK) & 0x02);
 
-					// if an instruction has been commited, check memory for
-					// changes to TIA registers
-					if (proc === true) {
-						// check if the VSYNC signal has been turned on or off
-						VSYNC = !!(mmap.readByte(MEM_LOCATIONS.VSYNC) & 0x02);
-
-						// check if the VBLANK signal has been altered
-						VBLANK = !!(mmap.readByte(MEM_LOCATIONS.VBLANK) & 0x02);
-					}
+					return true;
 				}
 
 				// cycle the RIOT, update the timer
@@ -693,7 +685,7 @@ window.TIA = (function() {
 
 			// if we are not in VBLANK or HBLANK write the pixel to the
 			// canvas at the current color clock
-			if (y >= 34 && y < VIDEO_BUFFER_HEIGHT + 34 && x >= 0 && x < 160) {
+			if (VBLANK === false && x >= 0) {
 				writePixel(y - 34);
 			}
 			
@@ -711,7 +703,6 @@ window.TIA = (function() {
 
 				// reset the RDY flag so the CPU can begin cycling again
 				if (RDY === true) {
-					tiaClock = 0;
 					RDY = false;
 				}
 
@@ -721,13 +712,11 @@ window.TIA = (function() {
 				if (VSYNC === true) {
 					vsyncCount++;
 				}
-
-//				tiaClock = 0;
 			}
 
 
 			// return true if this cycle contained a CPU execution completion
-			return proc;
+			return false;
 		},
 
 		runMainLoop = function() {

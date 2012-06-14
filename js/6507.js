@@ -180,17 +180,9 @@ window.CPU6507 = (function() {
 			relative: function() {
 				var addr = fetchInstruction();
 				
-				cycleCount++;
-
 				addr = (addr & 0x80) ?
 					regSet.pc - ((addr ^ 0xff) + 1) :
 					regSet.pc + addr;
-
-				// Fetching relative address across page boundries costs an
-				// extra cycle
-				if ((regSet.pc & 0xff00) !== (addr & 0xff00)) {
-					cycleCount++;
-				}
 
 				return addr & 0xffff;
 			}
@@ -584,7 +576,7 @@ window.CPU6507 = (function() {
 					stack.pushByte(regSet.sr);
 				},
 				addressing: 'implied',
-				cycles: 5,
+				cycles: 3,
 				abbr: 'PHP',
 				bytes: 1
 			},
@@ -630,8 +622,8 @@ window.CPU6507 = (function() {
 			0x10: { // BPL rel
 				op: function(fAddr) {
 					var addr = fAddr();
-
 					if (status.isSet('N') === false) {
+						cycleCount += ((regSet.pc & 0xff00) === (addr & 0xff00)) ? 1 : 2;
 						regSet.pc = addr;
 					}
 				},
@@ -799,6 +791,7 @@ window.CPU6507 = (function() {
 				op: function(fAddr) {
 					var addr = fAddr();
 					if (status.isSet('N') === true) {
+						cycleCount += ((regSet.pc & 0xff00) === (addr & 0xff00)) ? 1 : 2;
 						regSet.pc = addr;
 					}
 				},
@@ -961,8 +954,8 @@ window.CPU6507 = (function() {
 			0x50: { // BVC rel
 				op: function(fAddr) {
 					var addr = fAddr();
-
 					if (status.isSet('V') === false ) {
+						cycleCount += ((regSet.pc & 0xff00) === (addr & 0xff00)) ? 1 : 2;
 						regSet.pc = addr;
 					}
 				},
@@ -1125,8 +1118,8 @@ window.CPU6507 = (function() {
 			0x70: { // BVS rel
 				op: function(fAddr) {
 					var addr = fAddr();
-
 					if (status.isSet('V') === true) {
+						cycleCount += ((regSet.pc & 0xff00) === (addr & 0xff00)) ? 1 : 2;
 						regSet.pc = addr;
 					}
 				},
@@ -1275,8 +1268,8 @@ window.CPU6507 = (function() {
 			0x90: { // BCC rel
 				op: function(fAddr) {
 					var addr = fAddr();
-
 					if (status.isSet('C') === false) {
+						cycleCount += ((regSet.pc & 0xff00) === (addr & 0xff00)) ? 1 : 2;
 						regSet.pc = addr;
 					}
 				},
@@ -1472,8 +1465,8 @@ window.CPU6507 = (function() {
 			0xb0: { // BCS rel
 				op: function(fAddr) {
 					var addr = fAddr();
-
 					if (status.isSet('C') === true) {
+						cycleCount += ((regSet.pc & 0xff00) === (addr & 0xff00)) ? 1 : 2;
 						regSet.pc = addr;
 					}
 				},
@@ -1679,8 +1672,8 @@ window.CPU6507 = (function() {
 			0xd0: { // BNE rel
 				op: function(fAddr) {
 					var addr = fAddr();
-
 					if (status.isSet('Z') === false) {
+						cycleCount += ((regSet.pc & 0xff00) === (addr & 0xff00)) ? 1 : 2;
 						regSet.pc = addr;
 					}
 				},
@@ -1851,8 +1844,8 @@ window.CPU6507 = (function() {
 			0xf0: { // BEQ rel
 				op: function(fAddr) {
 					var addr = fAddr();
-
 					if (status.isSet('Z') === true) {
+						cycleCount += ((regSet.pc & 0xff00) === (addr & 0xff00)) ? 1 : 2;
 						regSet.pc = addr;
 					}
 				},
@@ -2072,13 +2065,12 @@ window.CPU6507 = (function() {
 
 		},
 
-		instCycles,
-
 		executeInstruction = function() {
 			var offset = regSet.pc,
 				opcode = fetchInstruction(),
 				inst = instruction[opcode],
-				cycles0 = cycleCount;
+				cycles0 = cycleCount,
+				instCycles;
 
 			// set the waiting flag
 			waiting = true;
@@ -2093,7 +2085,7 @@ window.CPU6507 = (function() {
 			instCycles = cycleCount - cycles0;
 
 			// wait for how many cycles this operation took
-			cyclesToWait = instCycles - 2;
+			cyclesToWait = instCycles - 1;
 		};
 
 	return {
@@ -2121,7 +2113,7 @@ window.CPU6507 = (function() {
 					cyclesToWait--;
 					return false;
 				} else {
-					mmap.journalCommit(instCycles);
+					mmap.journalCommit();
 					waiting = false;
 					return true;
 				}

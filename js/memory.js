@@ -190,13 +190,13 @@ MemoryMap.prototype.journalReset = function() {
 
 // Writes all the bytes in the journal to the specified address location
 // and clears the journal
-MemoryMap.prototype.journalCommit = function(cycles) {
+MemoryMap.prototype.journalCommit = function() {
 	var i = 0,
 		l = this._journal.length;
 
 	for (; i < l; i++) {
 		if (this.isReadOnly(this._journal[i].addr) === false) {
-			this.writeByte(this._journal[i].val, this._journal[i].addr, cycles);
+			this.writeByte(this._journal[i].val, this._journal[i].addr);
 		}
 	}
 
