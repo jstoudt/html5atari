@@ -259,7 +259,7 @@ window.TIA = (function() {
 
 			// reset the BL graphics position when RESBL is strobed
 			mmap.addStrobeCallback(MEM_LOCATIONS.RESBL, function() {
-				blPos = x + 4;
+				blPos = x + 5;
 			});
 
 			// adjust the position of each of the graphics when the HMOVE
@@ -478,19 +478,19 @@ window.TIA = (function() {
 				nusiz &= 0x07;
 
 				if (clock >= 0 && clock < 8) {
-					draw = clock <= size;
+					draw = clock < size;
 				}
 				else if (clock >= 16 && clock < 24) {
 					if (nusiz === 0x01 || nusiz === 0x03 || nusiz === 0x07) {
-						draw = (clock - 16) <= size;
+						draw = (clock - 16) < size;
 					}
 				} else if (clock >= 32 && clock < 40) {
 					if (nusiz === 0x02 || nusiz === 0x03 || nusiz === 0x06) {
-						draw = (clock - 32) <= size;
+						draw = (clock - 32) < size;
 					}
 				} else if (clock >= 64 && clock < 72) {
 					if (nusiz === 0x04 || nusiz === 0x06) {
-						draw = (clock - 64) <= size;
+						draw = (clock - 64) < size;
 					}
 				}
 			}
@@ -517,7 +517,7 @@ window.TIA = (function() {
 //				vdel = !!(mmap.readByte(MEM_LOCATIONS.VDELBL) & 0x01);
 			
 				size = 0x01 << ((mmap.readByte(MEM_LOCATIONS.CTRLPF) >>> 4) & 0x03);
-				if (blClock <= size) {
+				if (blClock < size) {
 					draw = true;
 				}
 			}
