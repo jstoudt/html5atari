@@ -202,7 +202,7 @@ window.TIA = (function() {
 
 					// wrap around if we passed the left side of the canvas
 					if (x < 0) {
-						x = 160 - x;
+						x += 160;
 					}
 				}
 
