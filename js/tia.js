@@ -666,20 +666,22 @@ window.TIA = (function() {
 		execClockCycle = function() {
 			// if we are on a clock cycle divisible by 3 and RDY latch is
 			// not set, cycle the 6507
-			if (tiaClock === 0 && RDY === false) {
-				// if an instruction has been commited, check memory for
-				// changes to TIA registers
-				if (CPU6507.cycle() === true) {
-					// check if the VSYNC signal has been turned on or off
-					VSYNC = !!(mmap.readByte(MEM_LOCATIONS.VSYNC) & 0x02);
+			if (tiaClock === 0) {
+				if (RDY === false) {
+					// if an instruction has been commited, check memory for
+					// changes to TIA registers
+					if (CPU6507.cycle() === true) {
+						// check if the VSYNC signal has been turned on or off
+						VSYNC = !!(mmap.readByte(MEM_LOCATIONS.VSYNC) & 0x02);
 
-					// check if the VBLANK signal has been altered
-					VBLANK = !!(mmap.readByte(MEM_LOCATIONS.VBLANK) & 0x02);
+						// check if the VBLANK signal has been altered
+						VBLANK = !!(mmap.readByte(MEM_LOCATIONS.VBLANK) & 0x02);
 
-					return true;
+						return true;
+					}
 				}
 
-				// cycle the RIOT, update the timer
+				// process a RIOT cycle
 				RIOT.cycle();
 			}
 
