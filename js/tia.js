@@ -230,8 +230,10 @@ window.TIA = (function() {
 
 			// reset the P0 graphics position when RESP0 is strobed
 			mmap.addStrobeCallback(MEM_LOCATIONS.RESP0, function() {
-				p0Pos = Math.max(0, x + 5);
-				if (p0Pos >= 160) {
+				p0Pos = x + 5;
+				if (p0Pos < 0) {
+					p0Pos = 2;
+				} else if (p0Pos >= 160) {
 					p0Pos -= 160;
 				}
 				p0Start = false;
@@ -239,8 +241,10 @@ window.TIA = (function() {
 
 			// reset the P1 graphics position when RESP1 is strobed
 			mmap.addStrobeCallback(MEM_LOCATIONS.RESP1, function() {
-				p1Pos = Math.max(0, x + 5);
-				if (p1Pos >= 160) {
+				p1Pos = x + 5;
+				if (p1Pos < 0) {
+					p1Pos = 2;
+				} else if (p1Pos >= 160) {
 					p1Pos -= 160;
 				}
 				p1Start = false;
@@ -248,8 +252,10 @@ window.TIA = (function() {
 
 			// reset the M0 graphics position when RESM0 is strobed
 			mmap.addStrobeCallback(MEM_LOCATIONS.RESM0, function() {
-				m0Pos = Math.max(0, x + 4);
-				if (m0Pos >= 160) {
+				m0Pos = x + 4;
+				if (m0Pos < 0) {
+					m0Pos = 2;
+				} else if (m0Pos >= 160) {
 					m0Pos -= 160;
 				}
 				m0Start = false;
@@ -257,8 +263,10 @@ window.TIA = (function() {
 
 			// reset the M1 graphics position when RESM1 is strobed
 			mmap.addStrobeCallback(MEM_LOCATIONS.RESM1, function() {
-				m1Pos = Math.max(0, x + 4);
-				if (m1Pos >= 160) {
+				m1Pos = x + 4;
+				if (m1Pos < 0) {
+					m1Pos = 2;
+				} else if (m1Pos >= 160) {
 					m1Pos -= 160;
 				}
 				m1Start = false;
@@ -266,8 +274,10 @@ window.TIA = (function() {
 
 			// reset the BL graphics position when RESBL is strobed
 			mmap.addStrobeCallback(MEM_LOCATIONS.RESBL, function() {
-				blPos = Math.max(0, x + 4);
-				if (blPos >= 160) {
+				blPos = x + 4;
+				if (blPos < 0) {
+					blPos = 2;
+				} else if (blPos >= 160) {
 					blPos -= 160;
 				}
 			});
@@ -284,23 +294,22 @@ window.TIA = (function() {
 
 			// store the new GRP0 value and copy the old one
 			mmap.addStrobeCallback(MEM_LOCATIONS.GRP0, function(val) {
-				oldGRP0 = newGRP0;
 				newGRP0 = val;
+				oldGRP1 = newGRP1;
 			});
 
 			// store the new GRP1 value and copy the old one
 			mmap.addStrobeCallback(MEM_LOCATIONS.GRP1, function(val) {
-				oldGRP1 = newGRP1;
 				newGRP1 = val;
+				oldGRP0 = newGRP0;
 			});
 
 			// clear all the horizintal movement registers when HMCLR is strobed
 			mmap.addStrobeCallback(MEM_LOCATIONS.HMCLR, function() {
 				var i = 0,
-					list = ['HMP0', 'HMP1', 'HMM0', 'HMM1', 'HMBL'],
-					len = list.length;
+					list = ['HMP0', 'HMP1', 'HMM0', 'HMM1', 'HMBL'];
 
-				for (; i < len; i++) {
+				for (; i < list.length; i++) {
 					mmap.writeByte(0, MEM_LOCATIONS[list[i]]);
 				}
 			});
@@ -308,10 +317,10 @@ window.TIA = (function() {
 			// clear all the collision registers when CXCLR is strobed
 			mmap.addStrobeCallback(MEM_LOCATIONS.CXCLR, function() {
 				var i = 0,
-					list = ['CXM0P', 'CXM1P', 'CXP0FB', 'CXP1FB', 'CXM0FB', 'CXM1FB', 'CXBLPF', 'CXPPMM'],
-					len = list.length;
+					list = ['CXM0P', 'CXM1P', 'CXP0FB', 'CXP1FB',
+							'CXM0FB', 'CXM1FB', 'CXBLPF', 'CXPPMM'];
 
-				for (; i < len; i++) {
+				for (; i < list.length; i++) {
 					mmap.writeByte(0, MEM_LOCATIONS[list[i]]);
 				}
 			});
