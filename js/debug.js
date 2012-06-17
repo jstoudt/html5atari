@@ -37,6 +37,7 @@
 		colup0       = document.getElementById('colup0'),
 		p0swatch     = document.getElementById('p0-swatch'),
 		grp0         = document.getElementById('grp0'),
+		oldGrp0      = document.getElementById('old-grp0'),
 		refp0        = document.getElementById('refp0'),
 		vdelp0       = document.getElementById('vdelp0'),
 		nusiz0       = document.getElementById('nusiz0'),
@@ -46,6 +47,7 @@
 		colup1       = document.getElementById('colup1'),
 		p1swatch     = document.getElementById('p1-swatch'),
 		grp1         = document.getElementById('grp1'),
+		oldGrp1      = document.getElementById('old-grp1'),
 		refp1        = document.getElementById('refp1'),
 		vdelp1       = document.getElementById('vdelp1'),
 		nusiz1       = document.getElementById('nusiz1'),
@@ -228,6 +230,7 @@
 		colup0.textContent             = toHex(playerInfo.color, 2);
 		p0swatch.style.backgroundColor = playerInfo.rgb;
 		grp0.textContent               = toBinary(playerInfo.graphics, 8);
+		oldGrp0.textContent            = toBinary(playerInfo.oldGraphics, 8);
 		refp0.checked                  = playerInfo.reflect;
 		vdelp0.checked                 = playerInfo.delay;
 		nusiz0.textContent             = toHex(playerInfo.nusiz, 1);
@@ -238,6 +241,7 @@
 		colup1.textContent             = toHex(playerInfo.color, 2);
 		p1swatch.style.backgroundColor = playerInfo.rgb;
 		grp1.textContent               = toBinary(playerInfo.graphics, 8);
+		oldGrp1.textContent            = toBinary(playerInfo.oldGraphics, 8);
 		refp1.checked                  = playerInfo.reflect;
 		vdelp1.checked                 = playerInfo.delay;
 		nusiz1.textContent             = toHex(playerInfo.nusiz, 1);

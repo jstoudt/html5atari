@@ -8,7 +8,7 @@
  */
 
 
-function MemoryMap(bitWidth) {
+function MemoryMap( bitWidth ) {
 	var buf,
 		mask = 0,
 		i = 0;
@@ -32,12 +32,13 @@ function MemoryMap(bitWidth) {
 		mask = (mask << 1) | 1;
 	}
 
-	buf            = new ArrayBuffer(1 << bitWidth);
-	this._memory   = new Uint8Array(buf);
-	this._strobes  = {};
-	this._readonly = [];
-	this._journal  = [];
-	this._bitmask  = mask;
+	buf             = new ArrayBuffer(1 << bitWidth);
+	this._memory    = new Uint8Array(buf);
+	this._strobes   = {};
+	this._readonly  = {};
+	this._writeonly = {};
+	this._journal   = [];
+	this._bitmask   = mask;
 
 	// the only public property of a MemoryMap object created in this constructor
 	this.length = this._memory.length;
@@ -49,45 +50,53 @@ function MemoryMap(bitWidth) {
 }
 
 // Changes the memory at the specified address location to the specified value
-MemoryMap.prototype.writeByte = function(val, addr, cycles) {
-	var strobes = this._strobes,
-		i, list;
-
+MemoryMap.prototype.writeByte = function( val, addr ) {
 	addr &= this._bitmask;
 	val &= 0xff;
 
-	if (addr in strobes) {
-		list = strobes[addr];
-		for (i = 0; i < list.length; i++) {
-			list[i](val, cycles);
-		}
+	if (addr in this._strobes) {
+		this._strobes[addr].fn();
+	} else if (addr in this._writeonly) {
+		this._writeonly[addr].fn(val);
 	} else {
 		this._memory[addr] = val;
 	}
 };
 
 // Returns the byte in memory at the specified address location
-MemoryMap.prototype.readByte = function(addr) {
+MemoryMap.prototype.readByte = function( addr ) {
 	addr &= this._bitmask;
+
+	if (addr in this._readonly) {
+		return this._readonly[addr]();
+	}
+
+	if (addr in this._writeonly && this._writeonly[addr].read) {
+		return this.readByte(this._writeonly[addr].read);
+	}
+
+	if (addr in this._strobes && this._strobes[addr].read) {
+		return this.readByte(this._strobes[addr].read);
+	}
 
 	return this._memory[addr];
 };
 
 // Returns the 2-byte little-endian word stored at the specified location
-MemoryMap.prototype.readWord = function(addr) {
+MemoryMap.prototype.readWord = function( addr ) {
 	var lo, hi;
 
 	addr &= this._bitmask;
 
-	lo = this._memory[addr];
-	hi = this._memory[(addr + 1) & 0xffff];
+	lo = this.readByte(addr);
+	hi = this.readByte((addr + 1) & 0xffff);
 
 	return (hi << 8) | lo;
 };
 
 // Returns a deep copy of the memory beginning at the specified until
 // the specified memory length
-MemoryMap.prototype.getCopy = function(offset, len) {
+MemoryMap.prototype.getCopy = function( offset, len ) {
 	var buf,
 		copy,
 		i = 0;
@@ -111,72 +120,72 @@ MemoryMap.prototype.getCopy = function(offset, len) {
 
 // Indicates that the byte at the specified address location is a strobe
 // rather than a conventional read-write byte on the memory bus
-MemoryMap.prototype.addStrobeCallback = function(addr, f) {
-	var strobes = this._strobes;
+MemoryMap.prototype.addStrobe = function( addr, fn, read ) {
 	addr &= this._bitmask;
 
-	if (!(addr in strobes)) {
-		strobes[addr] = [];
+	if (!(addr in this._strobes)) {
+		this._strobes[addr] = {};
 	}
 
-	strobes[addr].push(f);
+	this._strobes[addr].fn   = fn;
+	this._strobes[addr].read = read;
 };
 
-MemoryMap.prototype.removeStrobeCallback = function(addr, f) {
-	var strobes = this._strobes,
-		list, i;
-
-	if (arguments.length === 1 && typeof addr === 'number') {
-		if (addr in strobes) {
-			delete strobes[addr];
-		}
-	} else if (arguments.length === 1 && typeof addr === 'function') {
-		f = addr;
-		for (i in strobes) {
-			list = strobes[i];
-			for (i = list.length - 1; i >= 0; i--) {
-				if (list[i] === f) {
-					list.splice(i, 1);
-				}
-			}
-		}
-	} else if (arguments.length === 2) {
-		if (addr in strobes) {
-			list = strobes[addr];
-			for (i = list.length - 1; i >= 0; i--) {
-				if (list[i] === f) {
-					list.splice(i, 1);
-				}
-			}
-		}
+MemoryMap.prototype.removeStrobe = function( addr ) {
+	if (addr in this._strobes) {
+		delete this._strobes[addr];
 	}
 };
 
+MemoryMap.prototype.isStrobe = function( addr ) {
+	return !!(addr in this._strobes);
+};
 
 // Marks the given address as a location to which the CPU cannot write to
 // via the journalCommit function
-MemoryMap.prototype.addReadOnly = function(addr) {
-	this._readonly.push(addr);
+MemoryMap.prototype.addReadOnly = function( addr, fn ) {
+	addr &= this._bitmask;
+
+	this._readonly[addr] = fn;
+};
+
+// Removes the given address as a read-only address location
+MemoryMap.prototype.removeReadOnly = function( addr ) {
+	if (addr in this._readonly) {
+		delete this._readonly[addr];
+	}
 };
 
 // returns true if the given address is in the readonly list, and false
 // otherwise
-MemoryMap.prototype.isReadOnly = function(addr) {
-	var i = 0,
-		l = this._readonly.length;
+MemoryMap.prototype.isReadOnly = function( addr ) {
+	return !!(addr in this._readonly);
+};
 
-	for (; i < l; i++) {
-		if (this._readonly[i] === addr) {
-			return true;
-		}
+MemoryMap.prototype.addWriteOnly = function( addr, fn, read ) {
+	addr &= this._bitmask;
+
+	if (!(addr in this._writeonly)) {
+		this._writeonly[addr] = {};
 	}
 
-	return false;
+	this._writeonly[addr].fn   = fn;
+	this._writeonly[addr].read = read;
+};
+
+MemoryMap.prototype.removeWriteOnly = function( addr ) {
+	if (addr in this._writeonly) {
+		delete this._writeonly[addr];
+	}
+};
+
+MemoryMap.prototype.isWriteOnly = function( addr ) {
+	return !!(addr in this._writeonly);
 };
 
 // Adds to the journal a byte to be written at a specified location
 // when the next commit is executed
-MemoryMap.prototype.journalAddByte = function(val, addr) {
+MemoryMap.prototype.journalAddByte = function( val, addr ) {
 	this._journal.push({
 		addr: addr,
 		val: val

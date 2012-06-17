@@ -70,18 +70,96 @@ window.TIA = (function() {
 		m1Clock = 0,
 		blClock = 0,
 
+		PF0 = 0x00,
+		PF1 = 0x00,
+		PF2 = 0x00,
+
 		p0Start = false,
 		p1Start = false,
 		m0Start = false,
 		m1Start = false,
 
-		// internal registers for the GRP0 and GRP1 values
+		// internal registers for the GRPx values
 		oldGRP0 = 0x00,
 		newGRP0 = 0x00,
 		oldGRP1 = 0x00,
 		newGRP1 = 0x00,
 
-//		TARGET_CYCLE_RATE = 3579.545, // frequency of the TIA clock in kHz
+		// internal registers for the NUSIZx values
+		NUSIZ0       = 0x00,
+		NUSIZ1       = 0x00,
+		MISSLE_SIZE0 = 1,
+		MISSLE_SIZE1 = 1,
+
+		// internal registers for the ENAMx values
+		ENAM0 = false,
+		ENAM1 = false,
+
+		// internal registers for the ENABL value
+		newENABL = false,
+		oldENABL = false,
+
+		// internal registers corresponding to the CTRLPF register
+		BALL_SIZE = 1,
+		REFLECT   = false,
+		SCORE     = false,
+		PRIORITY  = false,
+
+		// internal color registers
+		COLUBK = 0x00,
+		COLUPF = 0x00,
+		COLUP0 = 0x00,
+		COLUP1 = 0x00,
+
+		COLUBKrgb = [ 0, 0, 0 ],
+		COLUPFrgb = [ 0, 0, 0 ],
+		COLUP0rgb = [ 0, 0, 0 ],
+		COLUP1rgb = [ 0, 0, 0 ],
+
+		// internal registers for the player reflection values
+		REFP0 = false,
+		REFP1 = false,
+
+		// internal registers for the graphics vertical delays
+		VDELP0 = false,
+		VDELP1 = false,
+		VDELBL = false,
+
+		// internal registers for the HMOVE values
+		HMP0 = 0x00,
+		HMP1 = 0x00,
+		HMM0 = 0x00,
+		HMM1 = 0x00,
+		HMBL = 0x00,
+
+		// internal registers for reset missle to player values
+		RESMP0 = false,
+		RESMP1 = false,
+
+		// internal collision registers
+		M0_P0 = false,
+		M0_P1 = false,
+		M1_P1 = false,
+		M1_P0 = false,
+		P0_BL = false,
+		P0_PF = false,
+		P1_BL = false,
+		P1_PF = false,
+		M0_BL = false,
+		M0_PF = false,
+		M1_BL = false,
+		M1_PF = false,
+		BL_PF = false,
+		M0_M1 = false,
+		P0_P1 = false,
+
+		// internal registers for INPUT values
+		INPT0 = true,
+		INPT1 = true,
+		INPT2 = true,
+		INPT3 = true,
+		INPT4 = true,
+		INPT5 = true,
 
 		// the dimensions of the output video buffer -- NTSC-only for now
 		VIDEO_BUFFER_WIDTH  = 0,
@@ -103,9 +181,12 @@ window.TIA = (function() {
 			RESP0:  0x10,		RESP1:  0x11,
 			RESM0:  0x12,		RESM1:  0x13,
 			RESBL:  0x14,
+
+			// TIA audio registers
 			AUDC0:  0x15,		AUDC1:  0x16,
 			AUDF0:  0x17,		AUDF1:  0x18,
 			AUDV0:  0x19,		AUDV1:  0x1a,
+
 			GRP0:   0x1b,		GRP1:   0x1c,
 			ENAM0:  0x1d,		ENAM1:  0x1e,
 			ENABL:  0x1f,
@@ -119,15 +200,15 @@ window.TIA = (function() {
 			CXCLR:  0x2c,
 
 			// These are TIA Collision Read Registers
-			CXM0P:  0x40,		CXM1P:  0x41,
-			CXP0FB: 0x42,		CXP1FB: 0x43,
-			CXM0FB: 0x44,		CXM1FB: 0x45,
-			CXBLPF: 0x46,		CXPPMM: 0x47,
+			CXM0P:  0x30,		CXM1P:  0x31,
+			CXP0FB: 0x32,		CXP1FB: 0x33,
+			CXM0FB: 0x34,		CXM1FB: 0x35,
+			CXBLPF: 0x36,		CXPPMM: 0x37,
 
 			// These are TIA Input Read Registers
-			INPT0:  0x48,		INPT1:  0x49,
-			INPT2:  0x4a,		INPT3:  0x4b,
-			INPT4:  0x4c,		INPT5:  0x4d
+			INPT0:  0x38,		INPT1:  0x39,
+			INPT2:  0x3a,		INPT3:  0x3b,
+			INPT4:  0x3c,		INPT5:  0x3d
 		},
 
 		// the Atari 2600 NTSC color palette
@@ -185,10 +266,6 @@ window.TIA = (function() {
 
 		initMemoryMap = function() {
 			function hmove(x, d) {
-				// only bits D7 to D4 affect horizontal motion, so confine
-				// just those bits
-				d >>>= 4;
-
 				// if d is negative, move that many pixels to the right
 				if (d & 0x08) {
 					x += (~d & 0x0f) + 1;
@@ -209,27 +286,100 @@ window.TIA = (function() {
 				return x;
 			}
 
-			var readonlyList = [
-					'CXM0P', 'CXM1P', 'CXP0FB', 'CXP1FB', 'CXM0FB',
-					'CXM1FB', 'CXBLPF', 'CXPPMM',
-					'INPT0', 'INPT1', 'INPT2', 'INPT3', 'INPT4', 'INPT5'
-				],
-				i = 0,
-				len = readonlyList.length;
-
+			// create a new memory map object
 			mmap = new MemoryMap(13);
-			// add the readonly memory locations
-			for (; i < len; i++) {
-				mmap.addReadOnly(MEM_LOCATIONS[readonlyList[i]]);
-			}
 
-			// set the RDY latch when the WSYNC address is strobed
-			mmap.addStrobeCallback(MEM_LOCATIONS.WSYNC, function() {
-				RDY = true;
+			mmap.addReadOnly( MEM_LOCATIONS.CXM0P, function() {
+				var val = M0_P0 === true ? 0x40 : 0x00;
+				if (M0_P1 === true) {
+					val |= 0x80;
+				}
+				return val;
+			} );
+
+			mmap.addReadOnly( MEM_LOCATIONS.CXM1P, function() {
+				var val = M1_P1 === true ? 0x40 : 0x00;
+				if (M1_P0 === true) {
+					val |= 0x80;
+				}
+				return val;
+			} );
+
+			mmap.addReadOnly( MEM_LOCATIONS.CXP0FB, function() {
+				var val = P0_BL === true ? 0x40 : 0x00;
+				if (P0_PF === true) {
+					val |= 0x80;
+				}
+				return val;
+			} );
+
+			mmap.addReadOnly( MEM_LOCATIONS.CXP1FB, function() {
+				var val = P1_BL === true ? 0x40 : 0x00;
+				if (P1_PF === true) {
+					val |= 0x80;
+				}
+				return val;
+			} );
+
+			mmap.addReadOnly( MEM_LOCATIONS.CXM0FB, function() {
+				var val = M0_BL === true ? 0x40 : 0x00;
+				if (M0_PF === true) {
+					val |= 0x80;
+				}
+				return val;
+			} );
+
+			mmap.addReadOnly( MEM_LOCATIONS.CXM1FB, function() {
+				var val = M1_BL === true ? 0x40 : 0x00;
+				if (M1_PF === true) {
+					val |= 0x80;
+				}
+				return val;
+			} );
+
+			mmap.addReadOnly( MEM_LOCATIONS.CXBLPF, function() {
+				return BL_PF === true ? 0x80 : 0x00;
+			} );
+
+			mmap.addReadOnly( MEM_LOCATIONS.CXPPMM, function() {
+				var val = M0_M1 === true ? 0x40 : 0x00;
+				if (P0_P1 === true) {
+					val |= 0x80;
+				}
+				return val;
+			} );
+
+			mmap.addReadOnly( MEM_LOCATIONS.INPT0, function() {
+				return INPT0 === true ? 0x80 : 0x00;
 			});
 
+			mmap.addReadOnly( MEM_LOCATIONS.INPT1, function() {
+				return INPT1 === true ? 0x80 : 0x00;
+			} );
+
+			mmap.addReadOnly( MEM_LOCATIONS.INPT2, function() {
+				return INPT2 === true ? 0x80 : 0x00;
+			});
+
+			mmap.addReadOnly( MEM_LOCATIONS.INPT3, function() {
+				return INPT3 === true ? 0x80 : 0x00;
+			});
+
+			mmap.addReadOnly( MEM_LOCATIONS.INPT4, function() {
+				return INPT4 === true ? 0x80 : 0x00;
+			});
+
+			mmap.addReadOnly( MEM_LOCATIONS.INPT5, function() {
+				return INPT5 === true ? 0x80 : 0x00;
+			});
+
+			// set the RDY latch when the WSYNC address is strobed
+			mmap.addStrobe( MEM_LOCATIONS.WSYNC, function() {
+				RDY = true;
+			}, MEM_LOCATIONS.CXP0FB );
+
 			// reset the P0 graphics position when RESP0 is strobed
-			mmap.addStrobeCallback(MEM_LOCATIONS.RESP0, function() {
+			mmap.addStrobe( MEM_LOCATIONS.RESP0, function() {
 				p0Pos = x + 5;
 				if (p0Pos < 0) {
 					p0Pos = 2;
@@ -237,10 +387,10 @@ window.TIA = (function() {
 					p0Pos -= 160;
 				}
 				p0Start = false;
-			});
+			}, MEM_LOCATIONS.CXM0P );
 
 			// reset the P1 graphics position when RESP1 is strobed
-			mmap.addStrobeCallback(MEM_LOCATIONS.RESP1, function() {
+			mmap.addStrobe( MEM_LOCATIONS.RESP1, function() {
 				p1Pos = x + 5;
 				if (p1Pos < 0) {
 					p1Pos = 2;
@@ -248,10 +398,10 @@ window.TIA = (function() {
 					p1Pos -= 160;
 				}
 				p1Start = false;
-			});
+			}, MEM_LOCATIONS.CXM1P );
 
 			// reset the M0 graphics position when RESM0 is strobed
-			mmap.addStrobeCallback(MEM_LOCATIONS.RESM0, function() {
+			mmap.addStrobe( MEM_LOCATIONS.RESM0, function() {
 				m0Pos = x + 4;
 				if (m0Pos < 0) {
 					m0Pos = 2;
@@ -259,10 +409,10 @@ window.TIA = (function() {
 					m0Pos -= 160;
 				}
 				m0Start = false;
-			});
+			}, MEM_LOCATIONS.CXP0FB );
 
 			// reset the M1 graphics position when RESM1 is strobed
-			mmap.addStrobeCallback(MEM_LOCATIONS.RESM1, function() {
+			mmap.addStrobe( MEM_LOCATIONS.RESM1, function() {
 				m1Pos = x + 4;
 				if (m1Pos < 0) {
 					m1Pos = 2;
@@ -270,61 +420,188 @@ window.TIA = (function() {
 					m1Pos -= 160;
 				}
 				m1Start = false;
-			});
+			}, MEM_LOCATIONS.CXP1FB );
 
 			// reset the BL graphics position when RESBL is strobed
-			mmap.addStrobeCallback(MEM_LOCATIONS.RESBL, function() {
+			mmap.addStrobe( MEM_LOCATIONS.RESBL, function() {
 				blPos = x + 4;
 				if (blPos < 0) {
 					blPos = 2;
 				} else if (blPos >= 160) {
 					blPos -= 160;
 				}
-			});
+			}, MEM_LOCATIONS.CXM0FB );
 
 			// adjust the position of each of the graphics when the HMOVE
 			// memory address is strobed
-			mmap.addStrobeCallback(MEM_LOCATIONS.HMOVE, function() {
-				p0Pos = hmove(p0Pos, mmap.readByte(MEM_LOCATIONS.HMP0));
-				p1Pos = hmove(p1Pos, mmap.readByte(MEM_LOCATIONS.HMP1));
-				m0Pos = hmove(m0Pos, mmap.readByte(MEM_LOCATIONS.HMM0));
-				m1Pos = hmove(m1Pos, mmap.readByte(MEM_LOCATIONS.HMM1));
-				blPos = hmove(blPos, mmap.readByte(MEM_LOCATIONS.HMBL));
-			});
-
-			// store the new GRP0 value and copy the old one
-			mmap.addStrobeCallback(MEM_LOCATIONS.GRP0, function(val) {
-				newGRP0 = val;
-				oldGRP1 = newGRP1;
-			});
-
-			// store the new GRP1 value and copy the old one
-			mmap.addStrobeCallback(MEM_LOCATIONS.GRP1, function(val) {
-				newGRP1 = val;
-				oldGRP0 = newGRP0;
-			});
+			mmap.addStrobe( MEM_LOCATIONS.HMOVE, function() {
+				p0Pos = hmove(p0Pos, HMP0);
+				p1Pos = hmove(p1Pos, HMP1);
+				m0Pos = hmove(m0Pos, HMM0);
+				m1Pos = hmove(m1Pos, HMM1);
+				blPos = hmove(blPos, HMBL);
+			}, MEM_LOCATIONS.INPT2 );
 
 			// clear all the horizintal movement registers when HMCLR is strobed
-			mmap.addStrobeCallback(MEM_LOCATIONS.HMCLR, function() {
-				var i = 0,
-					list = ['HMP0', 'HMP1', 'HMM0', 'HMM1', 'HMBL'];
-
-				for (; i < list.length; i++) {
-					mmap.writeByte(0, MEM_LOCATIONS[list[i]]);
-				}
-			});
+			mmap.addStrobe( MEM_LOCATIONS.HMCLR, function() {
+				HMP0 = 0;
+				HMP1 = 0;
+				HMM0 = 0;
+				HMM1 = 0;
+				HMBL = 0;
+			}, MEM_LOCATIONS.INPT3 );
 
 			// clear all the collision registers when CXCLR is strobed
-			mmap.addStrobeCallback(MEM_LOCATIONS.CXCLR, function() {
-				var i = 0,
-					list = ['CXM0P', 'CXM1P', 'CXP0FB', 'CXP1FB',
-							'CXM0FB', 'CXM1FB', 'CXBLPF', 'CXPPMM'];
+			mmap.addStrobe( MEM_LOCATIONS.CXCLR, function() {
+				M0_P0 = false;
+				M0_P1 = false;
+				M1_P1 = false;
+				M1_P0 = false;
+				P0_BL = false;
+				P0_PF = false;
+				P1_BL = false;
+				P1_PF = false;
+				M0_BL = false;
+				M0_PF = false;
+				M1_BL = false;
+				M1_PF = false;
+				BL_PF = false;
+				M0_M1 = false;
+				P0_P1 = false;
+			}, MEM_LOCATIONS.INPT4 );
 
-				for (; i < list.length; i++) {
-					mmap.writeByte(0, MEM_LOCATIONS[list[i]]);
-				}
-			});
+			// store the new GRP0 value and copy the old one
+			mmap.addWriteOnly( MEM_LOCATIONS.GRP0, function( val ) {
+				newGRP0 = val;
+				oldGRP0 = val;
+				oldGRP1 = newGRP1;
+			}, MEM_LOCATIONS.INPT3 );
 
+			// store the new GRP1 value and copy the old one
+			mmap.addWriteOnly( MEM_LOCATIONS.GRP1, function( val ) {
+				newGRP1  = val;
+				newGRP1  = val;
+				oldGRP0  = newGRP0;
+				oldENABL = newENABL;
+			}, MEM_LOCATIONS.INPT4 );
+
+			// store the VSYNC value when stored by the CPU
+			mmap.addWriteOnly( MEM_LOCATIONS.VSYNC, function( val ) {
+				VSYNC = !!(val & 0x02);
+			}, MEM_LOCATIONS.CXM0P );
+
+			mmap.addWriteOnly( MEM_LOCATIONS.VBLANK, function( val ) {
+				VBLANK = !!(val & 0x02);
+			}, MEM_LOCATIONS.CXM1P );
+
+			mmap.addWriteOnly( MEM_LOCATIONS.NUSIZ0, function( val ) {
+				NUSIZ0       = val & 0x07;
+				MISSLE_SIZE0 = 0x01 << ((val >>> 4) & 0x03);
+			}, MEM_LOCATIONS.CXM0FB );
+
+			mmap.addWriteOnly( MEM_LOCATIONS.NUSIZ1, function( val ) {
+				NUSIZ1       = val & 0x07;
+				MISSLE_SIZE1 = 0x01 << ((val >>> 4) & 0x03);
+			}, MEM_LOCATIONS.CXM1FB );
+
+			mmap.addWriteOnly(MEM_LOCATIONS.CTRLPF, function( val ) {
+				BALL_SIZE = 0x01 << ((val >>> 4) & 0x03);
+				REFLECT   = !!(val & 0x01);
+				SCORE     = !!(val & 0x02);
+				PRIORITY  = !!(val & 0x04);
+			}, MEM_LOCATIONS.INPT2 );
+
+			mmap.addWriteOnly( MEM_LOCATIONS.PF0, function( val ) {
+				PF0 = val >>> 4;
+			}, MEM_LOCATIONS.INPT5 );
+
+			mmap.addWriteOnly( MEM_LOCATIONS.PF1, function( val ) {
+				PF1 = val;
+			} );
+
+			mmap.addWriteOnly( MEM_LOCATIONS.PF2, function( val ) {
+				PF2 = val;
+			} );
+
+			mmap.addWriteOnly( MEM_LOCATIONS.ENAM0, function( val ) {
+				ENAM0 = !!(val & 0x02);
+			}, MEM_LOCATIONS.INPT5 );
+
+			mmap.addWriteOnly( MEM_LOCATIONS.ENAM1, function( val ) {
+				ENAM1 = !!(val & 0x02);
+			} );
+
+			mmap.addWriteOnly( MEM_LOCATIONS.ENABL, function( val ) {
+				newENABL = !!(val & 0x02);
+			} );
+
+			mmap.addWriteOnly( MEM_LOCATIONS.COLUBK, function( val ) {
+				COLUBK    = val;
+				COLUBKrgb = COLOR_PALETTE[(val & 0xf0) >>> 4][(val & 0x0f) >>> 1];
+			}, MEM_LOCATIONS.INPT1 );
+
+			mmap.addWriteOnly( MEM_LOCATIONS.COLUPF, function( val ) {
+				COLUPF    = val;
+				COLUPFrgb = COLOR_PALETTE[(val & 0xf0) >>> 4][(val & 0x0f) >>> 1];
+			}, MEM_LOCATIONS.INPT2 );
+
+			mmap.addWriteOnly( MEM_LOCATIONS.COLUP0, function( val ) {
+				COLUP0    = val;
+				COLUP0rgb = COLOR_PALETTE[(val & 0xf0) >>> 4][(val & 0x0f) >>> 1];
+			}, MEM_LOCATIONS.CXBLPF );
+
+			mmap.addWriteOnly( MEM_LOCATIONS.COLUP1, function( val ) {
+				COLUP1    = val;
+				COLUP1rgb = COLOR_PALETTE[(val & 0xf0) >>> 4][(val & 0x0f) >>> 1];
+			}, MEM_LOCATIONS.CXPPMM );
+
+			mmap.addWriteOnly( MEM_LOCATIONS.REFP0, function( val ) {
+				REFP0 = !!(val & 0x08);
+			}, MEM_LOCATIONS.INPT3 );
+
+			mmap.addWriteOnly( MEM_LOCATIONS.REFP1, function( val ) {
+				REFP1 = !!(val & 0x08);
+			}, MEM_LOCATIONS.INPT4 );
+
+			mmap.addWriteOnly( MEM_LOCATIONS.VDELP0, function( val ) {
+				VDELP0 = !!(val & 0x01);
+			}, MEM_LOCATIONS.CXM1FB );
+
+			mmap.addWriteOnly( MEM_LOCATIONS.VDELP1, function( val ) {
+				VDELP1 = !!(val & 0x01);
+			}, MEM_LOCATIONS.CXBLPF );
+
+			mmap.addWriteOnly( MEM_LOCATIONS.VDELBL, function( val ) {
+				VDELBL = !!(val & 0x01);
+			}, MEM_LOCATIONS.CXPPMM );
+
+			mmap.addWriteOnly( MEM_LOCATIONS.HMP0, function( val ) {
+				HMP0 = val >>> 4;
+			}, MEM_LOCATIONS.CXM0P );
+
+			mmap.addWriteOnly( MEM_LOCATIONS.HMP1, function( val ) {
+				HMP1 = val >>> 4;
+			}, MEM_LOCATIONS.CXM1P );
+			
+			mmap.addWriteOnly(MEM_LOCATIONS.HMM0, function( val ) {
+				HMM0 = val >>> 4;
+			}, MEM_LOCATIONS.CXP0FB );
+
+			mmap.addWriteOnly(MEM_LOCATIONS.HMM1, function( val ) {
+				HMM1 = val >>> 4;
+			}, MEM_LOCATIONS.CXP1FB );
+
+			mmap.addWriteOnly(MEM_LOCATIONS.HMBL, function( val ) {
+				HMBL = val >>> 4;
+			}, MEM_LOCATIONS.CXM0FB );
+
+			mmap.addWriteOnly( MEM_LOCATIONS.RESMP0, function( val ) {
+				RESMP0 = !!(val & 0x02);
+			}, MEM_LOCATIONS.INPT0 );
+
+			mmap.addWriteOnly( MEM_LOCATIONS.RESMP1, function( val ) {
+				RESMP1 = !!(val & 0x02);
+			}, MEM_LOCATIONS.INPT1 );
 		},
 
 		drawStaticFrame = function() {
@@ -349,18 +626,17 @@ window.TIA = (function() {
 			rafId = reqAnimFrame(drawStaticFrame);
 		},
 
-		isPlayfieldAt = function(x) {
+		isPlayfieldAt = function( x ) {
 			if (x >= 20) {
-				x = mmap.readByte(MEM_LOCATIONS.CTRLPF) & 0x01 ? 39 - x :
-					x - 20;
+				x = REFLECT === true ? 39 - x : x - 20;
 			}
 
-			return !!(x >= 12 ? mmap.readByte(MEM_LOCATIONS.PF2) & (1 << (x - 12)) :
-				x >= 4 ? mmap.readByte(MEM_LOCATIONS.PF1) & (0x80 >>> (x - 4)) :
-				(mmap.readByte(MEM_LOCATIONS.PF0) >>> 4) & (0x01 << x));
+			return !!(x >= 12 ? PF2 & (1 << (x - 12)) :
+				x >= 4 ? PF1 & (0x80 >>> (x - 4)) :
+				PF0 & (0x01 << x));
 		},
 
-		procPlayerClock = function(p) {
+		procPlayerClock = function( p ) {
 			function startClock() {
 				if (p === 0) {
 					p0Start = true;
@@ -378,62 +654,54 @@ window.TIA = (function() {
 				}
 				clock = p0Clock;
 				start = p0Start;
-				nusiz = mmap.readByte(MEM_LOCATIONS.NUSIZ0) & 0x07;
-				ref   = mmap.readByte(MEM_LOCATIONS.REFP0) & 0x08;
-				gr    = (mmap.readByte(MEM_LOCATIONS.VDELP0) & 0x08) ?
-					oldGRP0 :
-					newGRP0;
+				nusiz = NUSIZ0;
+				ref   = REFP0;
+				gr    = VDELP0 === true ? oldGRP0 : newGRP0;
 			} else {
 				if (x === p1Pos) {
 					p1Clock = 0;
 				}
 				clock = p1Clock;
 				start = p1Start;
-				nusiz = mmap.readByte(MEM_LOCATIONS.NUSIZ1) & 0x07;
-				ref   = mmap.readByte(MEM_LOCATIONS.REFP1) & 0x08;
-				gr    = (mmap.readByte(MEM_LOCATIONS.VDELP1) & 0x08) ?
-					oldGRP1 :
-					newGRP1;
+				nusiz = NUSIZ1;
+				ref   = REFP1;
+				gr    = VDELP1 === true ? oldGRP1 : newGRP1;
 			}
 			
 			if (start === false) {
-				if (clock === 156) {
-					startClock();
-				} else if (clock === 12 && (nusiz === 0x01 || nusiz === 0x03)) {
-					startClock();
-				} else if (clock === 28 && (nusiz === 0x02 || nusiz === 0x03 || nusiz === 0x06)) {
-					startClock();
-				} else if (clock === 60 && (nusiz === 0x04 || nusiz === 0x06)) {
+				if ((clock === 156) ||
+					(clock === 12 && (nusiz === 0x01 || nusiz === 0x03)) ||
+					(clock === 28 && (nusiz === 0x02 || nusiz === 0x03 || nusiz === 0x06)) ||
+					(clock === 60 && (nusiz === 0x04 || nusiz === 0x06))) {
 					startClock();
 				}
 			} else if (gr !== 0x00) {
 				if (nusiz === 0x05 && clock >= 1 && clock <= 16) {
 					i = (clock - 1) >>> 1;
-					draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
+					draw = gr & (ref === true ? (0x01 << i) : (0x80 >>> i));
 				} else if (nusiz === 0x07 && clock >= 1 && clock <= 32) {
 					i = (clock - 1) >>> 2;
-					draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
+					draw = gr & (ref === true ? (0x01 << i) : (0x80 >>> i));
 				} else if (clock >= 1 && clock <= 8) {
 					i = clock - 1;
-					draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
+					draw = gr & (ref === true ? (0x01 << i) : (0x80 >>> i));
 				} else if (clock >= 17 && clock <= 24) {
 					if (nusiz === 0x01 || nusiz === 0x03 || nusiz === 0x07) {
 						i = clock - 17;
-						draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
+						draw = gr & (ref === true ? (0x01 << i) : (0x80 >>> i));
 					}
 				} else if (clock >= 33 && clock <= 40) {
 					if (nusiz === 0x02 || nusiz === 0x03 || nusiz === 0x06) {
 						i = clock - 33;
-						draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
+						draw = gr & (ref === true ? (0x01 << i) : (0x80 >>> i));
 					}
 				} else if (clock >= 65 && clock <= 72) {
 					if (nusiz === 0x04 || nusiz === 0x06) {
 						i = clock - 65;
-						draw = gr & (ref ? (0x01 << i) : (0x80 >>> i));
+						draw = gr & (ref === true ? (0x01 << i) : (0x80 >>> i));
 					}
 				}
 			}
-
 
 			// increment the clock, and reset at 160 color clocks
 			if (p === 0) {
@@ -445,7 +713,8 @@ window.TIA = (function() {
 			return !!draw;
 		},
 
-		procMissleClock = function(p) {
+		procMissleClock = function( p ) {
+
 			function startClock() {
 				if (p === 0) {
 					m0Start = true;
@@ -461,18 +730,20 @@ window.TIA = (function() {
 				if (m0Pos === x) {
 					m0Clock = 0;
 				}
-				clock = m0Clock;
-				start = m0Start;
-				enabled = mmap.readByte(MEM_LOCATIONS.ENAM0) & 0x02;
-				nusiz = mmap.readByte(MEM_LOCATIONS.NUSIZ0);
+				clock   = m0Clock;
+				start   = m0Start;
+				enabled = ENAM0;
+				nusiz   = NUSIZ0;
+				size    = MISSLE_SIZE0;
 			} else {
 				if (m1Pos === x) {
 					m1Clock = 0;
 				}
-				clock = m1Clock;
-				start = m1Start;
-				enabled = mmap.readByte(MEM_LOCATIONS.ENAM1) & 0x02;
-				nusiz = mmap.readByte(MEM_LOCATIONS.NUSIZ1);
+				clock   = m1Clock;
+				start   = m1Start;
+				enabled = ENAM1;
+				nusiz   = NUSIZ1;
+				size    = MISSLE_SIZE1;
 			}
 
 			if (start === false) {
@@ -486,9 +757,6 @@ window.TIA = (function() {
 					startClock();
 				}
 			} else if (enabled) {
-				size = 0x01 << ((nusiz >>> 4) & 0x03);
-				nusiz &= 0x07;
-
 				if (clock >= 0 && clock < 8) {
 					draw = clock < size;
 				}
@@ -518,20 +786,17 @@ window.TIA = (function() {
 
 
 		procBallClock = function() {
-			var size, vdel,
+			var enabled,
 				draw = false;
 
 			if (blPos === x) {
 				blClock = 0;
 			}
 
-			if (mmap.readByte(MEM_LOCATIONS.ENABL) & 0x02) {
-//				vdel = !!(mmap.readByte(MEM_LOCATIONS.VDELBL) & 0x01);
-			
-				size = 0x01 << ((mmap.readByte(MEM_LOCATIONS.CTRLPF) >>> 4) & 0x03);
-				if (blClock < size) {
-					draw = true;
-				}
+			enabled = VDELBL ? oldENABL : newENABL;
+
+			if (enabled === true && blClock < BALL_SIZE) {
+				draw = true;
 			}
 
 			blClock++;
@@ -539,7 +804,7 @@ window.TIA = (function() {
 			return draw;
 		},
 
-		writePixel = function(y) {
+		writePixel = function( y ) {
 			// determine what color the pixel at the present coordinates should be
 			var i    = (y * VIDEO_BUFFER_WIDTH + x) << 2,
 				data = pixelBuffer.data,
@@ -551,41 +816,35 @@ window.TIA = (function() {
 				bl   = procBallClock(),
 				color;
 
-			if (VBLANK === true) {
-				color = 0x00;
-			} else if (mmap.readByte(MEM_LOCATIONS.CTRLPF) & 0x04) {
+			if (PRIORITY === true) {
 				if (pf === true || bl === true) {
-					if (mmap.readByte(MEM_LOCATIONS.CTRLPF) & 0x02) {
-						color = mmap.readByte(x < 80 ? MEM_LOCATIONS.COLUP0 :
-							MEM_LOCATIONS.COLUP1);
+					if (SCORE === true) {
+						color = x < 80 ? COLUP0rgb : COLUP1rgb;
 					} else {
-						color = mmap.readByte(MEM_LOCATIONS.COLUPF);
+						color = COLUPFrgb;
 					}
 				} else if (p0 === true || m0 === true) {
-					color = mmap.readByte(MEM_LOCATIONS.COLUP0);
+					color = COLUP0rgb;
 				} else if (p1 === true || m1 === true) {
-					color = mmap.readByte(MEM_LOCATIONS.COLUP1);
+					color = COLUP1rgb;
 				} else {
-					color = mmap.readByte(MEM_LOCATIONS.COLUBK);
+					color = COLUBKrgb;
 				}
 			} else {
 				if (p0 === true || m0 === true) {
-					color = mmap.readByte(MEM_LOCATIONS.COLUP0);
+					color = COLUP0rgb;
 				} else if (p1 === true || m1 === true) {
-					color = mmap.readByte(MEM_LOCATIONS.COLUP1);
+					color = COLUP1rgb;
 				} else if (pf === true || bl === true) {
-					if (mmap.readByte(MEM_LOCATIONS.CTRLPF) & 0x02) {
-						color = mmap.readByte(x < 80 ? MEM_LOCATIONS.COLUP0 :
-							MEM_LOCATIONS.COLUP1);
+					if (SCORE === true) {
+						color = x < 80 ? COLUP0rgb : COLUP1rgb;
 					} else {
-						color = mmap.readByte(MEM_LOCATIONS.COLUPF);
+						color = COLUPFrgb;
 					}
 				} else {
-					color = mmap.readByte(MEM_LOCATIONS.COLUBK);
+					color = COLUBKrgb;
 				}
 			}
-
-			color = COLOR_PALETTE[(color & 0xf0) >>> 4][(color & 0x0f) >>> 1];
 
 			data[i]     = color[0]; // red
 			data[i + 1] = color[1]; // green
@@ -596,79 +855,64 @@ window.TIA = (function() {
 			// correct registers
 			if (m0 === true) {
 				if (p0 === true) {
-					mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXM0P) | 0x40,
-						MEM_LOCATIONS.CXM0P);
+					M0_P0 = true;
 				}
 				if (p1 === true) {
-					mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXM0P) | 0x80,
-						MEM_LOCATIONS.CXM0P);
+					M0_P1 = true;
 				}
 
 				if (pf === true) {
-					mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXM0FB) | 0x80,
-						MEM_LOCATIONS.CXM0FB);
+					M0_PF = true;
 				}
 				if (bl === true) {
-					mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXM0FB) | 0x40,
-						MEM_LOCATIONS.CXM0FB);
+					M0_BL = true;
 				}
 
 				if (m1 === true) {
-					mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXPPMM) | 0x40,
-						MEM_LOCATIONS.CXPPMM);
+					M0_M1 = true;
 				}
 			}
 
 			if (m1 === true) {
 				if (p0 === true) {
-					mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXM1P) | 0x80,
-						MEM_LOCATIONS.CXM1P);
+					M1_P0 = true;
 				}
 				if (p1 === true) {
-					mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXM1P) | 0x40,
-						MEM_LOCATIONS.CXM1P);
+					M1_P1 = true;
 				}
 
 				if (pf === true) {
-					mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXM1FB) | 0x80,
-						MEM_LOCATIONS.CXM1FB);
+					M1_PF = true;
 				}
 				if (bl === true) {
-					mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXM1FB) | 0x40,
-						MEM_LOCATIONS.CXM1FB);
+					M1_BL = true;
 				}
 			}
 
 			if (p0 === true) {
 				if (pf === true) {
-					mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXP0FB) | 0x80,
-						MEM_LOCATIONS.CXP0FB);
+					P0_PF = true;
 				}
 				if (bl === true) {
-					mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXP0FB) | 0x40,
-						MEM_LOCATIONS.CXP0FB);
+					P0_BL = true;
 				}
 
 				if (p1 === true) {
-					mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXPPMM) | 0x80,
-						MEM_LOCATIONS.CXPPMM);
+					P0_P1 = true;
 				}
 			}
 
 			if (p1 === true) {
 				if (pf === true) {
-					mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXP1FB) | 0x80,
-						MEM_LOCATIONS.CXP1FB);
+					P1_PF = true;
 				}
 				if (bl === true) {
-					mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXP1FB) | 0x40,
-						MEM_LOCATIONS.CXP1FB);
+					P1_BL = true;
 				}
 			}
 
 			if (bl === true && pf === true) {
-				mmap.writeByte(mmap.readByte(MEM_LOCATIONS.CXBLPF) | 0x80,
-					MEM_LOCATIONS.CXBLPF);
+				BL_PF = true;
 			}
 		},
 
@@ -680,12 +924,6 @@ window.TIA = (function() {
 					// if an instruction has been commited, check memory for
 					// changes to TIA registers
 					if (CPU6507.cycle() === true) {
-						// check if the VSYNC signal has been turned on or off
-						VSYNC = !!(mmap.readByte(MEM_LOCATIONS.VSYNC) & 0x02);
-
-						// check if the VBLANK signal has been altered
-						VBLANK = !!(mmap.readByte(MEM_LOCATIONS.VBLANK) & 0x02);
-
 						return true;
 					}
 				}
@@ -696,7 +934,7 @@ window.TIA = (function() {
 
 			// if we are not in VBLANK or HBLANK write the pixel to the
 			// canvas at the current color clock
-			if (VBLANK === false && x >= 0) {
+			if (VBLANK === false && x >= 0 && y >= 34 && y < VIDEO_BUFFER_HEIGHT + 34) {
 				writePixel(y - 34);
 			}
 			
@@ -750,7 +988,7 @@ window.TIA = (function() {
 
 	return {
 
-		init: function(canvas) {
+		init: function( canvas ) {
 			
 			// store a reference to the canvas's context
 			canvasContext = canvas.getContext('2d');
@@ -792,17 +1030,11 @@ window.TIA = (function() {
 			// initialize the electron beam position
 			x = -68;
 			y = 0;
+
 			// reset VBLANK, RDY and VSYNC internal registers
 			RDY    = false;
-			VSYNC  = !!(mmap.readByte(MEM_LOCATIONS.VSYNC) & 0x02);
-			VBLANK = !!(mmap.readByte(MEM_LOCATIONS.VBLANK) & 0x02);
-
-			// initialize horizontal positions for players, missiles and ball
-			p0Pos = 0;
-			p1Pos = 0;
-			m0Pos = 0;
-			m1Pos = 0;
-			blPos = 0;
+			VSYNC  = false;
+			VBLANK = false;
 		},
 
 		start: function() {
@@ -851,7 +1083,7 @@ window.TIA = (function() {
 			}
 		},
 
-		addEventListener: function(type, handler) {
+		addEventListener: function( type, handler ) {
 			if (typeof handler !== 'function') {
 				throw new Error('Parameter handler must be of type function.');
 			}
@@ -863,7 +1095,7 @@ window.TIA = (function() {
 			}
 		},
 
-		getMemoryCopy: function(offset, len) {
+		getMemoryCopy: function( offset, len ) {
 			return mmap.getCopy(offset, len);
 		},
 
@@ -878,115 +1110,96 @@ window.TIA = (function() {
 			};
 		},
 
-		getPlayerInfo: function(p) {
-			var color, rgb;
-
+		getPlayerInfo: function( p ) {
 			if (p === 0) {
-				color = mmap.readByte(MEM_LOCATIONS.COLUP0);
-				rgb = COLOR_PALETTE[(color & 0xf0) >>> 4][(color & 0x0f) >>> 1];
-
 				return {
-					color:    color,
-					rgb:      'rgb(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ')',
-					graphics: newGRP0,
-					reflect:  !!(mmap.readByte(MEM_LOCATIONS.REFP0) & 0x08),
-					delay:    !!(mmap.readByte(MEM_LOCATIONS.VDELP0) & 0x01),
-					nusiz:    mmap.readByte(MEM_LOCATIONS.NUSIZ0) & 0x07,
-					position: p0Pos,
-					hmove:    mmap.readByte(MEM_LOCATIONS.HMP0) >>> 4
+					color:       COLUP0,
+					rgb:         COLUP0rgb,
+					graphics:    newGRP0,
+					oldGraphics: oldGRP0,
+					reflect:     REFP0,
+					delay:       VDELP0,
+					nusiz:       NUSIZ0,
+					position:    p0Pos,
+					hmove:       HMP0
 				};
 			}
 
 			if (p === 1) {
-				color = mmap.readByte(MEM_LOCATIONS.COLUP1);
-				rgb = COLOR_PALETTE[(color & 0xf0) >>> 4][(color & 0x0f) >>> 1];
-
 				return {
-					color:    mmap.readByte(MEM_LOCATIONS.COLUP1),
-					rgb:      'rgb(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ')',
-					graphics: newGRP1,
-					reflect:  !!(mmap.readByte(MEM_LOCATIONS.REFP1) & 0x08),
-					delay:    !!(mmap.readByte(MEM_LOCATIONS.VDELP1) & 0x01),
-					nusiz:    mmap.readByte(MEM_LOCATIONS.NUSIZ1) & 0x07,
-					position: p1Pos,
-					hmove:    mmap.readByte(MEM_LOCATIONS.HMP1) >>> 4
+					color:       COLUP1,
+					rgb:         COLUP1rgb,
+					graphics:    newGRP1,
+					oldGraphics: oldGRP1,
+					reflect:     REFP1,
+					delay:       VDELP1,
+					nusiz:       NUSIZ1,
+					position:    p1Pos,
+					hmove:       HMP1
 				};
 			}
 		},
 
 		getPlayfieldInfo: function() {
-			var ctrlpf = mmap.readByte(MEM_LOCATIONS.CTRLPF),
-				color = mmap.readByte(MEM_LOCATIONS.COLUPF),
-				rgb = COLOR_PALETTE[(color & 0xf0) >>> 4][(color & 0x0f) >>> 1];
-
 			return {
-				pf0:      mmap.readByte(MEM_LOCATIONS.PF0) >>> 4,
-				pf1:      mmap.readByte(MEM_LOCATIONS.PF1),
-				pf2:      mmap.readByte(MEM_LOCATIONS.PF2),
-				reflect:  !!(ctrlpf & 0x01),
-				score:    !!(ctrlpf & 0x02),
-				priority: !!(ctrlpf & 0x04),
-				color:    color,
-				rgb:      'rgb(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ')'
+				pf0:      PF0,
+				pf1:      PF1,
+				pf2:      PF2,
+				reflect:  REFLECT,
+				score:    SCORE,
+				priority: PRIORITY,
+				color:    COLUPF,
+				rgb:      COLUPFrgb
 			};
 		},
 
 		getBallInfo: function() {
 			return {
-				enabled:  !!(mmap.readByte(MEM_LOCATIONS.ENABL) & 0x02),
+				enabled:  newENABL,
 				position: blPos,
-				hmove:    mmap.readByte(MEM_LOCATIONS.HMBL) >>> 4,
-				size:     (mmap.readByte(MEM_LOCATIONS.CTRLPF) >>> 4) & 0x03,
-				delay:    !!(mmap.readByte(MEM_LOCATIONS.VDELBL) & 0X01)
+				hmove:    HMBL,
+				size:     BALL_SIZE,
+				delay:    VDELBL
 			};
 		},
 
-		getMissleInfo: function(p) {
+		getMissleInfo: function( p ) {
 			if (p === 0) {
 				return {
-					enabled:  !!(mmap.readByte(MEM_LOCATIONS.ENAM0) & 0x02),
+					enabled:  ENAM0,
 					position: m0Pos,
-					hmove:    mmap.readByte(MEM_LOCATIONS.HMM0) >>> 4,
-					size:     (mmap.readByte(MEM_LOCATIONS.NUSIZ0) >>> 4) & 0x03,
-					reset:    !!(mmap.readByte(MEM_LOCATIONS.RESMP0) & 0x02)
+					hmove:    HMM0,
+					size:     MISSLE_SIZE0,
+					reset:    RESMP0
 				};
 			} else {
 				return {
-					enabled:  !!(mmap.readByte(MEM_LOCATIONS.ENAM1) & 0x02),
+					enabled:  ENAM1,
 					position: m1Pos,
-					hmove:    mmap.readByte(MEM_LOCATIONS.HMM1) >>> 4,
-					size:     (mmap.readByte(MEM_LOCATIONS.NUSIZ1) >>> 4) & 0x03,
-					reset:    !!(mmap.readByte(MEM_LOCATIONS.RESMP1) & 0x02)
+					hmove:    HMM1,
+					size:     MISSLE_SIZE1,
+					reset:    RESMP1
 				};
 			}
 		},
 
 		getCollisionInfo: function() {
-			var cxm0p  = mmap.readByte(MEM_LOCATIONS.CXM0P),
-				cxm1p  = mmap.readByte(MEM_LOCATIONS.CXM1P),
-				cxp0fb = mmap.readByte(MEM_LOCATIONS.CXP0FB),
-				cxp1fb = mmap.readByte(MEM_LOCATIONS.CXP1FB),
-				cxm0fb = mmap.readByte(MEM_LOCATIONS.CXM0FB),
-				cxm1fb = mmap.readByte(MEM_LOCATIONS.CXM1FB),
-				cxblpf = mmap.readByte(MEM_LOCATIONS.CXBLPF),
-				cxppmm = mmap.readByte(MEM_LOCATIONS.CXPPMM);
-
 			return {
-				'p0-pf': !!(cxp0fb & 0x80),
-				'p0-bl': !!(cxp0fb & 0x40),
-				'p0-m1': !!(cxm1p & 0x80),
-				'p0-m0': !!(cxm0p & 0x40),
-				'p0-p1': !!(cxppmm & 0x80),
-				'p1-pf': !!(cxp1fb & 0x80),
-				'p1-bl': !!(cxp1fb & 0x40),
-				'p1-m1': !!(cxm1p & 0x40),
-				'p1-m0': !!(cxm0p & 0x80),
-				'm0-pf': !!(cxm0fb & 0x80),
-				'm0-bl': !!(cxm0fb & 0x40),
-				'm0-m1': !!(cxppmm & 0x40),
-				'm1-pf': !!(cxm1fb & 0x80),
-				'm1-bl': !!(cxm1fb & 0x40),
-				'bl-pf': !!(cxblpf & 0x80)
+				'p0-pf': P0_PF,
+				'p0-bl': P0_BL,
+				'p0-m1': M1_P0,
+				'p0-m0': M0_P0,
+				'p0-p1': P0_P1,
+				'p1-pf': P1_PF,
+				'p1-bl': P1_BL,
+				'p1-m1': M1_P1,
+				'p1-m0': M0_P1,
+				'm0-pf': M0_PF,
+				'm0-bl': M0_BL,
+				'm0-m1': M0_M1,
+				'm1-pf': M1_PF,
+				'm1-bl': M1_BL,
+				'bl-pf': BL_PF
 			};
 		}
 
