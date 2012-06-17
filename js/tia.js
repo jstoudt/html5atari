@@ -382,7 +382,7 @@ window.TIA = (function() {
 
 			// reset the P0 graphics position when RESP0 is strobed
 			mmap.addStrobe( MEM_LOCATIONS.RESP0, function() {
-				p0Pos = x + 5;
+				p0Pos = x + 4;
 				if (p0Pos < 0) {
 					p0Pos = 2;
 				} else if (p0Pos >= 160) {
@@ -393,7 +393,7 @@ window.TIA = (function() {
 
 			// reset the P1 graphics position when RESP1 is strobed
 			mmap.addStrobe( MEM_LOCATIONS.RESP1, function() {
-				p1Pos = x + 5;
+				p1Pos = x + 4;
 				if (p1Pos < 0) {
 					p1Pos = 2;
 				} else if (p1Pos >= 160) {
@@ -786,14 +786,12 @@ window.TIA = (function() {
 
 
 		procBallClock = function() {
-			var enabled,
+			var enabled = VDELBL === true ? oldENABL : newENABL,
 				draw = false;
 
 			if (blPos === x) {
 				blClock = 0;
 			}
-
-			enabled = VDELBL ? oldENABL : newENABL;
 
 			if (enabled === true && blClock < BALL_SIZE) {
 				draw = true;
