@@ -375,7 +375,9 @@ window.TIA = (function() {
 
 			// set the RDY latch when the WSYNC address is strobed
 			mmap.addStrobe( MEM_LOCATIONS.WSYNC, function() {
-				RDY = true;
+				if (x > -68) {
+					RDY = true;
+				}
 			}, MEM_LOCATIONS.CXP0FB );
 
 			// reset the P0 graphics position when RESP0 is strobed
@@ -473,13 +475,11 @@ window.TIA = (function() {
 			// store the new GRP0 value and copy the old one
 			mmap.addWriteOnly( MEM_LOCATIONS.GRP0, function( val ) {
 				newGRP0 = val;
-				oldGRP0 = val;
 				oldGRP1 = newGRP1;
 			}, MEM_LOCATIONS.INPT3 );
 
 			// store the new GRP1 value and copy the old one
 			mmap.addWriteOnly( MEM_LOCATIONS.GRP1, function( val ) {
-				newGRP1  = val;
 				newGRP1  = val;
 				oldGRP0  = newGRP0;
 				oldENABL = newENABL;
@@ -816,7 +816,9 @@ window.TIA = (function() {
 				bl   = procBallClock(),
 				color;
 
-			if (PRIORITY === true) {
+			if (VBLANK === true) { // VBLANK is on -- paint it black
+				color = [0, 0, 0];
+			} else if (PRIORITY === true) {
 				if (pf === true || bl === true) {
 					if (SCORE === true) {
 						color = x < 80 ? COLUP0rgb : COLUP1rgb;
@@ -934,7 +936,7 @@ window.TIA = (function() {
 
 			// if we are not in VBLANK or HBLANK write the pixel to the
 			// canvas at the current color clock
-			if (VBLANK === false && x >= 0 && y >= 34 && y < VIDEO_BUFFER_HEIGHT + 34) {
+			if (x >= 0 && y >= 34 && y < VIDEO_BUFFER_HEIGHT + 34) {
 				writePixel(y - 34);
 			}
 			
@@ -951,9 +953,7 @@ window.TIA = (function() {
 				x = -68;
 
 				// reset the RDY flag so the CPU can begin cycling again
-				if (RDY === true) {
-					RDY = false;
-				}
+				RDY = false;
 
 				// start drawing on the next scanline
 				y++;
