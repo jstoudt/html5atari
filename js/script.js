@@ -23,6 +23,35 @@
 		// initialize the emulator system and pass in the canvas
 		TIA.init(television);
 
+		window.addEventListener('keydown', function(event) {
+			if (event.keyCode === 38) { // up button
+				event.preventDefault();
+				event.stopPropagation();
+
+				RIOT.setJoystickValue(0, 'up', false);
+			} else if (event.keyCode === 37) { // left button
+				event.preventDefault();
+				event.stopPropagation();
+
+				RIOT.setJoystickValue(0, 'left', false);
+			} else if (event.keyCode === 39) {  // right button
+				event.preventDefault();
+				event.stopPropagation();
+
+				RIOT.setJoystickValue(0, 'right', false);
+			} else if (event.keyCode === 40) { // down button
+				event.preventDefault();
+				event.stopPropagation();
+
+				RIOT.setJoystickValue(0, 'down', false);
+			} else if (event.keyCode === 32) { // fire button
+				event.preventDefault();
+				event.stopPropagation();
+
+				TIA.setInputValue(4, false);
+			}
+		}, false);
+
 		// toggle open the debugger window when the ` is pressed
 		window.addEventListener('keyup', function(event) {
 			if (event.keyCode === 192) {
@@ -32,6 +61,31 @@
 				} else {
 					debugWindow.close();
 				}
+			} else if (event.keyCode === 38) { // up button
+				event.preventDefault();
+				event.stopPropagation();
+
+				RIOT.setJoystickValue(0, 'up', true);
+			} else if (event.keyCode === 37) { // left button
+				event.preventDefault();
+				event.stopPropagation();
+
+				RIOT.setJoystickValue(0, 'left', true);
+			} else if (event.keyCode === 39) { // right button
+				event.preventDefault();
+				event.stopPropagation();
+
+				RIOT.setJoystickValue(0, 'right', true);
+			} else if (event.keyCode === 40) { // down button
+				event.preventDefault();
+				event.stopPropagation();
+
+				RIOT.setJoystickValue(0, 'down', true);
+			} else if (event.keyCode === 32) {
+				event.preventDefault();
+				event.stopPropagation();
+
+				TIA.setInputValue(4, true);
 			}
 		}, false);
 

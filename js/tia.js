@@ -668,6 +668,14 @@ window.TIA = (function() {
 				gr    = VDELP1 === true ? oldGRP1 : newGRP1;
 			}
 			
+			if (clock === 4) {
+				if (p === 0 && RESMP0 === true) {
+					m0Pos = x;
+				} else if (p === 1 && RESMP1 === true) {
+					m1Pos = x;
+				}
+			}
+
 			if (start === false) {
 				if ((clock === 156) ||
 					(clock === 12 && (nusiz === 0x01 || nusiz === 0x03)) ||
@@ -1199,6 +1207,33 @@ window.TIA = (function() {
 				'm1-bl': M1_BL,
 				'bl-pf': BL_PF
 			};
+		},
+
+		getInputInfo: function( p ) {
+			return [ INPT0, INPT1, INPT2, INPT3, INPT4, INPT5 ];
+		},
+
+		setInputValue: function( input, val ) {
+			switch (input) {
+				case 0:
+					INPT0 = val;
+					break;
+				case 1:
+					INPT1 = val;
+					break;
+				case 2:
+					INPT2 = val;
+					break;
+				case 3:
+					INPT3 = val;
+					break;
+				case 4:
+					INPT4 = val;
+					break;
+				case 5:
+					INPT5 = val;
+					break;
+			}
 		}
 
 	};

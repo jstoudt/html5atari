@@ -99,6 +99,18 @@
 			'bl-pf': document.getElementById('bl-pf')
 		},
 
+		p0Fire       = document.getElementById('p0-fire'),
+		p0Up         = document.getElementById('p0-up'),
+		p0Left       = document.getElementById('p0-left'),
+		p0Right      = document.getElementById('p0-right'),
+		p0Down       = document.getElementById('p0-down'),
+
+		p1Fire       = document.getElementById('p1-fire'),
+		p1Up         = document.getElementById('p1-up'),
+		p1Left       = document.getElementById('p1-left'),
+		p1Right      = document.getElementById('p1-right'),
+		p1Down       = document.getElementById('p1-down'),
+
 		memTable     = document.getElementById('memory'),
 		cells        = memTable.getElementsByTagName('td'),
 		memCells     = [],
@@ -168,7 +180,8 @@
 	}
 
 	function showInfo() {
-		var list, tr, dataAddr, playerInfo, missleInfo, collisionInfo,
+		var list, tr, dataAddr, playerInfo, missleInfo,
+			collisionInfo, joystickInfo, inputInfo,
 			i               = 0,
 			progCounter     = CPU6507.getRegister('pc'),
 			status          = CPU6507.getRegister('sr'),
@@ -228,7 +241,7 @@
 
 		playerInfo = TIA.getPlayerInfo(0);
 		colup0.textContent             = toHex(playerInfo.color, 2);
-		p0swatch.style.backgroundColor = playerInfo.rgb;
+		p0swatch.style.backgroundColor = 'rgb(' + playerInfo.rgb[0] + ',' + playerInfo.rgb[1] + ',' + playerInfo.rgb[2] + ')';
 		grp0.textContent               = toBinary(playerInfo.graphics, 8);
 		oldGrp0.textContent            = toBinary(playerInfo.oldGraphics, 8);
 		refp0.checked                  = playerInfo.reflect;
@@ -239,7 +252,7 @@
 		
 		playerInfo = TIA.getPlayerInfo(1);
 		colup1.textContent             = toHex(playerInfo.color, 2);
-		p1swatch.style.backgroundColor = playerInfo.rgb;
+		p1swatch.style.backgroundColor = 'rgb(' + playerInfo.rgb[0] + ',' + playerInfo.rgb[1] + ',' + playerInfo.rgb[2] + ')';
 		grp1.textContent               = toBinary(playerInfo.graphics, 8);
 		oldGrp1.textContent            = toBinary(playerInfo.oldGraphics, 8);
 		refp1.checked                  = playerInfo.reflect;
@@ -249,7 +262,7 @@
 		p1move.textContent             = toHex(playerInfo.hmove, 1);
 		
 		pfcolor.textContent = toHex(playfieldInfo.color, 2);
-		pfswatch.style.backgroundColor = playfieldInfo.rgb;
+		pfswatch.style.backgroundColor = 'rgb(' + playfieldInfo.rgb[0] + ',' + playfieldInfo.rgb[1] + ',' + playfieldInfo.rgb[2] + ')';
 		pf0.textContent                = toBinary(playfieldInfo.pf0, 4);
 		pf1.textContent                = toBinary(playfieldInfo.pf1, 8);
 		pf2.textContent                = toBinary(playfieldInfo.pf2, 8);
@@ -281,6 +294,22 @@
 		for (i in collisionInfo) {
 			cxList[i].checked = collisionInfo[i];
 		}
+
+		inputInfo = TIA.getInputInfo();
+
+		joystickInfo = RIOT.getJoystickInfo(0);
+		p0Up.checked    = joystickInfo.up;
+		p0Left.checked = joystickInfo.left;
+		p0Right.checked = joystickInfo.right;
+		p0Down.checked = joystickInfo.down;
+		p0Fire.checked = inputInfo[4];
+
+		joystickInfo = RIOT.getJoystickInfo(1);
+		p1Up.checked = joystickInfo.up;
+		p1Left.checked = joystickInfo.left;
+		p1Right.checked = joystickInfo.right;
+		p1Down.checked = joystickInfo.down;
+		p1Fire.checked = inputInfo[5];
 
 		reqAnimFrame(showInfo);
 	}

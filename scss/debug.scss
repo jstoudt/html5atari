@@ -246,3 +246,38 @@ fieldset {
 		}
 	}
 }
+
+.input {
+	width: 85px;
+	height: 110px;
+	position: relative;
+
+	input {
+		position: absolute;
+	}
+
+	.fire {
+		top: 15px;
+		right: 10px;
+	}
+
+	.up {
+		top: 40px;
+		left: 40px;
+	}
+
+	.left {
+		top: 70px;
+		left: 10px;
+	}
+
+	.right {
+		top: 70px;
+		left: 70px;
+	}
+
+	.down {
+		top: 100px;
+		left: 40px;
+	}
+}

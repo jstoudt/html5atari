@@ -195,6 +195,41 @@ window.RIOT = (function() {
 			}
 		},
 
+		setJoystickValue: function( p, dir, val ) {
+			if (p === 0) {
+				switch (dir) {
+					case 'up':
+						P0_UP = val;
+						break;
+					case 'left':
+						P0_LEFT = val;
+						break;
+					case 'right':
+						P0_RIGHT = val;
+						break;
+					case 'down':
+						P0_DOWN = val;
+						break;
+				}
+			} else {
+				switch(dir) {
+					case 'up':
+						P1_UP = val;
+						break;
+					case 'left':
+						P1_LEFT = val;
+						break;
+					case 'right':
+						P1_RIGHT = val;
+						break;
+					case 'down':
+						P1_DOWN = val;
+						break;
+				}
+			}
+
+		},
+
 		getTimerRegisters: function() {
 			return {
 				timerMode: intervalMode,
@@ -212,6 +247,24 @@ window.RIOT = (function() {
 				select:       SELECT,
 				reset:        RESET
 			};
+		},
+
+		getJoystickInfo: function( p ) {
+			if (p === 0) {
+				return {
+					up:    P0_UP,
+					left:  P0_LEFT,
+					right: P0_RIGHT,
+					down:  P0_DOWN
+				};
+			} else {
+				return {
+					up:    P1_UP,
+					left:  P1_LEFT,
+					right: P1_RIGHT,
+					down:  P1_DOWN
+				};
+			}
 		}
 	};
 
