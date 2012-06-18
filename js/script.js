@@ -24,69 +24,62 @@
 		TIA.init(television);
 
 		window.addEventListener('keydown', function(event) {
-			if (event.keyCode === 38) { // up button
-				event.preventDefault();
-				event.stopPropagation();
-
-				RIOT.setJoystickValue(0, 'up', false);
-			} else if (event.keyCode === 37) { // left button
-				event.preventDefault();
-				event.stopPropagation();
-
-				RIOT.setJoystickValue(0, 'left', false);
-			} else if (event.keyCode === 39) {  // right button
-				event.preventDefault();
-				event.stopPropagation();
-
-				RIOT.setJoystickValue(0, 'right', false);
-			} else if (event.keyCode === 40) { // down button
-				event.preventDefault();
-				event.stopPropagation();
-
-				RIOT.setJoystickValue(0, 'down', false);
-			} else if (event.keyCode === 32) { // fire button
-				event.preventDefault();
-				event.stopPropagation();
-
-				TIA.setInputValue(4, false);
+			switch (event.keyCode) {
+				case 38: // up button
+					RIOT.setJoystickValue(0, 'up', false);
+					break;
+				case 37: // left button
+					RIOT.setJoystickValue(0, 'left', false);
+					break;
+				case 39: // right button
+					RIOT.setJoystickValue(0, 'right', false);
+					break;
+				case 40: // down button
+					RIOT.setJoystickValue(0, 'down', false);
+					break;
+				case 32: // fire button
+					TIA.setInputValue(4, false);
+					break;
+				default:
+					return;
 			}
+
+			event.preventDefault();
+			event.stopPropagation();
 		}, false);
 
 		// toggle open the debugger window when the ` is pressed
 		window.addEventListener('keyup', function(event) {
-			if (event.keyCode === 192) {
-				if (!debugWindow || debugWindow.closed) {
-					debugWindow = open('debug.html', 'Debugger',
-						'width=960,height=800,resizable=yes,status=yes,centerscreen=yes');
-				} else {
-					debugWindow.close();
-				}
-			} else if (event.keyCode === 38) { // up button
-				event.preventDefault();
-				event.stopPropagation();
-
-				RIOT.setJoystickValue(0, 'up', true);
-			} else if (event.keyCode === 37) { // left button
-				event.preventDefault();
-				event.stopPropagation();
-
-				RIOT.setJoystickValue(0, 'left', true);
-			} else if (event.keyCode === 39) { // right button
-				event.preventDefault();
-				event.stopPropagation();
-
-				RIOT.setJoystickValue(0, 'right', true);
-			} else if (event.keyCode === 40) { // down button
-				event.preventDefault();
-				event.stopPropagation();
-
-				RIOT.setJoystickValue(0, 'down', true);
-			} else if (event.keyCode === 32) {
-				event.preventDefault();
-				event.stopPropagation();
-
-				TIA.setInputValue(4, true);
+			switch(event.keyCode) {
+				case 192: // ` -- open/close the debugger window
+					if (!debugWindow || debugWindow.closed) {
+						debugWindow = open('debug.html', 'Debugger',
+							'width=960,height=800,resizable=yes,status=yes,centerscreen=yes');
+					} else {
+						debugWindow.close();
+					}
+					break;
+				case 38: // up button
+					RIOT.setJoystickValue(0, 'up', true);
+					break;
+				case 37: // left button
+					RIOT.setJoystickValue(0, 'left', true);
+					break;
+				case 39: // right button
+					RIOT.setJoystickValue(0, 'right', true);
+					break;
+				case 40: // down button
+					RIOT.setJoystickValue(0, 'down', true);
+					break;
+				case  32: // fire button
+					TIA.setInputValue(4, true);
+					break;
+				default:
+					return;
 			}
+
+			event.preventDefault();
+			event.stopPropagation();
 		}, false);
 
 		// when this page is unloaded, close the debug window if open

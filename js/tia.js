@@ -671,8 +671,10 @@ window.TIA = (function() {
 			if (clock === 4) {
 				if (p === 0 && RESMP0 === true) {
 					m0Pos = x;
+					m0Clock = 0;
 				} else if (p === 1 && RESMP1 === true) {
 					m1Pos = x;
+					m1Clock = 0;
 				}
 			}
 
@@ -740,7 +742,7 @@ window.TIA = (function() {
 				}
 				clock   = m0Clock;
 				start   = m0Start;
-				enabled = ENAM0;
+				enabled = (ENAM0 === true && RESMP0 === false) ? true : false;
 				nusiz   = NUSIZ0;
 				size    = MISSLE_SIZE0;
 			} else {
@@ -749,7 +751,7 @@ window.TIA = (function() {
 				}
 				clock   = m1Clock;
 				start   = m1Start;
-				enabled = ENAM1;
+				enabled = (ENAM1 === true && RESMP1 === false) ? true : false;
 				nusiz   = NUSIZ1;
 				size    = MISSLE_SIZE1;
 			}
@@ -764,7 +766,7 @@ window.TIA = (function() {
 				} else if (clock === 156) {
 					startClock();
 				}
-			} else if (enabled) {
+			} else if (enabled === true) {
 				if (clock >= 0 && clock < 8) {
 					draw = clock < size;
 				}
@@ -969,7 +971,6 @@ window.TIA = (function() {
 				}
 			}
 
-
 			// return true if this cycle contained a CPU execution completion
 			return false;
 		},
@@ -1058,6 +1059,8 @@ window.TIA = (function() {
 			// schecule the start of the main loop
 			rafId = reqAnimFrame(runMainLoop);
 
+			// set the flag to tell the external modules that the system
+			// has started
 			started = true;
 		},
 
