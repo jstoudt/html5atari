@@ -612,6 +612,30 @@ window.TIA = (function() {
 			mmap.addWriteOnly( MEM_LOCATIONS.RESMP1, function( val ) {
 				RESMP1 = !!(val & 0x02);
 			}, MEM_LOCATIONS.INPT1 );
+
+			mmap.addWriteOnly( MEM_LOCATIONS.AUDC0, function( val ) {
+				AUDC0 = val & 0x0f;
+			}, MEM_LOCATIONS.CXM1FB );
+
+			mmap.addWriteOnly( MEM_LOCATIONS.AUDC1, function( val ) {
+				AUDC1 = val & 0x0f;
+			}, MEM_LOCATIONS.CXBLPF );
+
+			mmap.addWriteOnly( MEM_LOCATIONS.AUDF0, function( val ) {
+				AUDF0 = val & 0x1f;
+			}, MEM_LOCATIONS.CXPPMM );
+
+			mmap.addWriteOnly( MEM_LOCATIONS.AUDF1, function( val ) {
+				AUDF1 = val & 0x1f;
+			}, MEM_LOCATIONS.INPT0 );
+
+			mmap.addWriteOnly( MEM_LOCATIONS.AUDV0, function( val ) {
+				AUDV0 = val & 0x0f;
+			}, MEM_LOCATIONS.INPT1 );
+
+			mmap.addWriteOnly( MEM_LOCATIONS.AUDV1, function( val ) {
+				AUDV1 = val & 0x0f;
+			}, MEM_LOCATIONS.INPT2 );
 		},
 
 		drawStaticFrame = function() {

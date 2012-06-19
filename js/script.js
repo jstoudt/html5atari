@@ -15,71 +15,123 @@
 		colorSwitch  = document.getElementById('color-switch'),
 		selectSwitch = document.getElementById('select-switch'),
 		resetSwitch  = document.getElementById('reset-switch'),
+		keymap       = null,
 		activeROM    = null,
 		debugWindow  = null;
 
 	document.addEventListener('DOMContentLoaded', function() {
 
+		if ('keymap' in localStorage) {
+			keymap = JSON.parse(localStorage.keymap);
+		} else {
+			keymap = {
+				p0: {
+					input: 'keyboard',
+					fire:  13,
+					up:    38,
+					left:  37,
+					right: 39,
+					down:  40
+				},
+
+				p1: {
+					input: 'keyboard',
+					fire:  32,
+					up:    87,
+					left:  65,
+					right: 68,
+					down:  83
+				}
+			};
+			localStorage.keymap = JSON.stringify(keymap);
+		}
+
 		// initialize the emulator system and pass in the canvas
 		TIA.init(television);
 
 		window.addEventListener('keydown', function(event) {
-			switch (event.keyCode) {
-				case 38: // up button
-					RIOT.setJoystickValue(0, 'up', false);
-					break;
-				case 37: // left button
-					RIOT.setJoystickValue(0, 'left', false);
-					break;
-				case 39: // right button
-					RIOT.setJoystickValue(0, 'right', false);
-					break;
-				case 40: // down button
-					RIOT.setJoystickValue(0, 'down', false);
-					break;
-				case 32: // fire button
+			var keyCode = event.keyCode,
+				dirs = [ 'up', 'left', 'right', 'down' ],
+				len = dirs.length,
+				i;
+			if (keymap.p0.input === 'keyboard') {
+				for (i = 0; i < len; i++) {
+					if (keyCode === keymap.p0[dirs[i]]) {
+						event.preventDefault();
+						event.stopPropagation();
+						RIOT.setJoystickValue(0, dirs[i], false);
+						return;
+					}
+				}
+
+				if (keyCode === keymap.p0.fire) {
+					event.preventDefault();
+					event.stopPropagation();
 					TIA.setInputValue(4, false);
-					break;
-				default:
-					return;
+				}
 			}
 
-			event.preventDefault();
-			event.stopPropagation();
+			if (keymap.p1.input === 'keyboard') {
+				for (i = 0; i < len; i++) {
+					if (keyCode === keymap.p1[dirs[i]]) {
+						event.preventDefault();
+						event.stopPropagation();
+						RIOT.setJoystickValue(1, dirs[i], false);
+						return;
+					}
+				}
+
+				if (keyCode === keymap.p1.fire) {
+					event.preventDefault();
+					event.stopPropagation();
+					TIA.setInputValue(5, false);
+					return;
+				}
+			}
 		}, false);
 
 		// toggle open the debugger window when the ` is pressed
 		window.addEventListener('keyup', function(event) {
-			switch(event.keyCode) {
-				case 192: // ` -- open/close the debugger window
-					if (!debugWindow || debugWindow.closed) {
-						debugWindow = open('debug.html', 'Debugger',
-							'width=960,height=800,resizable=yes,status=yes,centerscreen=yes');
-					} else {
-						debugWindow.close();
+			var keyCode = event.keyCode,
+				dirs = ['up', 'left', 'right', 'down'],
+				len = dirs.length;
+				i;
+
+			if (keymap.p0.input === 'keyboard') {
+				for (i = 0; i < len; i++) {
+					if (keyCode === keymap.p0[dirs[i]]) {
+						event.preventDefault();
+						event.stopPropagation();
+						RIOT.setJoystickValue(0, dirs[i], true);
+						return;
 					}
-					break;
-				case 38: // up button
-					RIOT.setJoystickValue(0, 'up', true);
-					break;
-				case 37: // left button
-					RIOT.setJoystickValue(0, 'left', true);
-					break;
-				case 39: // right button
-					RIOT.setJoystickValue(0, 'right', true);
-					break;
-				case 40: // down button
-					RIOT.setJoystickValue(0, 'down', true);
-					break;
-				case  32: // fire button
+				}
+
+				if (keyCode === keymap.p0.fire) {
+					event.preventDefault();
+					event.stopPropagation();
 					TIA.setInputValue(4, true);
-					break;
-				default:
 					return;
+				}
 			}
 
-			event.preventDefault();
-			event.stopPropagation();
+			if (keymap.p1.input === 'keyboard') {
+				for (i = 0; i < len; i++) {
+					if (keyCode === keymap.p1[dirs[i]]) {
+						event.preventDefault();
+						event.stopPropagation();
+						RIOT.setJoystickValue(1, dirs[i], true);
+						return;
+					}
+				}
+
+				if (keyCode === keymap.p1.fire) {
+					event.preventDefault();
+					event.stopPropagation();
+					TIA.setInputValue(5, true);
+					return;
+				}
+			}
 		}, false);
 
 		// when this page is unloaded, close the debug window if open
