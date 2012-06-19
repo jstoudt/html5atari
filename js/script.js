@@ -161,7 +161,7 @@
 				resetSwitch.value === '1' ? true : false);
 		}, false);
 
-		// snap the reset switch back to the normally open position
+		// snap the reset switch back to the normally closed position
 		// when the users lets go of it with the mouse
 		resetSwitch.addEventListener('mouseup', function() {
 			setTimeout(function() {
@@ -170,7 +170,7 @@
 				var e = document.createEvent('Events');
 				e.initEvent('input', true, false);
 				resetSwitch.dispatchEvent(e);
-			}, 50);
+			}, 0);
 		}, false);
 
 		// when dragging over the cart-slot, change the border color

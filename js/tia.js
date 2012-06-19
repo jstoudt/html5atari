@@ -13,6 +13,8 @@ window.TIA = (function() {
 
 		pixelBuffer,   // the array of pixel colors representing the video output
 
+		pixelBufferIndex,
+
 		canvasContext, // the context of the canvas element for video output
 
 		handlers = {
@@ -160,6 +162,14 @@ window.TIA = (function() {
 		INPT3 = true,
 		INPT4 = true,
 		INPT5 = true,
+
+		// internal registers for the AUDIO values
+		AUDC0 = 0x00,
+		AUDF0 = 0x00,
+		AUDV0 = 0x00,
+		AUDC1 = 0x00,
+		AUDF1 = 0x00,
+		AUDV1 = 0x00,
 
 		// the dimensions of the output video buffer -- NTSC-only for now
 		VIDEO_BUFFER_WIDTH  = 0,
@@ -382,7 +392,7 @@ window.TIA = (function() {
 
 			// reset the P0 graphics position when RESP0 is strobed
 			mmap.addStrobe( MEM_LOCATIONS.RESP0, function() {
-				p0Pos = x + 4;
+				p0Pos = x + 5;
 				if (p0Pos < 0) {
 					p0Pos = 2;
 				} else if (p0Pos >= 160) {
@@ -393,7 +403,7 @@ window.TIA = (function() {
 
 			// reset the P1 graphics position when RESP1 is strobed
 			mmap.addStrobe( MEM_LOCATIONS.RESP1, function() {
-				p1Pos = x + 4;
+				p1Pos = x + 5;
 				if (p1Pos < 0) {
 					p1Pos = 2;
 				} else if (p1Pos >= 160) {
@@ -611,7 +621,7 @@ window.TIA = (function() {
 				len   = data.length;
 
 			for (; i < len; i += 4) {
-				color = Math.floor(Math.random() * 0x100);
+				color = Math.floor(Math.random() * 0xff);
 
 				data[i]     = color; // red channel
 				data[i + 1] = color; // green channel
@@ -668,13 +678,23 @@ window.TIA = (function() {
 				gr    = VDELP1 === true ? oldGRP1 : newGRP1;
 			}
 			
-			if (clock === 4) {
+			if (clock === 8 && nusiz === 0x05) {
 				if (p === 0 && RESMP0 === true) {
 					m0Pos = x;
-					m0Clock = 0;
 				} else if (p === 1 && RESMP1 === true) {
 					m1Pos = x;
-					m1Clock = 0;
+				}
+			} else if (clock === 12 && nusiz === 0x07) {
+				if (p === 0 && RESMP0 === true) {
+					m0Pos = x;
+				} else if (p === 1 && RESMP1 === true) {
+					m1Pos = x;
+				}
+			} else if (clock === 4) {
+				if (p === 0 && RESMP0 === true) {
+					m0Pos = x;
+				} else if (p === 1 && RESMP1 === true) {
+					m1Pos = x;
 				}
 			}
 
@@ -686,28 +706,27 @@ window.TIA = (function() {
 					startClock();
 				}
 			} else if (gr !== 0x00) {
-				if (nusiz === 0x05 && clock >= 1 && clock <= 16) {
-					i = (clock - 1) >>> 1;
+				if (nusiz === 0x05 && clock >= 0 && clock < 16) {
+					i = clock >>> 1;
 					draw = gr & (ref === true ? (0x01 << i) : (0x80 >>> i));
-				} else if (nusiz === 0x07 && clock >= 1 && clock <= 32) {
-					i = (clock - 1) >>> 2;
+				} else if (nusiz === 0x07 && clock >= 0 && clock < 32) {
+					i = clock >>> 2;
 					draw = gr & (ref === true ? (0x01 << i) : (0x80 >>> i));
-				} else if (clock >= 1 && clock <= 8) {
-					i = clock - 1;
-					draw = gr & (ref === true ? (0x01 << i) : (0x80 >>> i));
-				} else if (clock >= 17 && clock <= 24) {
-					if (nusiz === 0x01 || nusiz === 0x03 || nusiz === 0x07) {
-						i = clock - 17;
+				} else if (clock >= 0 && clock < 8) {
+					draw = gr & (ref === true ? (0x01 << clock) : (0x80 >>> clock));
+				} else if (clock >= 16 && clock < 24) {
+					if (nusiz === 0x01 || nusiz === 0x03) {
+						i = clock - 16;
 						draw = gr & (ref === true ? (0x01 << i) : (0x80 >>> i));
 					}
-				} else if (clock >= 33 && clock <= 40) {
+				} else if (clock >= 32 && clock < 40) {
 					if (nusiz === 0x02 || nusiz === 0x03 || nusiz === 0x06) {
-						i = clock - 33;
+						i = clock - 32;
 						draw = gr & (ref === true ? (0x01 << i) : (0x80 >>> i));
 					}
-				} else if (clock >= 65 && clock <= 72) {
+				} else if (clock >= 64 && clock < 72) {
 					if (nusiz === 0x04 || nusiz === 0x06) {
-						i = clock - 65;
+						i = clock - 64;
 						draw = gr & (ref === true ? (0x01 << i) : (0x80 >>> i));
 					}
 				}
@@ -757,13 +776,10 @@ window.TIA = (function() {
 			}
 
 			if (start === false) {
-				if (clock === 12 && (nusiz === 0x01 || nusiz === 0x03)) {
-					startClock();
-				} else if (clock === 28 && (nusiz === 0x02 || nusiz === 0x03 || nusiz === 0x06)) {
-					startClock();
-				} else if (clock === 60 && (nusiz === 0x04 || nusiz === 0x06)) {
-					startClock();
-				} else if (clock === 156) {
+				if ((clock === 12 && (nusiz === 0x01 || nusiz === 0x03)) ||
+					(clock === 28 && (nusiz === 0x02 || nusiz === 0x03 || nusiz === 0x06)) ||
+					(clock === 60 && (nusiz === 0x04 || nusiz === 0x06)) ||
+					(clock === 156)) {
 					startClock();
 				}
 			} else if (enabled === true) {
@@ -771,7 +787,7 @@ window.TIA = (function() {
 					draw = clock < size;
 				}
 				else if (clock >= 16 && clock < 24) {
-					if (nusiz === 0x01 || nusiz === 0x03 || nusiz === 0x07) {
+					if (nusiz === 0x01 || nusiz === 0x03) {
 						draw = (clock - 16) < size;
 					}
 				} else if (clock >= 32 && clock < 40) {
@@ -814,7 +830,7 @@ window.TIA = (function() {
 
 		writePixel = function( y ) {
 			// determine what color the pixel at the present coordinates should be
-			var i    = (y * VIDEO_BUFFER_WIDTH + x) << 2,
+			var i =    pixelBufferIndex,
 				data = pixelBuffer.data,
 				pf   = isPlayfieldAt(x >>> 2),
 				p0   = procPlayerClock(0),
@@ -828,11 +844,9 @@ window.TIA = (function() {
 				color = [0, 0, 0];
 			} else if (PRIORITY === true) {
 				if (pf === true || bl === true) {
-					if (SCORE === true) {
-						color = x < 80 ? COLUP0rgb : COLUP1rgb;
-					} else {
-						color = COLUPFrgb;
-					}
+					color = SCORE === false ? COLUPFrgb :
+						x < 80 ? COLUP0rgb :
+						COLUP1rgb;
 				} else if (p0 === true || m0 === true) {
 					color = COLUP0rgb;
 				} else if (p1 === true || m1 === true) {
@@ -846,11 +860,9 @@ window.TIA = (function() {
 				} else if (p1 === true || m1 === true) {
 					color = COLUP1rgb;
 				} else if (pf === true || bl === true) {
-					if (SCORE === true) {
-						color = x < 80 ? COLUP0rgb : COLUP1rgb;
-					} else {
-						color = COLUPFrgb;
-					}
+					color = SCORE === false ? COLUPFrgb :
+						x < 80 ? COLUP0rgb :
+						COLUP1rgb;
 				} else {
 					color = COLUBKrgb;
 				}
@@ -860,6 +872,8 @@ window.TIA = (function() {
 			data[i + 1] = color[1]; // green
 			data[i + 2] = color[2]; // blue
 			data[i + 3] = 255;      // alpha
+
+			pixelBufferIndex += 4;
 
 			// now determine if there were collisions and set the
 			// correct registers
@@ -877,7 +891,6 @@ window.TIA = (function() {
 				if (bl === true) {
 					M0_BL = true;
 				}
-
 				if (m1 === true) {
 					M0_M1 = true;
 				}
@@ -890,7 +903,6 @@ window.TIA = (function() {
 				if (p1 === true) {
 					M1_P1 = true;
 				}
-
 				if (pf === true) {
 					M1_PF = true;
 				}
@@ -906,7 +918,6 @@ window.TIA = (function() {
 				if (bl === true) {
 					P0_BL = true;
 				}
-
 				if (p1 === true) {
 					P0_P1 = true;
 				}
@@ -984,6 +995,7 @@ window.TIA = (function() {
 				if (vsyncCount === 3 && VSYNC === false) {
 					vsyncCount = 0;
 					y = 0;
+					pixelBufferIndex = 0;
 					rafId = reqAnimFrame(runMainLoop);
 					canvasContext.putImageData(pixelBuffer, 0, 0);
 					numFrames++;
