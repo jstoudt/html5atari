@@ -1052,7 +1052,7 @@ window.TIA = (function() {
 			// cancel any frame drawing taking place
 			cancelAnimFrame(rafId);
 
-			// start the drawing static on the canvas
+			// start drawing static frames on the canvas
 			rafId = reqAnimFrame(drawStaticFrame);
 
 			// Initialize the memory map
@@ -1092,6 +1092,9 @@ window.TIA = (function() {
 				handlers.start[i]();
 			}
 
+			// reset the frame counter
+			numFrames = 0;
+
 			// schecule the start of the main loop
 			rafId = reqAnimFrame(runMainLoop);
 
@@ -1106,7 +1109,14 @@ window.TIA = (function() {
 
 		step: function() {
 			while(1) {
-				if (execClockCycle() === true) {
+				var proc = execClockCycle();
+				if (vsyncCount === 3 && VSYNC === false) {
+					vsyncCount = 0;
+					y = 0;
+					pixelBufferIndex = 0;
+					numFrames++;
+				}
+				if (proc === true) {
 					cancelAnimFrame(rafId);
 					canvasContext.putImageData(pixelBuffer, 0, 0);
 					break;

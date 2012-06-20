@@ -74,6 +74,11 @@ label {
 		background: #eee;	}
 }
 
+.num-frames {
+	float: right;
+	margin-top: 37px;
+}
+
 #frame-rate {
 	width: 6em;
 	margin: 0 0.5em 0 5.5em;
@@ -167,7 +172,7 @@ fieldset {
 
 .controls {
 	display: block;
-	width: 225px;
+	width: 290px;
 }
 
 .timer {

@@ -7,10 +7,12 @@
 		pauseButton  = document.getElementById('pause-button'),
 		stepButton   = document.getElementById('step-button'),
 		scanButton   = document.getElementById('scan-button'),
+		frameButton  = document.getElementById('frame-button'),
 
 		tiaTime0     = Date.now(),
 		tiaFrames0   = TIA.getNumFrames(),
 		frameRate    = document.getElementById('frame-rate'),
+		numFrames    = document.getElementById('num-frames'),
 
 		instructions = document.getElementById('instructions'),
 
@@ -323,6 +325,8 @@
 		tiaTime0   = tiaTime1;
 		tiaFrames0 = tiaFrames1;
 
+		numFrames.textContent = tiaFrames1;
+
 		setTimeout(calcCycleRate, 1000);
 	}
 
@@ -350,6 +354,7 @@
 
 			stepButton.removeAttribute('disabled');
 			scanButton.removeAttribute('disabled');
+			frameButton.removeAttribute('disabled');
 		}
 	}
 
@@ -365,6 +370,7 @@
 			pauseButton.textContent = 'Pause';
 			stepButton.setAttribute('disabled', 'disabled');
 			scanButton.setAttribute('disabled', 'disabled');
+			frameButton.setAttribute('disabled', 'disabled');
 		}
 
 		TIA.addEventListener('start', function() {
@@ -372,12 +378,14 @@
 			pauseButton.textContent = 'Pause';
 			stepButton.setAttribute('disabled', 'disabled');
 			scanButton.setAttribute('disabled', 'disabled');
+			frameButton.setAttribute('disabled', 'disabled');
 		});
 
 		TIA.addEventListener('stop', function() {
 			pauseButton.removeAttribute('disabled');
 			stepButton.removeAttribute('disabled');
 			scanButton.removeAttribute('disabled');
+			frameButton.removeAttribute('disabled');
 			pauseButton.textContent = 'Resume';
 		});
 
@@ -388,15 +396,15 @@
 		reqAnimFrame(showInfo);
 
 		// close the window when the ` key is pressed
-		window.addEventListener('keyup', function(event) {
+		window.addEventListener('keyup', function( event ) {
 			if (event.keyCode === 192) {
 				window.close();
 			}
 		}, false);
 
-		pauseButton.addEventListener('click', function(e) {
-			e.stopPropagation();
-			e.preventDefault();
+		pauseButton.addEventListener('click', function( event ) {
+			event.stopPropagation();
+			event.preventDefault();
 			if (TIA.isStarted()) {
 				TIA.stop();
 			} else {
@@ -404,19 +412,30 @@
 			}
 		}, false);
 
-		stepButton.addEventListener('click', function(e) {
-			e.stopPropagation();
-			e.preventDefault();
+		stepButton.addEventListener('click', function( event ) {
+			event.stopPropagation();
+			event.preventDefault();
 			TIA.step();
 		}, false);
 
-		scanButton.addEventListener('click', function(e) {
+		scanButton.addEventListener('click', function(event) {
 			var scanline = TIA.getBeamPosition().y;
 
-			e.stopPropagation();
-			e.preventDefault();
+			event.stopPropagation();
+			event.preventDefault();
 
 			while (TIA.getBeamPosition().y === scanline) {
+				TIA.step();
+			}
+		}, false);
+
+		frameButton.addEventListener('click', function( event ) {
+			var frame = TIA.getNumFrames();
+
+			event.preventDefault();
+			event.stopPropagation();
+
+			while (frame === TIA.getNumFrames()) {
 				TIA.step();
 			}
 		}, false);

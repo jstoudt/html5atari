@@ -92,8 +92,6 @@ var Base64 = {
 			p = 0,
 			i, map;
 
-		console.dir(event);
-
 		for (; p <= 1; p++) {
 			map = keymap[p];
 			if (map.input === 'keyboard') {
