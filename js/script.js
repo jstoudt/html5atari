@@ -54,11 +54,26 @@ var Base64 = {
 		defaultKeymap         = [
 			{
 				input: 'keyboard',
-				fire:  32,
-				up:    87,
-				left:  65,
-				right: 68,
-				down:  83
+				fire:  {
+					keyName: 'SPACE',
+					keyCode: 32
+				},
+				up: {
+					keyName: 'W',
+					keyCode: 87
+				},
+				left: {
+					keyName: 'A',
+					keyCode: 65
+				},
+				right: {
+					keyName: 'D',
+					keyCode: 68
+				},
+				down: {
+					keyName: 'S',
+					keyCode: 83
+				}
 			}, {
 				input: 'keyboard',
 				fire:  13,
@@ -76,6 +91,8 @@ var Base64 = {
 			val = event.type === 'keydown' ? false : true,
 			p = 0,
 			i, map;
+
+		console.dir(event);
 
 		for (; p <= 1; p++) {
 			map = keymap[p];
@@ -153,7 +170,9 @@ var Base64 = {
 	}
 
 	function loadRom(name, rom) {
-		var roms, i, curRom;
+		var instructionElem = cartSlot.querySelector('.instructions'),
+			romNameElem = cartSlot.querySelector('.rom-name'),
+			roms, i, curRom;
 
 		activeROM = rom;
 
@@ -171,7 +190,9 @@ var Base64 = {
 		rightDifficultySwitch.removeAttribute('disabled');
 
 		cartSlot.classList.add('file-loaded');
-		cartSlot.innerHTML = name + ' loaded';
+		instructionElem.classList.add('hidden');
+		romNameElem.classList.remove('hidden');
+		romNameElem.textContent = name + ' loaded';
 
 		if (localStorage.roms) {
 			roms = JSON.parse(localStorage.roms);
@@ -192,7 +213,7 @@ var Base64 = {
 		}
 
 		roms.unshift(curRom);
-		localStorage.roms = JSON.stringify(roms.slice(0, 5));
+		localStorage.roms = JSON.stringify(roms.slice(0, 10));
 
 		populateRomsList();
 	}
@@ -406,13 +427,20 @@ var Base64 = {
 			reader = new FileReader();
 
 			reader.onerror = function() {
+				var instructions = cartSlot.querySelector('.instructions');
 				alert('There was an error loading this file as a ROM.');
-				cartSlot.textContent = 'Drag \'n Drop your ROMs here';
+
+				instructions.classList.remove('hidden');
+
+//				cartSlot.textContent = 'Drag \'n Drop your ROMs here';
 			};
 
 			reader.onabort = function() {
+				var instructions = cartSlot.querySelector('.instructions');
 				alert('The ROM loading procedure has been aborted.');
-				cartSlot.textContent = 'Drag \'n Drop your ROMs here';
+
+				instructions.classList.remove('hidden');
+//				cartSlot.textContent = 'Drag \'n Drop your ROMs here';
 			};
 
 			reader.onload = function( event ) {
