@@ -37,6 +37,7 @@ body {
 	font: 11px/1 'Syncopate', sans-serif;
 	letter-spacing: -1px;
 	margin: 0;
+	overflow-x: hidden;
 }
 
 header {
@@ -53,15 +54,14 @@ header {
 
 .tv-wrapper {
 	text-align: center;
-}
 
-.television {
-//	@include borderRadius(12px, 20px);
-	-webkit-transform: scale(4.0, 2.0) translateY(60px);
-	-moz-transform: scale(4.0, 2.0) translateY(60px);
-	-o-transform: scale(4.0, 2.0) translateY(60px);
-	-ms-transform: scale(4.0, 2.0) translateY(60px);
-	transform: scale(4.0, 2.0) translateY(60px);
+	canvas {
+		-webkit-transform: scale(4.0, 2.0) translateY(60px);
+		-moz-transform: scale(4.0, 2.0) translateY(60px);
+		-o-transform: scale(4.0, 2.0) translateY(60px);
+		-ms-transform: scale(4.0, 2.0) translateY(60px);
+		transform: scale(4.0, 2.0) translateY(60px);
+	}
 }
 
 .controls-wrapper {
@@ -214,14 +214,13 @@ header {
 .roms-panel {
 	width: 240px;
 	height: 260px;
-	position: fixed;
-	top: 300px;
+	position: absolute;
+	top: 240px;
 	left: -306px;
 	color: $yellow;
 	background: #000;
-	border-top: 2px ridge $yellow;
-	border-right: 2px ridge $yellow;
-	border-bottom: 2px ridge $yellow;
+	border: 2px ridge $yellow;
+	border-left-width: 0;
 	padding: 20px 30px;
 	-webkit-transition: 0.5s ease-in-out;
 	-moz-transition: 0.5s ease-in-out;
@@ -233,15 +232,13 @@ header {
 		display: block;
 		width: 100px;
 		height: 25px;
-		position: relative;
-		top: -22px;
-		right: -132px;
-		float: right;
+		position: absolute;
+		top: -2px;
+		right: -102px;
 		color: $red;
 		background: #000;
-		border-top: 2px ridge $yellow;
-		border-right: 2px ridge $yellow;
-		border-bottom: 2px ridge $yellow;
+		border: 2px ridge $yellow;
+		border-left-width: 0;
 		text-align: center;
 		line-height: 25px;
 		cursor: pointer;
@@ -306,16 +303,15 @@ header {
 }
 
 .controls-panel {
-	width: 220px;
-	height: 220px;
-	position: fixed;
-	top: 300px;
-	right: -286px;
+	width: 240px;
+	height: 260px;
+	position: absolute;
+	top: 240px;
+	right: -302px;
 	color: $yellow;
 	background: #000;
-	border-top: 2px ridge $yellow;
-	border-left: 2px ridge $yellow;
-	border-bottom: 2px ridge $yellow;
+	border: 2px ridge $yellow;
+	border-right-width: 0;
 	padding: 20px 30px;
 	-webkit-transition: 0.5s ease-in-out;
 	-moz-transition: 0.5s ease-in-out;
@@ -327,15 +323,13 @@ header {
 		display: block;
 		width: 125px;
 		height: 25px;
-		position: relative;
-		top: -22px;
-		left: -157px;
-		float: left;
+		position: absolute;
+		top: -2px;
+		left: -127px;
 		color: $red;
 		background: #000;
-		border-top: 2px ridge $yellow;
-		border-left: 2px ridge $yellow;
-		border-bottom: 2px ridge $yellow;
+		border: 2px ridge $yellow;
+		border-right-width: 0;
 		text-align: center;
 		line-height: 25px;
 		cursor: pointer;
