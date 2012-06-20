@@ -71,6 +71,7 @@ window.RIOT = (function() {
 	return {
 
 		init: function( memory ) {
+			var i;
 			mmap = memory;
 
 			// randomize the RIOT RAM

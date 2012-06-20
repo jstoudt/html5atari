@@ -22,33 +22,58 @@
 			<fieldset class="controls">
 				<div class="left">
 					<div class="switch power">
-						<label>Power</label>
+						<label>power</label>
+						<input type="range" id="power-switch" min="0" max="1" value="0" disabled>
 						<span class="top">on</span>
 						<span class="bottom">off</span>
-						<input type="range" id="power-switch" min="0" max="1" value="0" disabled>
 					</div>
 					<div class="switch tv-type">
-						<label>TV Type</label>
+						<label>tv type</label>
+						<input type="range" id="color-switch" min="0" max="1" value="1" disabled>
 						<span class="top">color</span>
 						<span class="bottom">b&bull;w</span>
-						<input type="range" id="color-switch" min="0" max="1" value="1" disabled>
+					</div>
+					<div class="switch difficulty">
+						<label>left difficulty</label>
+						<span class="top">a</span>
+						<span class="bottom">b</span>
+						<input type="range" id="left-difficulty" min="0" max="1" value="1" disabled>
 					</div>
 				</div>
 				<div class="right">
-					<div class="switch game-select">
-						<label>Game Select</label>
+					<div class="switch difficulty">
+						<label>right difficulty</label>
+						<span class="top">a</span>
+						<span class="bottom">b</span>
+						<input type="range" id="right-difficulty" min="0" max="1" value="1" disabled>
+					</div>
+					<div class="switch slide-back">
+						<label>game select</label>
 						<input type="range" id="select-switch" min="0" max="1" value="1" disabled>
 					</div>
-					<div class="switch game-reset">
-						<label>Game Reset</label>
+					<div class="switch slide-back">
+						<label>game reset</label>
 						<input type="range" id="reset-switch" min="0" max="1" value="1" disabled>
 					</div>
 				</div>
-				<h2>Video Computer System&trade;</h2>
+				<h2>video computer system&trade;</h2>
 				<div id="cart-slot" class="cart-slot">Drag 'n Drop your ROMs here</div>
 			</fieldset>
 		</div>
 	</div>
+
+	<div class="roms-panel">
+		<a id="rom-toggle-btn" class="toggle-button">ROMs</a>
+		<h3>Recently Loaded ROMs</h3>
+		<ol id="roms-list" class="hidden"></ol>
+		<p>No ROMs have been saved.</p>
+	</div>
+
+	<div class="controls-panel">
+		<a id="controls-toggle-btn" class="toggle-button">Controls</a>
+		<h3>Controller Configuration</h3>
+	</div>
+
 	<footer>
 		<div class="content">
 			<a href="http://www.atari.com/" class="atari-logo">
@@ -88,7 +113,6 @@
 	<script>
 		!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src="//platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");
 	</script>
-
 <!--
 	<script>
 		window.onload = function() {

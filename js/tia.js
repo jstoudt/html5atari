@@ -1116,14 +1116,14 @@ window.TIA = (function() {
 
 		stop: function() {
 			var i = 0,
-				len = handlers.stop.length;
+				l = handlers.stop.length;
 
 			cancelAnimFrame(rafId);
 
 			started = false;
 
 			// run any handlers that were bound to the stop event
-			for (; i < len; i++) {
+			for (; i < l; i++) {
 				handlers.stop[i]();
 			}
 		},
