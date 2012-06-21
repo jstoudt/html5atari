@@ -7,7 +7,7 @@
  * the Atari 2600.
  */
 
-window.TIA = (function() {
+window.TIA = (function(MEM_LOCATIONS, undefined) {
 
 	var mmap,          // the memory map to be shared between TIA & CPU
 
@@ -174,52 +174,6 @@ window.TIA = (function() {
 		// the dimensions of the output video buffer -- NTSC-only for now
 		VIDEO_BUFFER_WIDTH  = 0,
 		VIDEO_BUFFER_HEIGHT = 0,
-
-		// locations of TIA registers on the system bus
-		MEM_LOCATIONS = {
-			// TIA Sync registers
-			VSYNC:  0x00,		VBLANK: 0x01,
-			WSYNC:  0x02,		RSYNC:  0x03,
-
-			// TIA Graphics registers
-			NUSIZ0: 0x04,		NUSIZ1: 0x05,
-			COLUP0: 0x06,		COLUP1: 0x07,
-			COLUPF: 0x08,		COLUBK: 0x09,
-			CTRLPF: 0x0a,
-			REFP0:  0x0b,		REFP1:  0x0c,
-			PF0:    0x0d,		PF1:    0x0e,		PF2:    0x0f,
-			RESP0:  0x10,		RESP1:  0x11,
-			RESM0:  0x12,		RESM1:  0x13,
-			RESBL:  0x14,
-
-			// TIA audio registers
-			AUDC0:  0x15,		AUDC1:  0x16,
-			AUDF0:  0x17,		AUDF1:  0x18,
-			AUDV0:  0x19,		AUDV1:  0x1a,
-
-			GRP0:   0x1b,		GRP1:   0x1c,
-			ENAM0:  0x1d,		ENAM1:  0x1e,
-			ENABL:  0x1f,
-			HMP0:   0x20,		HMP1:   0x21,
-			HMM0:   0x22,		HMM1:   0x23,
-			HMBL:   0x24,
-			VDELP0: 0x25,		VDELP1: 0x26,
-			VDELBL: 0x27,
-			RESMP0: 0x28,		RESMP1: 0x29,
-			HMOVE:  0x2a,		HMCLR:  0x2b,
-			CXCLR:  0x2c,
-
-			// These are TIA Collision Read Registers
-			CXM0P:  0x30,		CXM1P:  0x31,
-			CXP0FB: 0x32,		CXP1FB: 0x33,
-			CXM0FB: 0x34,		CXM1FB: 0x35,
-			CXBLPF: 0x36,		CXPPMM: 0x37,
-
-			// These are TIA Input Read Registers
-			INPT0:  0x38,		INPT1:  0x39,
-			INPT2:  0x3a,		INPT3:  0x3b,
-			INPT4:  0x3c,		INPT5:  0x3d
-		},
 
 		// the Atari 2600 NTSC color palette
 		COLOR_PALETTE = [
@@ -1016,7 +970,7 @@ window.TIA = (function() {
 			// execution of this function
 			while(1) {
 				execClockCycle();
-				if (vsyncCount === 3 && VSYNC === false) {
+				if (vsyncCount > 2 && VSYNC === false) {
 					vsyncCount = 0;
 					y = 0;
 					pixelBufferIndex = 0;
@@ -1287,4 +1241,4 @@ window.TIA = (function() {
 
 	};
 
-})();
+})(MEM_LOCATIONS);

@@ -2063,7 +2063,6 @@ window.CPU6507 = (function() {
 			parseInstruction(initAddr);
 
 			return instructionList;
-
 		},
 
 		executeInstruction = function() {

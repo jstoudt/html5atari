@@ -106,6 +106,88 @@ var KEYCODES = {
 	222: '\''
 };
 
+var MEM_LOCATIONS = {
+	// TIA Sync registers
+	VSYNC:  0x00,		VBLANK: 0x01,
+	WSYNC:  0x02,		RSYNC:  0x03,
+
+	// TIA Graphics registers
+	NUSIZ0: 0x04,		NUSIZ1: 0x05,
+	COLUP0: 0x06,		COLUP1: 0x07,
+	COLUPF: 0x08,		COLUBK: 0x09,
+	CTRLPF: 0x0a,
+	REFP0:  0x0b,		REFP1:  0x0c,
+	PF0:    0x0d,		PF1:    0x0e,		PF2:    0x0f,
+	RESP0:  0x10,		RESP1:  0x11,
+	RESM0:  0x12,		RESM1:  0x13,
+	RESBL:  0x14,
+
+	// TIA audio registers
+	AUDC0:  0x15,		AUDC1:  0x16,
+	AUDF0:  0x17,		AUDF1:  0x18,
+	AUDV0:  0x19,		AUDV1:  0x1a,
+
+	GRP0:   0x1b,		GRP1:   0x1c,
+	ENAM0:  0x1d,		ENAM1:  0x1e,
+	ENABL:  0x1f,
+	HMP0:   0x20,		HMP1:   0x21,
+	HMM0:   0x22,		HMM1:   0x23,
+	HMBL:   0x24,
+	VDELP0: 0x25,		VDELP1: 0x26,
+	VDELBL: 0x27,
+	RESMP0: 0x28,		RESMP1: 0x29,
+	HMOVE:  0x2a,		HMCLR:  0x2b,
+	CXCLR:  0x2c,
+
+	// These are TIA Collision Read Registers
+	CXM0P:  0x30,		CXM1P:  0x31,
+	CXP0FB: 0x32,		CXP1FB: 0x33,
+	CXM0FB: 0x34,		CXM1FB: 0x35,
+	CXBLPF: 0x36,		CXPPMM: 0x37,
+
+	// These are TIA Input Read Registers
+	INPT0:  0x38,		INPT1:  0x39,
+	INPT2:  0x3a,		INPT3:  0x3b,
+	INPT4:  0x3c, // fire button for P0
+	INPT5:  0x3d, // fire button for P1
+
+
+	// Port A data register for joysticks
+	// bits 4-7 for P0, bits 0-3 for P1
+	SWCHA:  0x280,
+	SWACNT: 0x281,  // Port A data direction register
+
+	SWCHB:  0x282,  // Port B data (console switches)
+	SWBCNT: 0x283,  // Port B data direction register
+
+	INTIM:  0x284,  // the read register
+	TIMINT: 0x285,  // seems to be 0x00 until the timer expires, then 0x80
+
+	// the various input registers for setting the timer
+	TIM1T:  0x294,
+	TIM8T:  0x295,
+	TIM64T: 0x296,
+	T1024T: 0x297
+};
+
+var DEFAULT_KEYMAP = [
+	{
+		input: 'keyboard',
+		fire:  32,
+		up:    87,
+		left:  65,
+		right: 68,
+		down:  83
+	}, {
+		input: 'keyboard',
+		fire:  13,
+		up:    38,
+		left:  37,
+		right: 39,
+		down:  40
+	}
+];
+
 // A utility for encoding and decoding Uint8Array objects to base64 strings
 var Base64 = {
 	encode: function( input ) {

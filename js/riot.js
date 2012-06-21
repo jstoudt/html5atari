@@ -41,26 +41,6 @@ window.RIOT = (function() {
 		SWCHB        = 0x34,
 		SWBCNT       = 0x00,
 
-		MEM_LOCATIONS = {
-
-			// Port A data register for joysticks
-			// bits 4-7 for P0, bits 0-3 for P1
-			SWCHA:  0x280,
-			SWACNT: 0x281,  // Port A data direction register
-
-			SWCHB:  0x282,  // Port B data (console switches)
-			SWBCNT: 0x283,  // Port B data direction register
-
-			INTIM:  0x284,  // the read register
-			TIMINT: 0x285,  // seems to be 0x00 until the timer expires, then 0x80
-
-			// the various input registers for setting the timer
-			TIM1T:  0x294,
-			TIM8T:  0x295,
-			TIM64T: 0x296,
-			T1024T: 0x297
-		},
-
 		getINTIM = function() {
 			return (timer < 0 ? timer :
 				intervalMode === 'TIM1T' ? timer :

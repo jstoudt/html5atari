@@ -6,7 +6,7 @@
  * the page DOM.
  */
 
-(function( window, document, undefined ) {
+(function( window, document, KEYCODES, undefined ) {
 
 	var	television            = document.getElementById('television'),
 		cartSlot              = document.getElementById('cart-slot'),
@@ -18,24 +18,7 @@
 		resetSwitch           = document.getElementById('reset-switch'),
 		keymap                = null,
 		activeROM             = null,
-		debugWindow           = null,
-		defaultKeymap         = [
-			{
-				input: 'keyboard',
-				fire:  32,
-				up:    87,
-				left:  65,
-				right: 68,
-				down:  83
-			}, {
-				input: 'keyboard',
-				fire:  13,
-				up:    38,
-				left:  37,
-				right: 39,
-				down:  40
-			}
-		];
+		debugWindow           = null;
 
 	function handleGameKeys( event ) {
 		var keyCode = event.keyCode,
@@ -210,7 +193,7 @@
 			keymap = JSON.parse(localStorage.keymap);
 		} else {
 			// otherwise, create a default map
-			keymap = defaultKeymap;
+			keymap = DEFAULT_KEYMAP;
 
 			// put the default map in storage
 			localStorage.keymap = JSON.stringify(keymap);
@@ -335,16 +318,16 @@
 				selectSwitch.value = 1;
 
 				// create and fire an event to simulate a normal input change
-				var e = document.createEvent('Events');
-				e.initEvent('input', true, false);
-				selectSwitch.dispatchEvent(e);
+				var event = document.createEvent('Events');
+				event.initEvent('input', true, false);
+				selectSwitch.dispatchEvent(event);
 			}, 0);
 		}, false);
 
 		// sync the UI reset switch with the RIOT
-		resetSwitch.addEventListener('input', function( e ) {
-			e.stopPropagation();
-			e.preventDefault();
+		resetSwitch.addEventListener('input', function( event ) {
+			event.stopPropagation();
+			event.preventDefault();
 
 			RIOT.setConsoleSwitch('reset', resetSwitch.value === '1');
 		}, false);
@@ -355,26 +338,26 @@
 			setTimeout(function() {
 				resetSwitch.value = 1;
 
-				var e = document.createEvent('Events');
-				e.initEvent('input', true, false);
-				resetSwitch.dispatchEvent(e);
+				var event = document.createEvent('Events');
+				event.initEvent('input', true, false);
+				resetSwitch.dispatchEvent(event);
 			}, 0);
 		}, false);
 
 		// when dragging over the cart slot, change the border color
-		cartSlot.addEventListener('dragenter', function( e ) {
-			e.stopPropagation();
-			e.preventDefault();
+		cartSlot.addEventListener('dragenter', function( event ) {
+			event.stopPropagation();
+			event.preventDefault();
 
 			cartSlot.classList.add('drag-over');
-			e.dataTransfer.dropEffect = 'copy';
+			event.dataTransfer.dropEffect = 'copy';
 		}, false);
 
 		// change the border color back if the user drags the object
 		// away from the cartridge slot
-		cartSlot.addEventListener('dragleave', function( e ) {
-			e.stopPropagation();
-			e.preventDefault();
+		cartSlot.addEventListener('dragleave', function( event ) {
+			event.stopPropagation();
+			event.preventDefault();
 
 			cartSlot.classList.remove('drag-over');
 		}, false);
@@ -424,4 +407,4 @@
 
 	}, false);
 
-})(window, document);
+})(window, document, KEYCODES);
