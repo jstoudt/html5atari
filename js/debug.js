@@ -1,4 +1,4 @@
-(function() {
+(function( window, document, undefined ) {
 
 	var TIA          = opener.TIA,
 		RIOT         = opener.RIOT,
@@ -442,4 +442,4 @@
 
 	}, false);
 
-})();
+})(window, document);

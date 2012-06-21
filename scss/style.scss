@@ -121,8 +121,10 @@ header {
 		}
 
 		.cart-slot {
+			display: table-cell;
 			width: 330px;
 			height: 50px;
+			max-height: 50px;
 			overflow: hidden;
 			border: 6px ridge #555;
 			@include borderRadius(10px);
@@ -131,26 +133,7 @@ header {
 			font-size: 13px;
 			margin: 5px auto 0;
 			text-align: center;
-
-			p {
-				margin: 0;
-				padding: 0;
-			}
-
-			.instructions {
-				line-height: 50px;
-				margin: 0;
-				padding: 0;
-			}
-
-			.rom-name {
-				display: table-cell;
-				width: 330px;
-				height: 50px;
-				text-align: center;
-				vertical-align: middle;
-			}
-
+			vertical-align: middle;
 		}
 
 		.drag-over {
@@ -252,11 +235,11 @@ header {
 }
 
 .roms-panel {
-	width: 240px;
+	width: 280px;
 	height: 260px;
 	position: absolute;
 	top: 240px;
-	left: -302px;
+	left: -342px;
 	color: $yellow;
 	background: #000;
 	border: 2px ridge $yellow;
@@ -295,6 +278,10 @@ header {
 			margin-left: 5px;
 			@include rotate(90deg);
 		}
+
+		&:hover {
+			color: saturate($red, 50%);
+		}
 	}
 
 	&.open {
@@ -315,9 +302,34 @@ header {
 
 	ol {
 		margin-top: 25px;
+		height: 235px;
+		overflow-y: auto;
+		overflow-x: hidden;
+		padding-left: 23px;
+
+		&::-webkit-scrollbar {
+			width: 10px;
+		}
+
+		&::-webkit-scrollbar-track:vertical {
+			background: #808080;
+		}
+
+		&:-webkit-scrollbar-buttons:vertical {
+			display: none;
+		}
+
+		&::-webkit-scrollbar-thumb:vertical {
+			background: $yellow;
+			border: 1px outset #606060;
+		}
+
+		&::-webkit-scrollbar-thumb:vertical:hover {
+			background: saturate($yellow, 25%);
+		}
 
 		li {
-			margin: 10px 0;
+			margin: 15px 0;
 
 			a {
 				color: $red;
@@ -326,6 +338,14 @@ header {
 				&:hover {
 					text-decoration: underline;
 				}
+			}
+
+			&:first-child {
+				margin-top: 0;
+			}
+
+			&:last-child {
+				margin-bottom: 0;
 			}
 		}
 	}
@@ -336,11 +356,11 @@ header {
 }
 
 .controls-panel {
-	width: 240px;
+	width: 340px;
 	height: 260px;
 	position: absolute;
 	top: 240px;
-	right: -302px;
+	right: -402px;
 	color: $yellow;
 	background: #000;
 	border: 2px ridge $yellow;
@@ -378,6 +398,10 @@ header {
 			margin-right: 5px;
 			@include rotate(-90deg);
 		}
+
+		&:hover {
+			color: saturate($red, 50%);
+		}
 	}
 
 	&.open {
@@ -392,8 +416,31 @@ header {
 	h3 {
 		font-weight: normal;
 		letter-spacing: 0;
-		margin: 0;
+		margin: 0 0 25px;
 		padding: 0;
+	}
+
+	.column {
+		display: inline-block;
+		width: 165px;
+
+		dl {
+			font-size: 10px;
+		}
+
+		dt {
+			width: 30px;
+			float: left;
+			clear: left;	
+			&:after {
+				content: ":";
+			}
+		}
+
+		dd {
+			float: left;
+			clear: right;
+		}
 	}
 }
 

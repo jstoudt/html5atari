@@ -57,10 +57,7 @@
 					</div>
 				</div>
 				<h2>video computer system&trade;</h2>
-				<div id="cart-slot" class="cart-slot">
-					<p class="instructions">Drag 'n Drop your ROMs here</p>
-					<p class="rom-name hidden"></p>
-				</div>
+				<div id="cart-slot" class="cart-slot">Drag 'n Drop your ROMs here</div>
 			</fieldset>
 		</div>
 	</div>
@@ -75,6 +72,40 @@
 	<div class="controls-panel">
 		<a id="controls-toggle-btn" class="toggle-button">Controls</a>
 		<h3>Controller Configuration</h3>
+		<div class="column">
+			<h4>Player 1</h4>
+			<dl>
+				<dt>Source</dt>
+				<dd id="p0-source"></dd>
+				<dt>Fire</dt>
+				<dd id="p0-fire"></dd>
+				<dt>Up</dt>
+				<dd id="p0-up"></dd>
+				<dt>Left</dt>
+				<dd id="p0-left"></dd>
+				<dt>Right</dt>
+				<dd id="p0-right"></dd>
+				<dt>Down</dt>
+				<dd id="p0-down"></dd>
+			</dl>
+		</div>
+		<div class="column">
+			<h4>Player 2</h4>
+			<dl>
+				<dt>Source</dt>
+				<dd id="p1-source"></dd>
+				<dt>Fire</dt>
+				<dd id="p1-fire"></dd>
+				<dt>Up</dt>
+				<dd id="p1-up"></dd>
+				<dt>Left</dt>
+				<dd id="p1-left"></dd>
+				<dt>Right</dt>
+				<dd id="p1-right"></dd>
+				<dt>Down</dt>
+				<dd id="p1-down"></dd>
+			</dl>
+		</div>
 	</div>
 
 	<footer>
@@ -106,6 +137,7 @@
 		</div>
 	</footer>
 
+	<script src="js/utility.js"></script>
 	<script src="js/memory.js"></script>
 	<script src="js/tia.js"></script>
 	<script src="js/riot.js"></script>

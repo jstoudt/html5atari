@@ -839,6 +839,7 @@ window.CPU6507 = (function() {
 				op: operation.AND,
 				addressing: 'absoluteY',
 				cycles: 4,
+				abbr: 'AND',
 				bytes: 3
 			},
 
@@ -1457,7 +1458,7 @@ window.CPU6507 = (function() {
 			0xae: { // LDX abs
 				op: operation.LDX,
 				addressing: 'absolute',
-				cycles: 5,
+				cycles: 4,
 				abbr: 'LDX',
 				bytes: 3
 			},
@@ -1830,7 +1831,7 @@ window.CPU6507 = (function() {
 				addressing: 'absolute',
 				cycles: 4,
 				abbr: 'SBC',
-				bytes: 1
+				bytes: 3
 			},
 
 			0xee: { // INC abs

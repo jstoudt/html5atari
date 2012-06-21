@@ -38,7 +38,8 @@ window.RIOT = (function() {
 		// internal registers for SWITCH A values
 		SWACNT       = 0x00,
 		
-		SWCHB        = 0x00,
+		SWCHB        = 0x34,
+		SWBCNT       = 0x00,
 
 		MEM_LOCATIONS = {
 
@@ -115,7 +116,9 @@ window.RIOT = (function() {
 			});
 
 			mmap.addReadOnly(MEM_LOCATIONS.SWCHB, function() {
-				var val = 0x00;
+				// unused bits in the SWCHB byte should be set
+				var val = 0x34;
+
 				if (P1DIFFICULTY === true) {
 					val |= 0x80;
 				}

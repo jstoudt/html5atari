@@ -6,39 +6,7 @@
  * the page DOM.
  */
 
-// A utility for encoding and decoding Base64 values to store ROMs
-// in local storage (and maybe other purposes)
-var Base64 = {
-	encode: function( input ) {
-		var output = '',
-			len = input.length,
-			i = 0;
-
-		for (; i < len; i++) {
-			output += String.fromCharCode(input[i]);
-		}
-
-		return window.btoa(output);
-	},
-
-	decode: function( input ) {
-		var i = 0,
-			len, output;
-
-		input = window.atob(input);
-		len = input.length;
-		output = new Uint8Array(new ArrayBuffer(len));
-
-		for (; i < len; i++) {
-			output[i] = input.charCodeAt(i);
-		}
-
-		return output;
-	}
-};
-
-
-(function() {
+(function( window, document, undefined ) {
 
 	var	television            = document.getElementById('television'),
 		cartSlot              = document.getElementById('cart-slot'),
@@ -54,26 +22,11 @@ var Base64 = {
 		defaultKeymap         = [
 			{
 				input: 'keyboard',
-				fire:  {
-					keyName: 'SPACE',
-					keyCode: 32
-				},
-				up: {
-					keyName: 'W',
-					keyCode: 87
-				},
-				left: {
-					keyName: 'A',
-					keyCode: 65
-				},
-				right: {
-					keyName: 'D',
-					keyCode: 68
-				},
-				down: {
-					keyName: 'S',
-					keyCode: 83
-				}
+				fire:  32,
+				up:    87,
+				left:  65,
+				right: 68,
+				down:  83
 			}, {
 				input: 'keyboard',
 				fire:  13,
@@ -133,16 +86,23 @@ var Base64 = {
 		}
 	}
 
+	function cleanRomName( name ) {
+		if (/\.bin$/i.test(name)) {
+			name = name.substr(0, name.length - 4);
+		}
+
+		if (name.length > 70) {
+			name = name.substring(0, 69) + '&hellip;';
+		}
+
+		return name;
+	}
+
 	function populateRomsList() {
 		var ol = document.getElementById('roms-list'),
 			p = ol.parentNode.getElementsByTagName('p')[0],
-			roms, i, li, a;
-
-		if (localStorage.roms) {
-			roms = JSON.parse(localStorage.roms);
-		} else {
-			roms = [];
-		}
+			roms = localStorage.roms ? JSON.parse(localStorage.roms) : [],
+			i, li, a;
 
 		if (roms.length < 1) {
 			ol.classList.add('hidden');
@@ -167,10 +127,29 @@ var Base64 = {
 		}
 	}
 
+	function populateKeymaps() {
+		var keymap = JSON.parse(localStorage.keymap),
+			map = keymap[0];
+		
+		document.getElementById('p0-source').textContent = map.input;
+		document.getElementById('p0-fire').textContent   = KEYCODES[map.fire];
+		document.getElementById('p0-up').textContent     = KEYCODES[map.up];
+		document.getElementById('p0-left').textContent   = KEYCODES[map.left];
+		document.getElementById('p0-right').textContent  = KEYCODES[map.right];
+		document.getElementById('p0-down').textContent   = KEYCODES[map.down];
+		
+		map = keymap[1];
+
+		document.getElementById('p1-source').textContent = map.input;
+		document.getElementById('p1-fire').textContent   = KEYCODES[map.fire];
+		document.getElementById('p1-up').textContent     = KEYCODES[map.up];
+		document.getElementById('p1-left').textContent   = KEYCODES[map.left];
+		document.getElementById('p1-right').textContent  = KEYCODES[map.right];
+		document.getElementById('p1-down').textContent   = KEYCODES[map.down];
+	}
+
 	function loadRom(name, rom) {
-		var instructionElem = cartSlot.querySelector('.instructions'),
-			romNameElem = cartSlot.querySelector('.rom-name'),
-			roms, i, curRom;
+		var roms, i, curRom;
 
 		activeROM = rom;
 
@@ -188,9 +167,7 @@ var Base64 = {
 		rightDifficultySwitch.removeAttribute('disabled');
 
 		cartSlot.classList.add('file-loaded');
-		instructionElem.classList.add('hidden');
-		romNameElem.classList.remove('hidden');
-		romNameElem.textContent = name + ' loaded';
+		cartSlot.innerHTML = cleanRomName(name) + ' loaded';
 
 		if (localStorage.roms) {
 			roms = JSON.parse(localStorage.roms);
@@ -211,7 +188,7 @@ var Base64 = {
 		}
 
 		roms.unshift(curRom);
-		localStorage.roms = JSON.stringify(roms.slice(0, 10));
+		localStorage.roms = JSON.stringify(roms.slice(0, 25));
 
 		populateRomsList();
 	}
@@ -243,6 +220,7 @@ var Base64 = {
 		TIA.init(television);
 
 		populateRomsList();
+		populateKeymaps();
 
 		// ROMs panel toggle button
 		romToggleButton.addEventListener('click', function( event ) {
@@ -425,20 +403,15 @@ var Base64 = {
 			reader = new FileReader();
 
 			reader.onerror = function() {
-				var instructions = cartSlot.querySelector('.instructions');
 				alert('There was an error loading this file as a ROM.');
 
-				instructions.classList.remove('hidden');
-
-//				cartSlot.textContent = 'Drag \'n Drop your ROMs here';
+				cartSlot.textContent = 'Drag \'n Drop your ROMs here';
 			};
 
 			reader.onabort = function() {
-				var instructions = cartSlot.querySelector('.instructions');
 				alert('The ROM loading procedure has been aborted.');
 
-				instructions.classList.remove('hidden');
-//				cartSlot.textContent = 'Drag \'n Drop your ROMs here';
+				cartSlot.textContent = 'Drag \'n Drop your ROMs here';
 			};
 
 			reader.onload = function( event ) {
@@ -451,4 +424,4 @@ var Base64 = {
 
 	}, false);
 
-})();
+})(window, document);
