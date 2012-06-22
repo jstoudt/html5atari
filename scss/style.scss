@@ -56,10 +56,18 @@ body {
 		url(../images/black-noise.png);
 	background: linear-gradient(top, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0) 300px, rgba(0, 0, 0, 1) 500px),
 		url(../images/black-noise.png);
-	font: 11px/1 'Syncopate', sans-serif;
+	font: 12px/1 'Syncopate', sans-serif;
 	letter-spacing: -1px;
 	margin: 0;
 	overflow-x: hidden;
+}
+
+a {
+	color: $red;
+
+	&:hover {
+		text-decoration: underline;
+	}
 }
 
 header {
@@ -254,7 +262,6 @@ header {
 		position: absolute;
 		top: 101px;
 		right: -104px;
-		color: $red;
 		background: #000;
 		border: 2px ridge $yellow;
 		border-top-width: 0;
@@ -281,6 +288,7 @@ header {
 
 		&:hover {
 			color: saturate($red, 50%);
+			text-decoration: none;
 		}
 	}
 
@@ -375,7 +383,6 @@ header {
 		position: absolute;
 		top: 127px;
 		left: -129px;
-		color: $red;
 		background: #000;
 		border: 2px ridge $yellow;
 		border-top-width: 0;
@@ -401,6 +408,7 @@ header {
 
 		&:hover {
 			color: saturate($red, 50%);
+			text-decoration: none;
 		}
 	}
 
@@ -424,6 +432,10 @@ header {
 		display: inline-block;
 		width: 165px;
 
+		h4 {
+			letter-spacing: 0;
+		}
+
 		dl {
 			font-size: 10px;
 		}
@@ -440,6 +452,15 @@ header {
 		dd {
 			float: left;
 			clear: right;
+		}
+
+		.edit-keymap {
+			display: block;
+			clear: both;
+			color: $red;
+			font-size: 11px;
+			padding-top: 15px;
+			cursor: pointer;
 		}
 	}
 }
