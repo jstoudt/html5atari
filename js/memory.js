@@ -9,9 +9,8 @@
 
 
 function MemoryMap( bitWidth ) {
-	var buf,
-		mask = 0,
-		i = 0;
+	var i,
+		mask = 0;
 
 	if (typeof bitWidth === 'undefined') {
 		throw new Error('Bit width has not been specified.');
@@ -28,12 +27,13 @@ function MemoryMap( bitWidth ) {
 
 	bitWidth = Math.round(bitWidth);
 
-	for (; i < bitWidth; i++) {
+	for (i = 0; i < bitWidth; i++) {
 		mask = (mask << 1) | 1;
 	}
 
-	buf             = new ArrayBuffer(1 << bitWidth);
-	this._memory    = new Uint8Array(buf);
+	// create the memory to hold the raw system data
+	this._memory    = new Uint8Array(new ArrayBuffer(1 << bitWidth));
+	
 	this._strobes   = {};
 	this._readonly  = {};
 	this._writeonly = {};

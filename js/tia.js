@@ -59,6 +59,8 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 
 		VBLANK = false,
 
+		yStart = 34,
+
 		// horizontal positions for moveable game graphics
 		p0Pos = 0,
 		p1Pos = 0,
@@ -456,6 +458,9 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 
 			mmap.addWriteOnly( MEM_LOCATIONS.VBLANK, function( val ) {
 				VBLANK = !!(val & 0x02);
+				if (VBLANK === false) {
+					yStart = y;
+				}
 			}, MEM_LOCATIONS.CXM1P );
 
 			mmap.addWriteOnly( MEM_LOCATIONS.NUSIZ0, function( val ) {
@@ -590,6 +595,21 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 			mmap.addWriteOnly( MEM_LOCATIONS.AUDV1, function( val ) {
 				AUDV1 = val & 0x0f;
 			}, MEM_LOCATIONS.INPT2 );
+		},
+
+		clearPixelBuffer = function() {
+			var i = 0,
+				buf = pixelBuffer.data,
+				l = buf.length;
+
+			while (i < l) {
+				buf[i]     = 0;
+				buf[i + 1] = 0;
+				buf[i + 2] = 0;
+				buf[i + 3] = 0xff;
+
+				i += 4;
+			}
 		},
 
 		drawStaticFrame = function() {
@@ -818,9 +838,7 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 				bl   = procBallClock(),
 				color;
 
-			if (VBLANK === true) { // VBLANK is on -- paint it black
-				color = [0, 0, 0];
-			} else if (PRIORITY === true) {
+			if (PRIORITY === true) {
 				if (pf === true || bl === true) {
 					color = SCORE === false ? COLUPFrgb :
 						x < 80 ? COLUP0rgb :
@@ -862,7 +880,6 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 				if (p1 === true) {
 					M0_P1 = true;
 				}
-
 				if (pf === true) {
 					M0_PF = true;
 				}
@@ -933,8 +950,8 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 
 			// if we are not in VBLANK or HBLANK write the pixel to the
 			// canvas at the current color clock
-			if (x >= 0 && y >= 34 && y < VIDEO_BUFFER_HEIGHT + 34) {
-				writePixel(y - 34);
+			if (VBLANK === false && x >= 0) {
+				writePixel(y - yStart);
 			}
 			
 			// increment to draw the next pixel
@@ -970,13 +987,14 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 			// execution of this function
 			while(1) {
 				execClockCycle();
-				if (vsyncCount > 2 && VSYNC === false) {
+				if (vsyncCount > 0 && VSYNC === false) {
 					vsyncCount = 0;
 					y = 0;
 					pixelBufferIndex = 0;
 					rafId = reqAnimFrame(runMainLoop);
 					canvasContext.putImageData(pixelBuffer, 0, 0);
 					numFrames++;
+					clearPixelBuffer();
 					break;
 				}
 			}
@@ -1032,6 +1050,8 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 			RDY    = false;
 			VSYNC  = false;
 			VBLANK = false;
+
+			yStart = 34;
 		},
 
 		start: function() {
@@ -1064,7 +1084,7 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 		step: function() {
 			while(1) {
 				var proc = execClockCycle();
-				if (vsyncCount === 3 && VSYNC === false) {
+				if (vsyncCount > 2 && VSYNC === false) {
 					vsyncCount = 0;
 					y = 0;
 					pixelBufferIndex = 0;

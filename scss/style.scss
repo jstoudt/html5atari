@@ -133,6 +133,7 @@ header {
 			width: 330px;
 			height: 50px;
 			max-height: 50px;
+			background: #060606;
 			overflow: hidden;
 			border: 6px ridge #555;
 			@include borderRadius(10px);
@@ -185,22 +186,21 @@ header {
 
 			input[type=range] {
 				-webkit-appearance: none;
+				appearance: none;
 				width: 50px;
 				background: #000;
 				border: 4px solid #333;
 				@include borderRadius(11px);
+				margin-top: 25px;
 				padding: 2px;
 				@include rotate(-90deg);
-				margin-top: 25px;
 
 				&::-webkit-slider-thumb {
 					-webkit-appearance: none;
+					appearance: none;
 					width: 10px;
 					height: 10px;
 					background: -webkit-radial-gradient(circle, #eee, #606060);
-					background: -moz-radial-gradient(circle, #eee, #606060);
-					background: -o-radial-gradient(circle, #eee, #606060);
-					background: -ms-radial-gradient(circle, #eee, #606060);
 					background: radial-gradient(circle, #eee, #606060);
 					border: 1px solid #606060;
 					@include borderRadius(6px);
@@ -244,9 +244,9 @@ header {
 
 .roms-panel {
 	width: 280px;
-	height: 260px;
+	height: 300px;
 	position: absolute;
-	top: 240px;
+	top: 200px;
 	left: -342px;
 	color: $yellow;
 	background: #000;
@@ -360,6 +360,13 @@ header {
 
 	p {
 		margin-top: 80px;
+	}
+
+	.browse-roms {
+		cursor: pointer;
+		position: absolute;
+		right: 10px;
+		bottom: 5px;
 	}
 }
 
