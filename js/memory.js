@@ -37,6 +37,7 @@ function MemoryMap( bitWidth ) {
 	this._strobes   = {};
 	this._readonly  = {};
 	this._writeonly = {};
+	this._mirrors   = {};
 	this._journal   = [];
 	this._bitmask   = mask;
 
@@ -51,8 +52,9 @@ function MemoryMap( bitWidth ) {
 
 // Changes the memory at the specified address location to the specified value
 MemoryMap.prototype.writeByte = function( val, addr ) {
-	addr &= this._bitmask;
 	val &= 0xff;
+
+	addr = this.resolveMirror(addr & this._bitmask);
 
 	if (addr in this._strobes) {
 		this._strobes[addr].fn();
@@ -181,6 +183,22 @@ MemoryMap.prototype.removeWriteOnly = function( addr ) {
 
 MemoryMap.prototype.isWriteOnly = function( addr ) {
 	return !!(addr in this._writeonly);
+};
+
+MemoryMap.prototype.addMirror = function( startAddr, endAddr, offset ) {
+	var addr = startAddr;
+
+	for (; addr <= endAddr; addr++) {
+		this._mirrors[addr] = offset;
+	}
+};
+
+MemoryMap.prototype.resolveMirror = function( addr ) {
+	if (addr in this._mirrors) {
+		return addr - this._mirrors[addr];
+	}
+
+	return addr;
 };
 
 // Adds to the journal a byte to be written at a specified location

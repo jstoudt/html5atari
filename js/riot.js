@@ -149,6 +149,52 @@ window.RIOT = (function() {
 				timer = val << 10;
 			});
 
+			// Add Mirror maps for the entire RAM and other RIOT addresses
+			mmap.addMirror(0x0180, 0x1ff, 0x100);
+
+			mmap.addMirror(0x2a0, 0x2bf, 0x20);
+			mmap.addMirror(0x2c0, 0x2df, 0x40);
+			mmap.addMirror(0x2e0, 0x2ff, 0x60);
+
+			mmap.addMirror(0x380, 0x39f, 0x100);
+			mmap.addMirror(0x3a0, 0x3bf, 0x120);
+			mmap.addMirror(0x3c0, 0x3df, 0x140);
+			mmap.addMirror(0x3e0, 0x3ff, 0x160);
+			
+			for (i = 0x400; i <= 0xc00; i += 0x400) {
+				// repeating RAM mirrors
+				mmap.addMirror(i + 0x80, i + 0xff, i);
+				mmap.addMirror(i + 0x180, i + 0x1ff, i + 0x100);
+
+				// repeating RIOT mirrors
+				mmap.addMirror(i + 0x280, i + 0x29f, i);
+				mmap.addMirror(i + 0x2a0, i + 0x2bf, i + 0x20);
+				mmap.addMirror(i + 0x2c0, i + 0x2df, i + 0x40);
+				mmap.addMirror(i + 0x2e0, i + 0x2ff, i + 0x60);
+
+				mmap.addMirror(i + 0x380, i + 0x39f, i + 0x100);
+				mmap.addMirror(i + 0x3a0, i + 0x3bf, i + 0x120);
+				mmap.addMirror(i + 0x3c0, i + 0x3df, i + 0x140);
+				mmap.addMirror(i + 0x3e0, i + 0x3ff, i + 0x160);
+			}
+
+			for (i = 0x2000; i <= 0xec00; i += 0x400) {
+				// repeating RAM mirrors
+				mmap.addMirror(i + 0x80, i + 0xff, i);
+				mmap.addMirror(i + 0x180, i + 0x1ff, i + 0x100);
+
+				// repeating RIOT mirrors
+				mmap.addMirror(i + 0x280, i + 0x29f, i);
+				mmap.addMirror(i + 0x2a0, i + 0x2bf, i + 0x20);
+				mmap.addMirror(i + 0x2c0, i + 0x2df, i + 0x40);
+				mmap.addMirror(i + 0x2e0, i + 0x2ff, i + 0x60);
+
+				mmap.addMirror(i + 0x380, i + 0x39f, i + 0x100);
+				mmap.addMirror(i + 0x3a0, i + 0x3bf, i + 0x120);
+				mmap.addMirror(i + 0x3c0, i + 0x3df, i + 0x140);
+				mmap.addMirror(i + 0x3e0, i + 0x3ff, i + 0x160);
+			}
+
 			timer = Math.floor(Math.random() * 0xffffffff);
 		},
 

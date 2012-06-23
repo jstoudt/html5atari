@@ -38,6 +38,8 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 
 		numFrames = 0, // the number of frames written to the canvas
 
+		tiaCycles = 0,
+
 		started = false,
 
 		// a value that cycles between 0, 1 and 2 -- 6507 is cycled on 2
@@ -251,6 +253,8 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 
 				return x;
 			}
+
+			var i;
 
 			// create a new memory map object
 			mmap = new MemoryMap(13);
@@ -595,6 +599,17 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 			mmap.addWriteOnly( MEM_LOCATIONS.AUDV1, function( val ) {
 				AUDV1 = val & 0x0f;
 			}, MEM_LOCATIONS.INPT2 );
+
+			// Add mirrored memory addresses to Memory Map
+			mmap.addMirror(0x40, 0x7f, 0x40);
+			for (i = 0x100; i <= 0xf00; i += 0x100) {
+				mmap.addMirror(i, i + 0x3f, i);
+				mmap.addMirror(i + 0x40, i + 0x7f, i + 0x40);
+			}
+			for (i = 0x2000; i <= 0xef00; i += 0x100) {
+				mmap.addMirror(i, i + 0x3f, i);
+				mmap.addMirror(i + 0x40, i + 0x7f, i + 0x40);
+			}
 		},
 
 		clearPixelBuffer = function() {
@@ -954,7 +969,9 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 				writePixel(y - yStart);
 			}
 			
-			// increment to draw the next pixel
+			tiaCycles++;
+
+			// increment the color clock to draw the pixel at the next position
 			x++;
 
 			// increment/cycle the TIA clock
@@ -1042,6 +1059,8 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 			// initialize the frame counter
 			numFrames = 0;
 
+			tiaCycles = 0;
+
 			// initialize the electron beam position
 			x = -68;
 			y = 0;
@@ -1068,6 +1087,8 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 
 			// reset the frame counter
 			numFrames = 0;
+
+			tiaCycles = 0;
 
 			// schecule the start of the main loop
 			rafId = reqAnimFrame(runMainLoop);
@@ -1130,6 +1151,10 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 
 		getNumFrames: function() {
 			return numFrames;
+		},
+
+		getCycleCount: function() {
+			return tiaCycles;
 		},
 
 		getBeamPosition: function() {

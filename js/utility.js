@@ -127,6 +127,7 @@ var MEM_LOCATIONS = {
 	AUDF0:  0x17,		AUDF1:  0x18,
 	AUDV0:  0x19,		AUDV1:  0x1a,
 
+	// TIA Graphics registers
 	GRP0:   0x1b,		GRP1:   0x1c,
 	ENAM0:  0x1d,		ENAM1:  0x1e,
 	ENABL:  0x1f,
@@ -170,6 +171,7 @@ var MEM_LOCATIONS = {
 	T1024T: 0x297
 };
 
+// The controller configuration initially given to a new user
 var DEFAULT_KEYMAP = [
 	{
 		input: 'keyboard',

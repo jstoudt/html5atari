@@ -221,9 +221,14 @@
 
 		// Load the ROM from the recently loaded list when the user clicks on it
 		romsList.addEventListener('click', function( event ) {
-			if (event.target && event.target.dataset && event.target.dataset.index) {
+			if (event.target && event.target.dataset &&
+					event.target.dataset.index) {
 				event.preventDefault();
 				event.stopPropagation();
+
+				// close the panel when a ROM is loaded
+				romsList.parentNode.classList.remove('open');
+
 				loadSavedRom(event.target.dataset.index);
 			}
 		}, false);

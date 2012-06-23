@@ -209,7 +209,7 @@
 		sr.Z.innerHTML = status & 0x02 ? 1 : 0;
 		sr.C.innerHTML = status & 0x01 ? 1 : 0;
 
-		cpuCycles.textContent = CPU6507.getCycleCount();
+		cpuCycles.textContent = Math.floor(TIA.getCycleCount() / 3);
 
 		pixelClock.textContent = beamPosition.x;
 		scanline.textContent   = beamPosition.y;
