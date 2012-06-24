@@ -6,4 +6,4 @@ For the past few months, I have been slowly developing an Atari 2600 emulator in
 
 Among the new HTML5 APIs, html5atari will feature Drag and drop, the new gamepad API, web audio, HTML canvas, FileReader, and many more... Check back soon to see updates, or take a fork and help out.
 
-![A screenshot of html5atari under development](images/screenshot.jpg)
+![A screenshot of html5atari under development](tree/master/images/screenshot.jpg)
