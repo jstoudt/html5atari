@@ -67,7 +67,7 @@ MemoryMap.prototype.writeByte = function( val, addr ) {
 
 // Returns the byte in memory at the specified address location
 MemoryMap.prototype.readByte = function( addr ) {
-	addr &= this._bitmask;
+	addr = this.resolveMirror(addr & this._bitmask);
 
 	if (addr in this._readonly) {
 		return this._readonly[addr]();

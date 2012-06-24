@@ -8,7 +8,7 @@
  * Atari 2600.
  */
 
-window.CPU6507 = (function() {
+var CPU6507 = (function() {
 
 	var ROM_TYPE = {
 			'2K': 1,
@@ -192,7 +192,7 @@ window.CPU6507 = (function() {
 		// Stack specific operations
 		stack = {
 
-			pushByte: function(val) {
+			pushByte: function( val ) {
 				mmap.journalAddByte(val, regSet.sp);
 				regSet.sp = (regSet.sp - 1) & 0xff;
 			},
@@ -202,7 +202,7 @@ window.CPU6507 = (function() {
 				return mmap.readByte(regSet.sp);
 			},
 
-			pushWord: function(val) {
+			pushWord: function( val ) {
 				stack.pushByte((val >> 8) & 0xff);
 				stack.pushByte(val & 0xff);
 			},
@@ -217,7 +217,7 @@ window.CPU6507 = (function() {
 		// Helper functions to set and reset processor status register bits
 		status = {
 
-			isSet: function(register) {
+			isSet: function( register ) {
 				register = register.toUpperCase();
 
 				var mask = register === 'N' ? 0x80 :
@@ -234,7 +234,7 @@ window.CPU6507 = (function() {
 				return !!(regSet.sr & mask);
 			},
 
-			set: function(register, val) {
+			set: function( register, val ) {
 				if (typeof val === 'undefined') {
 					val = true;
 				}
@@ -264,7 +264,7 @@ window.CPU6507 = (function() {
 				}
 			},
 
-			setFlagsNZ: function(val) {
+			setFlagsNZ: function( val ) {
 
 				if (val & 0x80) {
 					regSet.sr |= 0x80;
@@ -280,7 +280,7 @@ window.CPU6507 = (function() {
 			}
 		},
 
-		arithmeticShiftLeft = function(val) {
+		arithmeticShiftLeft = function( val ) {
 			status.set('C', (val & 0x80));
 
 			val = (val << 1) & 0xff;
@@ -290,7 +290,7 @@ window.CPU6507 = (function() {
 			return val;
 		},
 
-		logicalShiftRight = function(val) {
+		logicalShiftRight = function( val ) {
 			status.set('C', (val & 0x01));
 
 			val >>>= 1;
@@ -300,7 +300,7 @@ window.CPU6507 = (function() {
 			return val;
 		},
 
-		rotateLeft = function(val) {
+		rotateLeft = function( val ) {
 			var c = status.isSet('C');
 
 			status.set('C', (val & 0x80));
@@ -316,7 +316,7 @@ window.CPU6507 = (function() {
 			return val;
 		},
 
-		rotateRight = function(val) {
+		rotateRight = function( val ) {
 			var c = status.isSet('C');
 
 			status.set('C', val & 0x01);
@@ -332,7 +332,7 @@ window.CPU6507 = (function() {
 			return val;
 		},
 
-		addWithCarry = function(val) {
+		addWithCarry = function( val ) {
 			var v = regSet.ac & 0x80;
 
 			// execute addition in binary coded decimal mode
@@ -363,7 +363,7 @@ window.CPU6507 = (function() {
 			regSet.ac = val & 0xff;
 		},
 
-		subtractWithCarry = function(val) {
+		subtractWithCarry = function( val ) {
 			var v = regSet.ac & 0x80;
 
 			// execute subtraction in binary coded decimal mode
@@ -393,52 +393,58 @@ window.CPU6507 = (function() {
 			regSet.ac = val & 0xff;
 		},
 
+		compare = function( reg, mem ) {
+			status.set('Z', reg === mem);
+			status.set('C', reg >= mem);
+			status.set('N', reg < mem);
+		},
+
 		operation = {
 
-			AND: function(fAddr) {
+			AND: function( fAddr ) {
 				regSet.ac &= mmap.readByte(fAddr());
 				status.setFlagsNZ(regSet.ac);
 			},
 
-			ORA: function(fAddr) {
+			ORA: function( fAddr ) {
 				regSet.ac |= mmap.readByte(fAddr());
 				status.setFlagsNZ(regSet.ac);
 			},
 
-			EOR: function(fAddr) {
+			EOR: function( fAddr ) {
 				regSet.ac ^= mmap.readByte(fAddr());
 				status.setFlagsNZ(regSet.ac);
 			},
 
-			ASL: function(fAddr) {
+			ASL: function( fAddr ) {
 				var addr = fAddr(),
 					result = arithmeticShiftLeft(mmap.readByte(addr));
 
 				mmap.journalAddByte(result, addr);
 			},
 
-			LSR: function(fAddr) {
+			LSR: function( fAddr ) {
 				var addr = fAddr(),
 					result = logicalShiftRight(mmap.readByte(addr));
 
 				mmap.journalAddByte(result, addr);
 			},
 
-			ROL: function(fAddr) {
+			ROL: function( fAddr ) {
 				var addr = fAddr(),
 					result = rotateLeft(mmap.readByte(addr));
 
 				mmap.journalAddByte(result, addr);
 			},
 
-			ROR: function(fAddr) {
+			ROR: function( fAddr ) {
 				var addr = fAddr(),
 					result = rotateRight(mmap.readByte(addr));
 
 				mmap.journalAddByte(result, addr);
 			},
 
-			BIT: function(fAddr) {
+			BIT: function( fAddr ) {
 				var val = mmap.readByte(fAddr());
 
 				status.set('N', val & 0x80);
@@ -446,66 +452,54 @@ window.CPU6507 = (function() {
 				status.set('Z', (val & regSet.ac) === 0x00);
 			},
 
-			ADC: function(fAddr) {
+			ADC: function( fAddr ) {
 				addWithCarry(mmap.readByte(fAddr()));
 			},
 
-			SBC: function(fAddr) {
+			SBC: function( fAddr ) {
 				subtractWithCarry(mmap.readByte(fAddr()));
 			},
 
-			CMP: function(fAddr) {
-				var val = mmap.readByte(fAddr());
-
-				status.set('Z', regSet.ac === val);
-				status.set('C', regSet.ac >= val);
-				status.set('N', regSet.ac < val);
+			CMP: function( fAddr ) {
+				compare(regSet.ac, mmap.readByte(fAddr()));
 			},
 
-			CPX: function(fAddr) {
-				var val = mmap.readByte(fAddr());
-				
-				status.set('Z', regSet.x === val);
-				status.set('C', regSet.x >= val);
-				status.set('N', regSet.x < val);
+			CPX: function( fAddr ) {
+				compare(regSet.x, mmap.readByte(fAddr()));
 			},
 
-			CPY: function(fAddr) {
-				var val = mmap.readByte(fAddr());
-
-				status.set('Z', regSet.y === val);
-				status.set('C', regSet.y >= val);
-				status.set('N', regSet.y < val);
+			CPY: function( fAddr ) {
+				compare(regSet.y, mmap.readByte(fAddr()));
 			},
 
-			LDA: function(fAddr) {
+			LDA: function( fAddr ) {
 				regSet.ac = mmap.readByte(fAddr());
 				status.setFlagsNZ(regSet.ac);
 			},
 
-			LDX: function(fAddr) {
+			LDX: function( fAddr ) {
 				regSet.x = mmap.readByte(fAddr());
 				status.setFlagsNZ(regSet.x);
 			},
 
-			LDY: function(fAddr) {
+			LDY: function( fAddr ) {
 				regSet.y = mmap.readByte(fAddr());
 				status.setFlagsNZ(regSet.y);
 			},
 
-			STA: function(fAddr) {
+			STA: function( fAddr ) {
 				mmap.journalAddByte(regSet.ac, fAddr());
 			},
 
-			STX: function(fAddr) {
+			STX: function( fAddr ) {
 				mmap.journalAddByte(regSet.x, fAddr());
 			},
 
-			STY: function(fAddr) {
+			STY: function( fAddr ) {
 				mmap.journalAddByte(regSet.y, fAddr());
 			},
 
-			DEC: function(fAddr) {
+			DEC: function( fAddr ) {
 				var addr = fAddr(),
 					val = (mmap.readByte(addr) - 1) & 0xff;
 
@@ -514,7 +508,7 @@ window.CPU6507 = (function() {
 				mmap.journalAddByte(val, addr);
 			},
 
-			INC: function(fAddr) {
+			INC: function( fAddr ) {
 				var addr = fAddr(),
 					val = (mmap.readByte(addr) + 1) & 0xff;
 
@@ -523,7 +517,7 @@ window.CPU6507 = (function() {
 				mmap.journalAddByte(val, addr);
 			},
 
-			JSR: function(fAddr) {
+			JSR: function( fAddr ) {
 				var addr = fAddr();
 				stack.pushWord((regSet.pc - 1) & 0xffff);
 				regSet.pc = addr;
@@ -583,8 +577,7 @@ window.CPU6507 = (function() {
 
 			0x09: { // ORA #
 				op: function() {
-					var val = fetchInstruction();
-					regSet.ac |= val;
+					regSet.ac |= fetchInstruction();
 					status.setFlagsNZ(regSet.ac);
 				},
 				addressing: 'immediate',
@@ -743,8 +736,7 @@ window.CPU6507 = (function() {
 
 			0x29: { // AND #
 				op: function() {
-					var val = fetchInstruction();
-					regSet.ac &= val;
+					regSet.ac &= fetchInstruction();
 					status.setFlagsNZ(regSet.ac);
 				},
 				addressing: 'immediate',
@@ -906,8 +898,7 @@ window.CPU6507 = (function() {
 
 			0x49: { // EOR #
 				op: function() {
-					var val = fetchInstruction();
-					regSet.ac ^= val;
+					regSet.ac ^= fetchInstruction();
 					status.setFlagsNZ(regSet.ac);
 				},
 				addressing: 'immediate',
@@ -1061,6 +1052,7 @@ window.CPU6507 = (function() {
 			0x68: { // PLA impl
 				op: function() {
 					regSet.ac = stack.popByte();
+					status.setFlagsNZ(regSet.ac);
 				},
 				addressing: 'implied',
 				cycles: 4,
@@ -1070,8 +1062,7 @@ window.CPU6507 = (function() {
 
 			0x69: { // ADC #
 				op: function() {
-					var val = fetchInstruction();
-					addWithCarry(val);
+					addWithCarry(fetchInstruction());
 				},
 				addressing: 'immediate',
 				cycles: 2,
@@ -1565,11 +1556,7 @@ window.CPU6507 = (function() {
 
 			0xc0: { // CPY #
 				op: function() {
-					var val = fetchInstruction();
-
-					status.set('Z', regSet.y === val);
-					status.set('C', regSet.y >= val);
-					status.set('N', regSet.y < val);
+					compare(regSet.y, fetchInstruction());
 				},
 				addressing: 'immediate',
 				cycles: 2,
@@ -1622,11 +1609,7 @@ window.CPU6507 = (function() {
 
 			0xc9: { // CMP #
 				op: function() {
-					var val = fetchInstruction();
-
-					status.set('Z', regSet.ac === val);
-					status.set('C', regSet.ac >= val);
-					status.set('N', regSet.ac < val);
+					compare(regSet.ac, fetchInstruction());
 				},
 				addressing: 'immediate',
 				cycles: 2,
@@ -1744,11 +1727,7 @@ window.CPU6507 = (function() {
 
 			0xe0: { // CPX #
 				op: function() {
-					var val = fetchInstruction();
-
-					status.set('Z', regSet.x === val);
-					status.set('C', regSet.x >= val);
-					status.set('N', regSet.x < val);
+					compare(regSet.x, fetchInstruction());
 				},
 				addressing: 'immediate',
 				cycles: 2,
@@ -1801,8 +1780,7 @@ window.CPU6507 = (function() {
 
 			0xe9: { // SBC #
 				op: function() {
-					var val = fetchInstruction();
-					subtractWithCarry(val);
+					subtractWithCarry(fetchInstruction());
 				},
 				addressing: 'immediate',
 				cycles: 2,
@@ -1927,7 +1905,7 @@ window.CPU6507 = (function() {
 					return arg;
 				};
 
-			function parseInstruction(addr) {
+			function parseInstruction( addr ) {
 				var opcode, operand, inst, item;
 
 				while(1) {
@@ -2090,7 +2068,7 @@ window.CPU6507 = (function() {
 
 	return {
 
-		init: function(map) {
+		init: function( map ) {
 			// use the memory map we are sharing with the TIA
 			mmap = map;
 
@@ -2104,6 +2082,9 @@ window.CPU6507 = (function() {
 
 			// reset the cycle counter
 			cycleCount = 0;
+
+			// Add the mirrored ROM address range
+			mmap.addMirror(0xf000, 0xffff, 0xe000);
 		},
 
 		// execute a single cycle
@@ -2123,7 +2104,7 @@ window.CPU6507 = (function() {
 			return false;
 		},
 
-		addEventListener: function(type, handler) {
+		addEventListener: function( type, handler ) {
 			if (typeof handler !== 'function') {
 				throw new Error('Parameter handler must be of type function.');
 			}
@@ -2135,7 +2116,7 @@ window.CPU6507 = (function() {
 			}
 		},
 
-		removeEventListener: function(type, handler) {
+		removeEventListener: function( type, handler ) {
 			var i = 0,
 				handlerList = handlers[type],
 				l = handlerList.length;
@@ -2147,7 +2128,7 @@ window.CPU6507 = (function() {
 			}
 		},
 
-		loadProgram: function(program) {
+		loadProgram: function( program ) {
 			var i, progList,
 				len = program.length,
 				l = handlers.load.length;
@@ -2163,7 +2144,7 @@ window.CPU6507 = (function() {
 			}
 
 			for (i = 0; i < len; i++) {
-				mmap.writeByte(program[i], (i + 0xf000));
+				mmap.writeByte(program[i], (i + 0x1000));
 			}
 
 			// set the program counter register to the reset address
@@ -2183,7 +2164,7 @@ window.CPU6507 = (function() {
 			}
 		},
 
-		getRegister: function(name) {
+		getRegister: function( name ) {
 			return regSet[name];
 		},
 
