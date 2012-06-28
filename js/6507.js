@@ -63,19 +63,12 @@ var CPU6507 = (function() {
 			pc: 0       // Program Counter
 		},
 
-		// the address to jump to on a BRK instruction
-		breakAddr,
+		// The ROM object containing the game cart data
+		rom = null,
 
 		mmap, // a reference to the memory map to be passed in by TIA
-
-		romType, // the type of ROM cartridge that has been loaded
 		
 		cycleCount = 0, // number of CPU cycles executed -- for timing purposes
-
-		handlers = {
-			load: [],     // functions to call after a ROM has been loaded
-			execloop: []  // an array of functions to call after each exec loop
-		},
 
 		// retrieve the byte in memory at the address specified by the
 		// program counter
@@ -537,7 +530,7 @@ var CPU6507 = (function() {
 					stack.pushWord(regSet.pc);
 					stack.pushByte(regSet.sr);
 					status.set('I', true);
-					regSet.pc = breakAddr;
+					regSet.pc = rom.readBreakAddress();
 				},
 				addressing: 'implied',
 				cycles: 7,
@@ -2131,65 +2124,9 @@ var CPU6507 = (function() {
 			return true;
 		},
 
-		addEventListener: function( type, handler ) {
-			if (typeof handler !== 'function') {
-				throw new Error('Parameter handler must be of type function.');
-			}
-
-			if (type in handlers) {
-				handlers[type].push(handler);
-			} else {
-				throw new Error('Unrecognized event type.');
-			}
-		},
-
-		removeEventListener: function( type, handler ) {
-			var i = 0,
-				handlerList = handlers[type],
-				l = handlerList.length;
-
-			for (; i < l; i++) {
-				if (handlerList[i] === handler) {
-					handlerList.splice(i, 1);
-				}
-			}
-		},
-
 		loadProgram: function( program ) {
-			var i, progList,
-				len = program.length,
-				l = handlers.load.length;
-
-			if (!(mmap instanceof MemoryMap)) {
-				throw new Error('The TIA must be initialized prior to loading a program.');
-			}
-
-			if (len === 2048) {
-				romType = ROM_TYPE['2K'];
-			} else if (len === 4096) {
-				romType = ROM_TYPE['4K'];
-			} else {
-				throw new Error('Unsupported ROM type.');
-			}
-
-			for (i = 0; i < len; i++) {
-				mmap.writeByte(program[i], (i + 0xf000));
-			}
-
-			// set the program counter register to the reset address
-			// at the end of the ROM
-			if (romType === ROM_TYPE['2K']) {
-				regSet.pc = mmap.readWord(0xf7fc);
-				breakAddr = mmap.readWord(0xf7fe);
-			} else if (romType === ROM_TYPE['4K']) {
-				regSet.pc = mmap.readWord(0xfffc);
-				breakAddr = mmap.readWord(0xfffe);
-			}
-
-			// execute any handlers bound to the load event
-			for (i = 0; i < l; i++) {
-				handlers.load[i](parseProgram());
-			}
+			rom = new ROM(program, mmap);
+			regSet.pc = rom.readStartAddress();
 		},
 
 		getRegister: function( name ) {

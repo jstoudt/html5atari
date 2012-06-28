@@ -55,6 +55,14 @@ window.RIOT = (function() {
 
 		getTIMINT = function() {
 			return timer < 0 ? 0x80 : 0x00;
+		},
+
+		readRAM = function( addr ) {
+			return RAM[addr - 0x80];
+		},
+
+		writeRAM = function( val, addr ) {
+			RAM[addr - 0x80] = val;
 		};
 
 	return {
@@ -69,6 +77,8 @@ window.RIOT = (function() {
 			for (; i < RAM.length; i++) {
 				RAM[i] = Math.floor(Math.random() * 0xff);
 			}
+
+			mmap.addReadWrite(0x80, 0xff, readRAM, writeRAM);
 
 			mmap.addReadOnly(MEM_LOCATIONS.SWCHA, function() {
 				var val = 0x00;
@@ -199,61 +209,44 @@ window.RIOT = (function() {
 			timer--;
 		},
 
-		setConsoleSwitch: function( name, value ) {
-			value = !!value;
+		setConsoleSwitch: function( name, val ) {
+			val = !!val;
 
-			switch (name) {
-				case 'difficulty0':
-					P0DIFFICULTY = value;
-					break;
-				case 'difficulty1':
-					P1DIFFICULTY = value;
-					break;
-				case 'color':
-					COLOR = value;
-					break;
-				case 'select':
-					SELECT = value;
-					break;
-				case 'reset':
-					RESET = value;
-					break;
+			if (name === 'difficulty0') {
+				P0DIFFICULTY = val;
+			} else if (name === 'difficulty1') {
+				P1DIFFICULTY = val;
+			} else if (name === 'color') {
+				COLOR = val;
+			} else if (name === 'select') {
+				SELECT = val;
+			} else if (name === 'reset') {
+				RESET = val;
 			}
 		},
 
 		setJoystickValue: function( p, dir, val ) {
 			if (p === 0) {
-				switch (dir) {
-					case 'up':
-						P0_UP = val;
-						break;
-					case 'left':
-						P0_LEFT = val;
-						break;
-					case 'right':
-						P0_RIGHT = val;
-						break;
-					case 'down':
-						P0_DOWN = val;
-						break;
+				if (dir === 'up') {
+					P0_UP = val;
+				} else if (dir === 'left') {
+					P0_LEFT = val;
+				} else if (dir === 'right') {
+					P0_RIGHT = val;
+				} else {
+					P0_DOWN = val;
 				}
 			} else {
-				switch(dir) {
-					case 'up':
-						P1_UP = val;
-						break;
-					case 'left':
-						P1_LEFT = val;
-						break;
-					case 'right':
-						P1_RIGHT = val;
-						break;
-					case 'down':
-						P1_DOWN = val;
-						break;
+				if (dir === 'up') {
+					P1_UP = val;
+				} else if (dir === 'left') {
+					P1_LEFT = val;
+				} else if (dir === 'right') {
+					P1_RIGHT = val;
+				} else {
+					P1_DOWN = val;
 				}
 			}
-
 		},
 
 		getTimerRegisters: function() {

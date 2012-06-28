@@ -28,9 +28,7 @@ MemoryMap.prototype.writeByte = function( val, addr ) {
 	} else if (addr in this._writeonly) {
 		this._writeonly[addr].fn(val & 0xff);
 	} else if (addr in this._readwrite) {
-		this._readwrite[addr].writeFn(val, addr);
-	} else {
-		throw new Error('Writing to unsupported memory address.');
+		this._readwrite[addr].write(val, addr);
 	}
 };
 
@@ -41,7 +39,7 @@ MemoryMap.prototype.readByte = function( addr ) {
 	}
 
 	if (addr in this._readonly) {
-		return this._readonly[addr]();
+		return this._readonly[addr](addr);
 	}
 
 	if (addr in this._writeonly && this._writeonly[addr].read) {
@@ -49,14 +47,12 @@ MemoryMap.prototype.readByte = function( addr ) {
 	}
 
 	if (addr in this._readwrite) {
-		return this._readwrite[addr]();
+		return this._readwrite[addr].read(addr);
 	}
 
 	if (addr in this._strobes && this._strobes[addr].read) {
 		return this.readByte(this._strobes[addr].read);
 	}
-
-	throw new Error('Reading from unsupported memory address.');
 };
 
 // Returns the 2-byte little-endian word stored at the specified location
@@ -90,8 +86,16 @@ MemoryMap.prototype.isStrobe = function( addr ) {
 
 // Marks the given address as a location to which the CPU cannot write to
 // via the journalCommit function
-MemoryMap.prototype.addReadOnly = function( addr, fn ) {
-	this._readonly[addr] = fn;
+MemoryMap.prototype.addReadOnly = function( startAddr, endAddr, fn ) {
+	var i;
+
+	if (arguments.length === 2 && typeof endAddr === 'function') {
+		this._readonly[startAddr] = endAddr;
+	} else {
+		for (i = startAddr; i <= endAddr; i++) {
+			this._readonly[i] = fn;
+		}
+	}
 };
 
 // Removes the given address as a read-only address location
@@ -108,12 +112,10 @@ MemoryMap.prototype.isReadOnly = function( addr ) {
 };
 
 MemoryMap.prototype.addWriteOnly = function( addr, fn, read ) {
-	if (!(addr in this._writeonly)) {
-		this._writeonly[addr] = {};
-	}
-
-	this._writeonly[addr].fn   = fn;
-	this._writeonly[addr].read = read;
+	this._writeonly[addr] = {
+		fn:   fn,
+		read: read
+	};
 };
 
 MemoryMap.prototype.removeWriteOnly = function( addr ) {
@@ -126,13 +128,15 @@ MemoryMap.prototype.isWriteOnly = function( addr ) {
 	return !!(addr in this._writeonly);
 };
 
-MemoryMap.prototype.addReadWrite = function( addr, readFn, writeFn ) {
-	if (!(addr in this._readwrite)) {
-		this._readwrite[addr] = {};
-	}
+MemoryMap.prototype.addReadWrite = function( startAddr, endAddr, readFn, writeFn ) {
+	var i = startAddr;
 
-	this._readwrite[addr].read  = readFn;
-	this._readwrite[addr].write = writeFn;
+	for (; i <= endAddr; i++) {
+		this._readwrite[i] = {
+			read:  readFn,
+			write: writeFn
+		};
+	}
 };
 
 MemoryMap.prototype.isReadWrite = function( addr ) {
@@ -146,19 +150,16 @@ MemoryMap.prototype.removeReadWrite = function( addr ) {
 };
 
 MemoryMap.prototype.addMirror = function( startAddr, endAddr, offset ) {
-	var addr = startAddr;
+	var i = startAddr;
 
-	for (; addr <= endAddr; addr++) {
-		this._mirrors[addr] = offset;
+	for (; i <= endAddr; i++) {
+		this._mirrors[i] = offset;
 	}
 };
 
 MemoryMap.prototype.resolveMirror = function( addr ) {
-	if (addr in this._mirrors) {
-		return (addr - this._mirrors[addr]) & 0xffff;
-	}
-
-	return addr;
+	return addr in this._mirrors ? (addr - this._mirrors[addr]) & 0xffff :
+		addr;
 };
 
 // Adds to the journal a byte to be written at a specified location
