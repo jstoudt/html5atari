@@ -9,9 +9,6 @@
 
 
 function MemoryMap( bitWidth ) {
-	var i = 0,
-		len = 1 << 16;
-
 	this._strobes   = {};
 	this._readonly  = {};
 	this._writeonly = {};
