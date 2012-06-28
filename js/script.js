@@ -131,7 +131,7 @@
 		document.getElementById('p1-down').textContent   = KEYCODES[map.down];
 	}
 
-	function loadRom(name, rom) {
+	function loadRom( name, rom ) {
 		var roms, i, curRom;
 
 		activeROM = rom;
@@ -259,10 +259,12 @@
 				if (!TIA.isStarted()) {
 					// sync the console switches with the RIOT
 					RIOT.setConsoleSwitch('color', colorSwitch.value === '1');
-					RIOT.setConsoleSwitch('select', true);
-					RIOT.setConsoleSwitch('reset', true);
-					RIOT.setConsoleSwitch('difficulty0', false);
-					RIOT.setConsoleSwitch('difficulty1', false);
+					RIOT.setConsoleSwitch('select', selectSwitch.value === '1');
+					RIOT.setConsoleSwitch('reset', resetSwitch.value === '1');
+					RIOT.setConsoleSwitch('difficulty0',
+						leftDifficultySwitch.value === '1');
+					RIOT.setConsoleSwitch('difficulty1',
+						rightDifficultySwitch.value === '1');
 
 					// add the key listeners to the DOM for game input
 					addGameKeyListeners();

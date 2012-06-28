@@ -62,6 +62,10 @@ var CPU6507 = (function() {
 			sp: 0,      // Stack Pointer
 			pc: 0       // Program Counter
 		},
+
+		// the address to jump to on a BRK instruction
+		breakAddr,
+
 		mmap, // a reference to the memory map to be passed in by TIA
 
 		romType, // the type of ROM cartridge that has been loaded
@@ -533,7 +537,7 @@ var CPU6507 = (function() {
 					stack.pushWord(regSet.pc);
 					stack.pushByte(regSet.sr);
 					status.set('I', true);
-					regSet.pc = 0x00; // need to figure this out
+					regSet.pc = breakAddr;
 				},
 				addressing: 'implied',
 				cycles: 7,
@@ -547,6 +551,14 @@ var CPU6507 = (function() {
 				cycles: 6,
 				abbr: 'ORA',
 				bytes: 2
+			},
+
+			0x02: { // unsupported operation
+				op: function() { },
+				addressing: 'immediate',
+				cycles: 0,
+				abbr: 'jam',
+				bytes: 1
 			},
 
 			0x05: { // ORA zpg
@@ -1179,6 +1191,14 @@ var CPU6507 = (function() {
 				bytes: 3
 			},
 
+			0x80: { // unsupported operation
+				op: function() { },
+				addressing: 'immediate',
+				cycles: 2,
+				abbr: 'nop',
+				bytes: 2
+			},
+
 			0x81: { // STA X,ind
 				op: operation.STA,
 				addressing: 'xIndexedIndirect',
@@ -1337,6 +1357,14 @@ var CPU6507 = (function() {
 				addressing: 'absoluteX',
 				cycles: 5,
 				abbr: 'STA',
+				bytes: 3
+			},
+
+			0x9f: { // unsupported operation
+				op: function() { },
+				addressing: 'absoluteY',
+				cycles: 5,
+				abbr: 'sha',
 				bytes: 3
 			},
 
@@ -2031,9 +2059,9 @@ var CPU6507 = (function() {
 
 			// seed the function with the first instruction address
 			if (romType === ROM_TYPE['2K']) {
-				initAddr = mmap.readByte(0xf7fc) | mmap.readByte(0xf7fd) << 8;
+				initAddr = mmap.readWord(0xf7fc);
 			} else if (romType === ROM_TYPE['4K']) {
-				initAddr = mmap.readByte(0xfffc) | mmap.readByte(0xfffd) << 8;
+				initAddr = mmap.readWord(0xfffc);
 			} else {
 				return [];
 			}
@@ -2084,7 +2112,7 @@ var CPU6507 = (function() {
 			cycleCount = 0;
 
 			// Add the mirrored ROM address range
-			mmap.addMirror(0xf000, 0xffff, 0xe000);
+			mmap.addMirror(0x1000, 0x1fff, -0xe000);
 		},
 
 		// execute a single cycle
@@ -2092,16 +2120,15 @@ var CPU6507 = (function() {
 			if (waiting === true) {
 				if (cyclesToWait > 0) {
 					cyclesToWait--;
-					return false;
 				} else {
 					mmap.journalCommit();
 					waiting = false;
-					return true;
 				}
+				return false;
 			}
 
 			executeInstruction();
-			return false;
+			return true;
 		},
 
 		addEventListener: function( type, handler ) {
@@ -2133,34 +2160,35 @@ var CPU6507 = (function() {
 				len = program.length,
 				l = handlers.load.length;
 
-			romType = len === 2048 ? ROM_TYPE['2K'] :
-				len === 4096 ? ROM_TYPE['4K'] :
-				(function() {
-					throw new Error('Unsupported ROM type.');
-				})();
-
 			if (!(mmap instanceof MemoryMap)) {
 				throw new Error('The TIA must be initialized prior to loading a program.');
 			}
 
+			if (len === 2048) {
+				romType = ROM_TYPE['2K'];
+			} else if (len === 4096) {
+				romType = ROM_TYPE['4K'];
+			} else {
+				throw new Error('Unsupported ROM type.');
+			}
+
 			for (i = 0; i < len; i++) {
-				mmap.writeByte(program[i], (i + 0x1000));
+				mmap.writeByte(program[i], (i + 0xf000));
 			}
 
 			// set the program counter register to the reset address
 			// at the end of the ROM
 			if (romType === ROM_TYPE['2K']) {
-				regSet.pc = mmap.readByte(0xf7fc) | mmap.readByte(0xf7fd) << 8;
+				regSet.pc = mmap.readWord(0xf7fc);
+				breakAddr = mmap.readWord(0xf7fe);
 			} else if (romType === ROM_TYPE['4K']) {
-				regSet.pc = mmap.readByte(0xfffc) | mmap.readByte(0xfffd) << 8;
+				regSet.pc = mmap.readWord(0xfffc);
+				breakAddr = mmap.readWord(0xfffe);
 			}
 
 			// execute any handlers bound to the load event
-			if (l > 0) {
-				progList = parseProgram();
-				for (i = 0; i < l; i++) {
-					handlers.load[i](progList);
-				}
+			for (i = 0; i < l; i++) {
+				handlers.load[i](parseProgram());
 			}
 		},
 

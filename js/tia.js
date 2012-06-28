@@ -1,5 +1,5 @@
 /**
- * "tia.js -- Television Interface Adaptor
+ * tia.js -- Television Interface Adaptor
  * Author: Jason T. Stoudt
  * Date: 28 March 2012
  *
@@ -9,13 +9,17 @@
 
 window.TIA = (function(MEM_LOCATIONS, undefined) {
 
-	var mmap,          // the memory map to be shared between TIA & CPU
+		// the memory map to be shared between TIA & CPU
+	var mmap,
 
-		pixelBuffer,   // the array of pixel colors representing the video output
+		// the array of pixel colors representing the video output
+		pixelBuffer,
 
+		// the current pointer to write to within the pixel buffer array
 		pixelBufferIndex,
 
-		canvasContext, // the context of the canvas element for video output
+		// the 2D context of the canvas element for video output
+		canvasContext,
 
 		handlers = {
 			start: [],
@@ -36,7 +40,8 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 
 		rafId = null,
 
-		numFrames = 0, // the number of frames written to the canvas
+		// the number of frames written to the canvas
+		numFrames = 0,
 
 		tiaCycles = 0,
 
@@ -175,10 +180,6 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 		AUDF1 = 0x00,
 		AUDV1 = 0x00,
 
-		// the dimensions of the output video buffer -- NTSC-only for now
-		VIDEO_BUFFER_WIDTH  = 0,
-		VIDEO_BUFFER_HEIGHT = 0,
-
 		// the Atari 2600 NTSC color palette
 		COLOR_PALETTE = [
 			[    // 0
@@ -257,7 +258,7 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 			var i;
 
 			// create a new memory map object
-			mmap = new MemoryMap(13);
+			mmap = new MemoryMap();
 
 			mmap.addReadOnly( MEM_LOCATIONS.CXM0P, function() {
 				var val = M0_P0 === true ? 0x40 : 0x00;
@@ -345,14 +346,12 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 
 			// set the RDY latch when the WSYNC address is strobed
 			mmap.addStrobe( MEM_LOCATIONS.WSYNC, function() {
-				if (x > -68) {
-					RDY = true;
-				}
+				RDY = true;
 			}, MEM_LOCATIONS.CXP0FB );
 
 			// reset the P0 graphics position when RESP0 is strobed
 			mmap.addStrobe( MEM_LOCATIONS.RESP0, function() {
-				p0Pos = x + 5;
+				p0Pos = x + 8;
 				if (p0Pos < 0) {
 					p0Pos = 2;
 				} else if (p0Pos >= 160) {
@@ -363,7 +362,7 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 
 			// reset the P1 graphics position when RESP1 is strobed
 			mmap.addStrobe( MEM_LOCATIONS.RESP1, function() {
-				p1Pos = x + 5;
+				p1Pos = x + 8;
 				if (p1Pos < 0) {
 					p1Pos = 2;
 				} else if (p1Pos >= 160) {
@@ -374,7 +373,7 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 
 			// reset the M0 graphics position when RESM0 is strobed
 			mmap.addStrobe( MEM_LOCATIONS.RESM0, function() {
-				m0Pos = x + 4;
+				m0Pos = x + 7;
 				if (m0Pos < 0) {
 					m0Pos = 2;
 				} else if (m0Pos >= 160) {
@@ -385,7 +384,7 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 
 			// reset the M1 graphics position when RESM1 is strobed
 			mmap.addStrobe( MEM_LOCATIONS.RESM1, function() {
-				m1Pos = x + 4;
+				m1Pos = x + 7;
 				if (m1Pos < 0) {
 					m1Pos = 2;
 				} else if (m1Pos >= 160) {
@@ -396,7 +395,7 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 
 			// reset the BL graphics position when RESBL is strobed
 			mmap.addStrobe( MEM_LOCATIONS.RESBL, function() {
-				blPos = x + 4;
+				blPos = x + 7;
 				if (blPos < 0) {
 					blPos = 2;
 				} else if (blPos >= 160) {
@@ -416,11 +415,7 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 
 			// clear all the horizintal movement registers when HMCLR is strobed
 			mmap.addStrobe( MEM_LOCATIONS.HMCLR, function() {
-				HMP0 = 0;
-				HMP1 = 0;
-				HMM0 = 0;
-				HMM1 = 0;
-				HMBL = 0;
+				HMP0 = HMP1 = HMM0 = HMM1 = HMBL = 0;
 			}, MEM_LOCATIONS.INPT3 );
 
 			// clear all the collision registers when CXCLR is strobed
@@ -745,7 +740,7 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 				}
 			}
 
-			// increment the clock, and reset at 160 color clocks
+			// increment the clock
 			if (p === 0) {
 				p0Clock++;
 			} else {
@@ -843,7 +838,7 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 
 		writePixel = function( y ) {
 			// determine what color the pixel at the present coordinates should be
-			var i =    pixelBufferIndex,
+			var i    = pixelBufferIndex,
 				data = pixelBuffer.data,
 				pf   = isPlayfieldAt(x >>> 2),
 				p0   = procPlayerClock(0),
@@ -1022,18 +1017,15 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 
 		init: function( canvas ) {
 			
+			var canvasWidth  = parseInt(canvas.width, 10),
+				canvasHeight = parseInt(canvas.height, 10);
+
 			// store a reference to the canvas's context
 			canvasContext = canvas.getContext('2d');
 
-			// set the video buffer dimensions to the canvas size
-			VIDEO_BUFFER_WIDTH = parseInt(canvas.width, 10);
-			VIDEO_BUFFER_HEIGHT = parseInt(canvas.height, 10);
-
 			// create a pixel buffer to hold the raw data
-			pixelBuffer = canvasContext.createImageData(
-				VIDEO_BUFFER_WIDTH,
-				VIDEO_BUFFER_HEIGHT
-			);
+			pixelBuffer = canvasContext.createImageData(canvasWidth,
+				canvasHeight);
 
 			// reset the started flag
 			started = false;
@@ -1105,7 +1097,7 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 		step: function() {
 			while(1) {
 				var proc = execClockCycle();
-				if (vsyncCount > 2 && VSYNC === false) {
+				if (vsyncCount > 0 && VSYNC === false) {
 					vsyncCount = 0;
 					y = 0;
 					pixelBufferIndex = 0;
@@ -1177,9 +1169,7 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 					position:    p0Pos,
 					hmove:       HMP0
 				};
-			}
-
-			if (p === 1) {
+			} else {
 				return {
 					color:       COLUP1,
 					rgb:         COLUP1rgb,

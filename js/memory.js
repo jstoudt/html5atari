@@ -9,65 +9,39 @@
 
 
 function MemoryMap( bitWidth ) {
-	var i,
-		mask = 0;
+	var i = 0,
+		len = 1 << 16;
 
-	if (typeof bitWidth === 'undefined') {
-		throw new Error('Bit width has not been specified.');
-	}
-	if (typeof bitWidth !== 'number') {
-		throw new Error('Bit width must be of type number.');
-	}
-	if (bitWidth < 1) {
-		throw new Error('Bit width must be a positive integer.');
-	}
-	if (bitWidth > 16) {
-		throw new Error('Memory cannot be greater than 64k');
-	}
-
-	bitWidth = Math.round(bitWidth);
-
-	for (i = 0; i < bitWidth; i++) {
-		mask = (mask << 1) | 1;
-	}
-
-	// create the memory to hold the raw system data
-	this._memory    = new Uint8Array(new ArrayBuffer(1 << bitWidth));
-	
 	this._strobes   = {};
 	this._readonly  = {};
 	this._writeonly = {};
+	this._readwrite = {};
 	this._mirrors   = {};
 	this._journal   = [];
-	this._bitmask   = mask;
-
-	// the only public property of a MemoryMap object created in this constructor
-	this.length = this._memory.length;
-
-	// initialize all registers on the system bus to zero
-	for (i = 0; i < this._memory.length; i++) {
-		this._memory[i] = 0;
-	}
 }
 
 // Changes the memory at the specified address location to the specified value
 MemoryMap.prototype.writeByte = function( val, addr ) {
-	val &= 0xff;
-
-	addr = this.resolveMirror(addr & this._bitmask);
+	if (addr in this._mirrors) {
+		addr = this.resolveMirror(addr);
+	}
 
 	if (addr in this._strobes) {
 		this._strobes[addr].fn();
 	} else if (addr in this._writeonly) {
-		this._writeonly[addr].fn(val);
+		this._writeonly[addr].fn(val & 0xff);
+	} else if (addr in this._readwrite) {
+		this._readwrite[addr].writeFn(val, addr);
 	} else {
-		this._memory[addr] = val;
+		throw new Error('Writing to unsupported memory address.');
 	}
 };
 
 // Returns the byte in memory at the specified address location
 MemoryMap.prototype.readByte = function( addr ) {
-	addr = this.resolveMirror(addr & this._bitmask);
+	if (addr in this._mirrors) {
+		addr = this.resolveMirror(addr);
+	}
 
 	if (addr in this._readonly) {
 		return this._readonly[addr]();
@@ -77,54 +51,28 @@ MemoryMap.prototype.readByte = function( addr ) {
 		return this.readByte(this._writeonly[addr].read);
 	}
 
+	if (addr in this._readwrite) {
+		return this._readwrite[addr]();
+	}
+
 	if (addr in this._strobes && this._strobes[addr].read) {
 		return this.readByte(this._strobes[addr].read);
 	}
 
-	return this._memory[addr];
+	throw new Error('Reading from unsupported memory address.');
 };
 
 // Returns the 2-byte little-endian word stored at the specified location
 MemoryMap.prototype.readWord = function( addr ) {
-	var lo, hi;
-
-	addr &= this._bitmask;
-
-	lo = this.readByte(addr);
-	hi = this.readByte((addr + 1) & 0xffff);
+	var lo = this.readByte(addr),
+		hi = this.readByte((addr + 1) & 0xffff);
 
 	return (hi << 8) | lo;
-};
-
-// Returns a deep copy of the memory beginning at the specified until
-// the specified memory length
-MemoryMap.prototype.getCopy = function( offset, len ) {
-	var buf,
-		copy,
-		i = 0;
-
-	if (typeof offset === 'undefined') {
-		offset = 0;
-	}
-	if (typeof len === 'undefined') {
-		len = this.length;
-	}
-
-	buf = new ArrayBuffer(len);
-	copy = new Uint8Array(buf);
-
-	for (; i < len; i++) {
-		copy[i] = this._memory[(i + offset) & 0xffff];
-	}
-
-	return copy;
 };
 
 // Indicates that the byte at the specified address location is a strobe
 // rather than a conventional read-write byte on the memory bus
 MemoryMap.prototype.addStrobe = function( addr, fn, read ) {
-	addr &= this._bitmask;
-
 	if (!(addr in this._strobes)) {
 		this._strobes[addr] = {};
 	}
@@ -146,8 +94,6 @@ MemoryMap.prototype.isStrobe = function( addr ) {
 // Marks the given address as a location to which the CPU cannot write to
 // via the journalCommit function
 MemoryMap.prototype.addReadOnly = function( addr, fn ) {
-	addr &= this._bitmask;
-
 	this._readonly[addr] = fn;
 };
 
@@ -165,8 +111,6 @@ MemoryMap.prototype.isReadOnly = function( addr ) {
 };
 
 MemoryMap.prototype.addWriteOnly = function( addr, fn, read ) {
-	addr &= this._bitmask;
-
 	if (!(addr in this._writeonly)) {
 		this._writeonly[addr] = {};
 	}
@@ -185,6 +129,25 @@ MemoryMap.prototype.isWriteOnly = function( addr ) {
 	return !!(addr in this._writeonly);
 };
 
+MemoryMap.prototype.addReadWrite = function( addr, readFn, writeFn ) {
+	if (!(addr in this._readwrite)) {
+		this._readwrite[addr] = {};
+	}
+
+	this._readwrite[addr].read  = readFn;
+	this._readwrite[addr].write = writeFn;
+};
+
+MemoryMap.prototype.isReadWrite = function( addr ) {
+	return !!(addr in this._readwrite);
+};
+
+MemoryMap.prototype.removeReadWrite = function( addr ) {
+	if (addr in this._readwrite) {
+		delete this._readwrite[addr];
+	}
+};
+
 MemoryMap.prototype.addMirror = function( startAddr, endAddr, offset ) {
 	var addr = startAddr;
 
@@ -195,7 +158,7 @@ MemoryMap.prototype.addMirror = function( startAddr, endAddr, offset ) {
 
 MemoryMap.prototype.resolveMirror = function( addr ) {
 	if (addr in this._mirrors) {
-		return addr - this._mirrors[addr];
+		return (addr - this._mirrors[addr]) & 0xffff;
 	}
 
 	return addr;

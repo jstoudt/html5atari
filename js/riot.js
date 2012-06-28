@@ -17,6 +17,9 @@ window.RIOT = (function() {
 		// the currently selected INTERVAL MODE value
 		intervalMode = 'NONE',
 
+		// the 128 bytes of RAM on the RIOT
+		RAM = null,
+
 		// internal registers for the console switches
 		P0DIFFICULTY = false,
 		P1DIFFICULTY = false,
@@ -35,9 +38,10 @@ window.RIOT = (function() {
 		P1_LEFT      = true,
 		P1_RIGHT     = true,
 		
-		// internal registers for SWITCH A values
+		// internal registers for SWITCH A data direction registers
 		SWACNT       = 0x00,
 		
+		// internal registers for switch B (console switches) values
 		SWCHB        = 0x34,
 		SWBCNT       = 0x00,
 
@@ -47,17 +51,23 @@ window.RIOT = (function() {
 				intervalMode === 'TIM8T' ? timer >>> 3 :
 				intervalMode === 'TIM64T' ? timer >>> 6 :
 				timer >>> 10) & 0xff;
+		},
+
+		getTIMINT = function() {
+			return timer < 0 ? 0x80 : 0x00;
 		};
 
 	return {
 
 		init: function( memory ) {
-			var i;
+			var i = 0;
+			
 			mmap = memory;
 
-			// randomize the RIOT RAM
-			for (i = 0x80; i <= 0xff; i++) {
-				mmap.writeByte(i, Math.floor(Math.random() * 0xff));
+			// initialize the RAM buffer and randomize the values
+			RAM = new Uint8Array(new ArrayBuffer(128));
+			for (; i < RAM.length; i++) {
+				RAM[i] = Math.floor(Math.random() * 0xff);
 			}
 
 			mmap.addReadOnly(MEM_LOCATIONS.SWCHA, function() {
@@ -126,7 +136,7 @@ window.RIOT = (function() {
 			});
 
 			mmap.addReadOnly(MEM_LOCATIONS.TIMINT, function() {
-				return timer < 0 ? 0x80 : 0x00;
+				return getTIMINT();
 			});
 
 			mmap.addWriteOnly(MEM_LOCATIONS.TIM1T, function( val ) {
@@ -250,7 +260,7 @@ window.RIOT = (function() {
 			return {
 				timerMode: intervalMode,
 				intim:     getINTIM(),
-				timint:    timer < 0 ? 0x80 : 0x00,
+				timint:    getTIMINT(),
 				timer:     timer
 			};
 		},
