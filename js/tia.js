@@ -7,7 +7,7 @@
  * the Atari 2600.
  */
 
-window.TIA = (function(MEM_LOCATIONS, undefined) {
+var TIA = (function(MEM_LOCATIONS, undefined) {
 
 		// the memory map to be shared between TIA & CPU
 	var mmap,
@@ -454,6 +454,8 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 			mmap.addWriteOnly( MEM_LOCATIONS.VSYNC, function( val ) {
 				VSYNC = !!(val & 0x02);
 			}, MEM_LOCATIONS.CXM0P );
+
+			mmap.addWriteOnly(MEM_LOCATIONS.RSYNC, VOID, MEM_LOCATIONS.CXP1FB);
 
 			mmap.addWriteOnly( MEM_LOCATIONS.VBLANK, function( val ) {
 				VBLANK = !!(val & 0x02);
@@ -1135,10 +1137,6 @@ window.TIA = (function(MEM_LOCATIONS, undefined) {
 			} else {
 				throw new Error('Event type is invalid.');
 			}
-		},
-
-		getMemoryCopy: function( offset, len ) {
-			return mmap.getCopy(offset, len);
 		},
 
 		getNumFrames: function() {

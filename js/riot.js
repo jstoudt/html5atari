@@ -7,7 +7,7 @@
  * I/O ports in the Atari 2600.
  */
 
-window.RIOT = (function() {
+var RIOT = (function() {
 		// the memory map shared by other components of the system
 	var mmap = null,
 		
@@ -41,11 +41,10 @@ window.RIOT = (function() {
 		// internal registers for SWITCH A data direction registers
 		SWACNT       = 0x00,
 		
-		// internal registers for switch B (console switches) values
-		SWCHB        = 0x34,
+		// internal registers for switch B data direction registers
 		SWBCNT       = 0x00,
 
-		getINTIM = function() {
+		readINTIM = function() {
 			return (timer < 0 ? timer :
 				intervalMode === 'TIM1T' ? timer :
 				intervalMode === 'TIM8T' ? timer >>> 3 :
@@ -53,7 +52,7 @@ window.RIOT = (function() {
 				timer >>> 10) & 0xff;
 		},
 
-		getTIMINT = function() {
+		readTIMINT = function() {
 			return timer < 0 ? 0x80 : 0x00;
 		},
 
@@ -63,13 +62,117 @@ window.RIOT = (function() {
 
 		writeRAM = function( val, addr ) {
 			RAM[addr - 0x80] = val;
+		},
+
+		readSWCHA = function() {
+			var val = 0x00;
+
+			if (P0_RIGHT === true) {
+				val |= 0x80;
+			}
+			if (P0_LEFT === true) {
+				val |= 0x40;
+			}
+			if (P0_DOWN === true) {
+				val |= 0x20;
+			}
+			if (P0_UP === true) {
+				val |= 0x10;
+			}
+			if (P1_RIGHT === true) {
+				val |= 0x08;
+			}
+			if (P1_LEFT === true) {
+				val |= 0x04;
+			}
+			if (P1_DOWN === true) {
+				val |= 0x02;
+			}
+			if (P1_UP === true) {
+				val |= 0x01;
+			}
+
+			return val;
+		},
+
+		writeSWCHA = function( val ) {
+			P0_RIGHT = !!(val & 0x80);
+			P0_LEFT  = !!(val & 0x40);
+			P0_DOWN  = !!(val & 0x20);
+			P0_UP    = !!(val & 0x10);
+
+			P1_RIGHT = !!(val & 0x08);
+			P1_LEFT  = !!(val & 0x04);
+			P1_DOWN  = !!(val & 0x02);
+			P1_UP    = !!(val & 0x01);
+		},
+
+		readSWACNT = function() {
+			return SWACNT;
+		},
+
+		writeSWACNT = function( val ) {
+			SWACNT = val;
+		},
+
+		readSWCHB = function() {
+			// unused bits in the SWCHB byte should be set
+			var val = 0x34;
+
+			if (P1DIFFICULTY === true) {
+				val |= 0x80;
+			}
+			if (P0DIFFICULTY === true) {
+				val |= 0x40;
+			}
+			if (COLOR === true) {
+				val |= 0x08;
+			}
+			if (SELECT === true) {
+				val |= 0x02;
+			}
+			if (RESET === true) {
+				val |= 0x01;
+			}
+			return val;
+		},
+
+		readSWBCNT = function() {
+			return SWBCNT;
+		},
+
+		writeTIM1T = function( val ) {
+			intervalMode = 'TIM1T';
+			timer = val;
+		},
+
+		writeTIM8T = function ( val ) {
+			intervalMode = 'TIM8T';
+			timer = val << 3;
+		},
+
+		writeTIM64T = function( val ) {
+			intervalMode = 'TIM64T';
+			timer = val << 6;
+		},
+
+		writeT1024T = function( val ) {
+			intervalMode = 'T1024T';
+			timer = val << 10;
 		};
 
 	return {
 
 		init: function( memory ) {
-			var i = 0;
+			var i,
+				intimList   = [ 0x284, 0x286, 0x28c, 0x28e ],
+				timintList  = [ 0x285, 0x287, 0x28d, 0x28f ],
+				tim1tList   = [ 0x294, 0x29c ],
+				tim8tList   = [ 0x295, 0x29d ],
+				tim64tList  = [ 0x296, 0x29e ],
+				t1024tList  = [ 0x297, 0x29f ];
 			
+			// store a reference to the memory map that was passed in
 			mmap = memory;
 
 			// initialize the RAM buffer and randomize the values
@@ -80,94 +183,45 @@ window.RIOT = (function() {
 
 			mmap.addReadWrite(0x80, 0xff, readRAM, writeRAM);
 
-			mmap.addReadOnly(MEM_LOCATIONS.SWCHA, function() {
-				var val = 0x00;
+			for (i = MEM_LOCATIONS.SWCHA; i < 0x2a0; i += 0x08) {
+				mmap.addReadWrite(i, readSWCHA, writeSWCHA);
+			}
 
-				if (P0_RIGHT === true) {
-					val |= 0x80;
-				}
-				if (P0_LEFT === true) {
-					val |= 0x40;
-				}
-				if (P0_DOWN === true) {
-					val |= 0x20;
-				}
-				if (P0_UP === true) {
-					val |= 0x10;
-				}
-				if (P1_RIGHT === true) {
-					val |= 0x08;
-				}
-				if (P1_LEFT === true) {
-					val |= 0x04;
-				}
-				if (P1_DOWN === true) {
-					val |= 0x02;
-				}
-				if (P1_UP === true) {
-					val |= 0x01;
-				}
+			for (i = MEM_LOCATIONS.SWACNT; i < 0x2a0; i += 0x08) {
+				mmap.addReadWrite(i, readSWACNT, writeSWACNT);
+			}
 
-				return val;
-			});
+			for (i = MEM_LOCATIONS.SWCHB; i < 0x2a0; i += 0x08) {
+				mmap.addReadWrite(i, readSWCHB, VOID);
+			}
 
-			mmap.addReadOnly(MEM_LOCATIONS.SWACNT, function() {
-				return SWACNT;
-			});
+			for (i = MEM_LOCATIONS.SWBCNT; i < 0x2a0; i += 0x08) {
+				mmap.addReadWrite(i, readSWBCNT, VOID);
+			}
 
-			mmap.addReadOnly(MEM_LOCATIONS.SWCHB, function() {
-				// unused bits in the SWCHB byte should be set
-				var val = 0x34;
+			for (i = 0; i < intimList.length; i++) {
+				mmap.addReadWrite(intimList[i], readINTIM, VOID);
+			}
 
-				if (P1DIFFICULTY === true) {
-					val |= 0x80;
-				}
-				if (P0DIFFICULTY === true) {
-					val |= 0x40;
-				}
-				if (COLOR === true) {
-					val |= 0x08;
-				}
-				if (SELECT === true) {
-					val |= 0x02;
-				}
-				if (RESET === true) {
-					val |= 0x01;
-				}
-				return val;
-			});
+			for (i = 0; i < timintList.length; i++) {
+				mmap.addReadWrite(timintList[i], readTIMINT, VOID);
+			}
 
-			mmap.addReadOnly(MEM_LOCATIONS.SWBCNT, function() {
-				return SWBCNT;
-			});
+			for (i = 0; i < tim1tList.length; i++) {
+				mmap.addReadWrite(tim1tList[i], readINTIM, writeTIM1T);
+			}
 
-			mmap.addReadOnly(MEM_LOCATIONS.INTIM, function() {
-				return getINTIM();
-			});
+			for (i = 0; i < tim8tList.length; i++) {
+				mmap.addReadWrite(tim8tList[i], readTIMINT, writeTIM8T);
+			}
 
-			mmap.addReadOnly(MEM_LOCATIONS.TIMINT, function() {
-				return getTIMINT();
-			});
+			for (i = 0; i < tim64tList.length; i++) {
+				mmap.addReadWrite(tim64tList[i], readINTIM, writeTIM64T);
+			}
 
-			mmap.addWriteOnly(MEM_LOCATIONS.TIM1T, function( val ) {
-				intervalMode = 'TIM1T';
-				timer = val;
-			});
-
-			mmap.addWriteOnly(MEM_LOCATIONS.TIM8T, function( val ) {
-				intervalMode = 'TIM8T';
-				timer = val << 3;
-			});
-
-			mmap.addWriteOnly(MEM_LOCATIONS.TIM64T, function( val ) {
-				intervalMode = 'TIM64T';
-				timer = val << 6;
-			});
-
-			mmap.addWriteOnly(MEM_LOCATIONS.T1024T, function( val ) {
-				intervalMode = 'T1024T';
-				timer = val << 10;
-			});
+			for (i = 0; i < t1024tList.length; i++) {
+				mmap.addReadWrite(t1024tList[i], readTIMINT, writeT1024T);
+			}
 
 			// Add Mirror maps for the entire RAM and other RIOT addresses
 			mmap.addMirror(0x0180, 0x1ff, 0x100);
@@ -252,8 +306,8 @@ window.RIOT = (function() {
 		getTimerRegisters: function() {
 			return {
 				timerMode: intervalMode,
-				intim:     getINTIM(),
-				timint:    getTIMINT(),
+				intim:     readINTIM(),
+				timint:    readTIMINT(),
 				timer:     timer
 			};
 		},
@@ -284,6 +338,18 @@ window.RIOT = (function() {
 					down:  P1_DOWN
 				};
 			}
+		},
+
+		getRAM: function() {
+			var i    = 0,
+				len  = RAM.length,
+				copy = new Uint8Array(new ArrayBuffer(len));
+
+			for (; i < len; i++) {
+				copy[i] = RAM[i];
+			}
+
+			return copy;
 		}
 	};
 

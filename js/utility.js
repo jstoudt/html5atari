@@ -190,6 +190,9 @@ var DEFAULT_KEYMAP = [
 	}
 ];
 
+// A nop function
+var VOID = function() { };
+
 // A utility for encoding and decoding Uint8Array objects to base64 strings
 var Base64 = {
 	encode: function( input ) {

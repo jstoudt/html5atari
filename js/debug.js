@@ -187,7 +187,7 @@
 			i               = 0,
 			progCounter     = CPU6507.getRegister('pc'),
 			status          = CPU6507.getRegister('sr'),
-			mem             = TIA.getMemoryCopy(0x80, 128),
+			mem             = RIOT.getRAM(),
 			len             = mem.length,
 			beamPosition    = TIA.getBeamPosition(),
 			timerInfo       = RIOT.getTimerRegisters(),
@@ -330,14 +330,17 @@
 		setTimeout(calcCycleRate, 1000);
 	}
 
-	function listInstructions(program) {
-		var i, item, tr,
-			createCol = function(str, cname, row) {
-				var td = document.createElement('td');
-				td.innerHTML = str;
-				td.className = cname;
-				row.appendChild(td);
-			};
+	function listInstructions( program ) {
+		function createColumn( str, cname, row) {
+			var td = document.createElement('td');
+
+			td.innerHTML = str;
+			td.className = cname;
+			row.appendChild(td);
+		}
+
+
+		var i, item, tr;
 			
 		for (i in program) {
 			item = program[i];
@@ -345,10 +348,10 @@
 			tr = document.createElement('tr');
 			tr.setAttribute('data-addr', item.offset);
 
-			createCol(item.offset_str, 'offset', tr);
-			createCol(item.op_abbr, 'abbr', tr);
-			createCol(item.operand, 'operand', tr);
-			createCol(';' + item.cycles, 'cycles', tr);
+			createColumn(item.offset_str, 'offset', tr);
+			createColumn(item.op_abbr, 'abbr', tr);
+			createColumn(item.operand, 'operand', tr);
+			createColumn(';' + item.cycles, 'cycles', tr);
 			
 			instructions.appendChild(tr);
 
@@ -363,7 +366,7 @@
 		listInstructions(CPU6507.getProgram());
 
 		// list the program instructions when a new ROM is loaded
-		CPU6507.addEventListener('load', listInstructions);
+//		CPU6507.addEventListener('load', listInstructions);
 
 		if (TIA.isStarted()) {
 			pauseButton.removeAttribute('disabled');

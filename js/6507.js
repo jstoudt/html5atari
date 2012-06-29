@@ -1916,8 +1916,7 @@ var CPU6507 = (function() {
 		},
 
 		parseProgram = function() {
-			var initAddr,
-				instructionList = [],
+			var instructionList = [],
 				toHex = function(arg, len) {
 					arg = arg.toString(16).toUpperCase();
 					while (arg.length < len) {
@@ -2010,7 +2009,8 @@ var CPU6507 = (function() {
 							item.operand = '$' + toHex(operand, 2) + ',Y';
 							break;
 						default:
-							throw new Error('Addressing mode unknown: ' + inst.addressing);
+							throw new Error('Addressing mode unknown: ' +
+								inst.addressing);
 					}
 
 					instructionList[item.offset] = item;
@@ -2051,15 +2051,11 @@ var CPU6507 = (function() {
 			}
 
 			// seed the function with the first instruction address
-			if (romType === ROM_TYPE['2K']) {
-				initAddr = mmap.readWord(0xf7fc);
-			} else if (romType === ROM_TYPE['4K']) {
-				initAddr = mmap.readWord(0xfffc);
-			} else {
+			if (!rom) {
 				return [];
 			}
 
-			parseInstruction(initAddr);
+			parseInstruction(rom.readStartAddress());
 
 			return instructionList;
 		},

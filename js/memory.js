@@ -53,6 +53,9 @@ MemoryMap.prototype.readByte = function( addr ) {
 	if (addr in this._strobes && this._strobes[addr].read) {
 		return this.readByte(this._strobes[addr].read);
 	}
+
+	throw new Error('Cannot read from unsupported memory address: $' +
+		Number(addr).toString(16));
 };
 
 // Returns the 2-byte little-endian word stored at the specified location
@@ -130,6 +133,12 @@ MemoryMap.prototype.isWriteOnly = function( addr ) {
 
 MemoryMap.prototype.addReadWrite = function( startAddr, endAddr, readFn, writeFn ) {
 	var i = startAddr;
+
+	if (arguments.length === 3 && typeof endAddr === 'function') {
+		writeFn = readFn;
+		readFn  = endAddr;
+		endAddr = startAddr;
+	}
 
 	for (; i <= endAddr; i++) {
 		this._readwrite[i] = {
