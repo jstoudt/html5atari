@@ -249,6 +249,74 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 			return val;
 		},
 
+		readCXP0FB = function() {
+			var val = P0_BL === true ? 0x40 : 0x00;
+			if (P0_PF === true) {
+				val |= 0x80;
+			}
+			return val;
+		},
+
+		readCXP1FB = function() {
+			var val = P1_BL === true ? 0x40 : 0x00;
+			if (P1_PF === true) {
+				val |= 0x80;
+			}
+			return val;
+		},
+
+		readCXM0FB = function() {
+			var val = M0_BL === true ? 0x40 : 0x00;
+			if (M0_PF === true) {
+				val |= 0x80;
+			}
+			return val;
+		},
+
+		readCXM1FB = function() {
+			var val = M1_BL === true ? 0x40 : 0x00;
+			if (M1_PF === true) {
+				val |= 0x80;
+			}
+			return val;
+		},
+
+		readCXBLPF = function() {
+			return BL_PF === true ? 0x80 : 0x00;
+		},
+
+		readCXPPMM = function() {
+			var val = M0_M1 === true ? 0x40 : 0x00;
+			if (P0_P1 === true) {
+				val |= 0x80;
+			}
+			return val;
+		},
+
+		readINPT0 = function() {
+			return INPT0 === true ? 0x80 : 0x00;
+		},
+
+		readINPT1 = function() {
+			return INPT1 === true ? 0x80 : 0x00;
+		},
+
+		readINPT2 = function() {
+			return INPT2 === true ? 0x80 : 0x00;
+		},
+
+		readINPT3 = function() {
+			return INPT3 === true ? 0x80 : 0x00;
+		},
+
+		readINPT4 = function() {
+			return INPT4 === true ? 0x80 : 0x00;
+		},
+
+		readINPT5 = function() {
+			return INPT5 === true ? 0x80 : 0x00;
+		},
+
 		initMemoryMap = function() {
 			function hmove(x, d) {
 				// if d is negative, move that many pixels to the right
@@ -276,87 +344,81 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 			// create a new memory map object
 			mmap = new MemoryMap();
 
-			mmap.addReadOnly( MEM_LOCATIONS.CXM0P, readCXM0P);
-
-			mmap.addReadOnly( MEM_LOCATIONS.CXM1P, function() {
-
-			} );
-
-			mmap.addReadOnly( MEM_LOCATIONS.CXP0FB, function() {
-				var val = P0_BL === true ? 0x40 : 0x00;
-				if (P0_PF === true) {
-					val |= 0x80;
-				}
-				return val;
-			} );
-
-			mmap.addReadOnly( MEM_LOCATIONS.CXP1FB, function() {
-				var val = P1_BL === true ? 0x40 : 0x00;
-				if (P1_PF === true) {
-					val |= 0x80;
-				}
-				return val;
-			} );
-
-			mmap.addReadOnly( MEM_LOCATIONS.CXM0FB, function() {
-				var val = M0_BL === true ? 0x40 : 0x00;
-				if (M0_PF === true) {
-					val |= 0x80;
-				}
-				return val;
-			} );
-
-			mmap.addReadOnly( MEM_LOCATIONS.CXM1FB, function() {
-				var val = M1_BL === true ? 0x40 : 0x00;
-				if (M1_PF === true) {
-					val |= 0x80;
-				}
-				return val;
-			} );
-
-			mmap.addReadOnly( MEM_LOCATIONS.CXBLPF, function() {
-				return BL_PF === true ? 0x80 : 0x00;
-			} );
-
-			mmap.addReadOnly( MEM_LOCATIONS.CXPPMM, function() {
-				var val = M0_M1 === true ? 0x40 : 0x00;
-				if (P0_P1 === true) {
-					val |= 0x80;
-				}
-				return val;
-			} );
-
-			mmap.addReadOnly( MEM_LOCATIONS.INPT0, function() {
-				return INPT0 === true ? 0x80 : 0x00;
+			mmap.addReadWrite(0x00, readCXM0P, function( val ) {
+				VSYNC = !!(val & 0x02);
 			});
 
-			mmap.addReadOnly( MEM_LOCATIONS.INPT1, function() {
-				return INPT1 === true ? 0x80 : 0x00;
-			} );
-
-			mmap.addReadOnly( MEM_LOCATIONS.INPT2, function() {
-				return INPT2 === true ? 0x80 : 0x00;
+			mmap.addReadWrite(0x01, readCXM1P, function( val ) {
+				VBLANK = !!(val & 0x02);
+				if (VBLANK === false) {
+					yStart = y;
+				}
 			});
 
-			mmap.addReadOnly( MEM_LOCATIONS.INPT3, function() {
-				return INPT3 === true ? 0x80 : 0x00;
-			});
-
-			mmap.addReadOnly( MEM_LOCATIONS.INPT4, function() {
-				return INPT4 === true ? 0x80 : 0x00;
-			});
-
-			mmap.addReadOnly( MEM_LOCATIONS.INPT5, function() {
-				return INPT5 === true ? 0x80 : 0x00;
-			});
-
-			// set the RDY latch when the WSYNC address is strobed
-			mmap.addStrobe( MEM_LOCATIONS.WSYNC, function() {
+			mmap.addReadWrite(0x02, readCXP0FB, function() {
 				RDY = true;
-			}, MEM_LOCATIONS.CXP0FB );
+			});
 
-			// reset the P0 graphics position when RESP0 is strobed
-			mmap.addStrobe( MEM_LOCATIONS.RESP0, function() {
+			mmap.addReadWrite(0x03, readCXP1FB, VOID);
+
+			mmap.addReadWrite(0x04, readCXM0FB, function( val ) {
+				NUSIZ0       = val & 0x07;
+				MISSLE_SIZE0 = 0x01 << ((val >>> 4) & 0x03);
+			});
+
+			mmap.addReadWrite(0x05, readCXM1FB, function( val ) {
+				NUSIZ1       = val & 0x07;
+				MISSLE_SIZE1 = 0x01 << ((val >>> 4) & 0x03);
+			});
+
+			mmap.addReadWrite(0x06, readCXBLPF, function( val ) {
+				COLUP0    = val;
+				COLUP0rgb = COLOR_PALETTE[(val & 0xf0) >>> 4][(val & 0x0f) >>> 1];
+			});
+
+			mmap.addReadWrite(0x07, readCXPPMM, function( val ) {
+				COLUP1    = val;
+				COLUP1rgb = COLOR_PALETTE[(val & 0xf0) >>> 4][(val & 0x0f) >>> 1];
+			});
+
+			mmap.addReadWrite(0x08, readINPT0, function( val ) {
+				COLUPF    = val;
+				COLUPFrgb = COLOR_PALETTE[(val & 0xf0) >>> 4][(val & 0x0f) >>> 1];
+			});
+
+			mmap.addReadWrite(0x09, readINPT1, function( val ) {
+				COLUBK    = val;
+				COLUBKrgb = COLOR_PALETTE[(val & 0xf0) >>> 4][(val & 0x0f) >>> 1];
+			});
+
+			mmap.addReadWrite(0x0a, readINPT2, function( val ) {
+				BALL_SIZE = 0x01 << ((val >>> 4) & 0x03);
+				REFLECT   = !!(val & 0x01);
+				SCORE     = !!(val & 0x02);
+				PRIORITY  = !!(val & 0x04);
+			});
+
+			mmap.addReadWrite(0x0b, readINPT3, function( val ) {
+				REFP0 = !!(val & 0x08);
+			});
+
+			mmap.addReadWrite(0x0c, readINPT4, function( val ) {
+				REFP1 = !!(val & 0x08);
+			});
+
+			mmap.addReadWrite(0x0d, readINPT5, function( val ) {
+				PF0 = val >>> 4;
+			});
+
+			mmap.addReadWrite(0x0e, VOID, function( val ) {
+				PF1 = val;
+			});
+
+			mmap.addReadWrite(0x0f, VOID, function( val ) {
+				PF2 = val;
+			});
+
+			mmap.addReadWrite(0x10, readCXM0P, function( val ) {
 				p0Pos = x + 8;
 				if (p0Pos < 0) {
 					p0Pos = 2;
@@ -364,10 +426,9 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 					p0Pos -= 160;
 				}
 				p0Start = false;
-			}, MEM_LOCATIONS.CXM0P );
+			});
 
-			// reset the P1 graphics position when RESP1 is strobed
-			mmap.addStrobe( MEM_LOCATIONS.RESP1, function() {
+			mmap.addReadWrite(0x11, readCXM1P, function( val ) {
 				p1Pos = x + 8;
 				if (p1Pos < 0) {
 					p1Pos = 2;
@@ -375,10 +436,9 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 					p1Pos -= 160;
 				}
 				p1Start = false;
-			}, MEM_LOCATIONS.CXM1P );
+			});
 
-			// reset the M0 graphics position when RESM0 is strobed
-			mmap.addStrobe( MEM_LOCATIONS.RESM0, function() {
+			mmap.addReadWrite(0x12, readCXP0FB, function( val ) {
 				m0Pos = x + 7;
 				if (m0Pos < 0) {
 					m0Pos = 2;
@@ -386,10 +446,9 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 					m0Pos -= 160;
 				}
 				m0Start = false;
-			}, MEM_LOCATIONS.CXP0FB );
+			});
 
-			// reset the M1 graphics position when RESM1 is strobed
-			mmap.addStrobe( MEM_LOCATIONS.RESM1, function() {
+			mmap.addReadWrite(0x13, readCXP1FB, function( val ) {
 				m1Pos = x + 7;
 				if (m1Pos < 0) {
 					m1Pos = 2;
@@ -397,35 +456,117 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 					m1Pos -= 160;
 				}
 				m1Start = false;
-			}, MEM_LOCATIONS.CXP1FB );
+			});
 
-			// reset the BL graphics position when RESBL is strobed
-			mmap.addStrobe( MEM_LOCATIONS.RESBL, function() {
+			mmap.addReadWrite(0x14, readCXM0FB, function( val ) {
 				blPos = x + 7;
 				if (blPos < 0) {
 					blPos = 2;
 				} else if (blPos >= 160) {
 					blPos -= 160;
 				}
-			}, MEM_LOCATIONS.CXM0FB );
+			});
 
-			// adjust the position of each of the graphics when the HMOVE
-			// memory address is strobed
-			mmap.addStrobe( MEM_LOCATIONS.HMOVE, function() {
+			mmap.addReadWrite(0x15, readCXM1FB, function( val ) {
+				AUDC0 = val & 0x0f;
+			});
+
+			mmap.addReadWrite(0x16, readCXBLPF, function( val ) {
+				AUDC1 = val & 0x0f;
+			});
+
+			mmap.addReadWrite(0x17, readCXPPMM, function( val ) {
+				AUDF0 = val & 0x1f;
+			});
+
+			mmap.addReadWrite(0x18, readINPT0, function( val ) {
+				AUDF1 = val & 0x1f;
+			});
+
+			mmap.addReadWrite(0x19, readINPT1, function( val ) {
+				AUDV0 = val & 0x0f;
+			});
+
+			mmap.addReadWrite(0x1a, readINPT2, function( val ) {
+				AUDV1 = val & 0x0f;
+			});
+
+			mmap.addReadWrite(0x1b, readINPT3, function( val ) {
+				newGRP0 = val;
+				oldGRP1 = newGRP1;
+			});
+
+			mmap.addReadWrite(0x1c, readINPT4, function( val ) {
+				newGRP1  = val;
+				oldGRP0  = newGRP0;
+				oldENABL = newENABL;
+			});
+
+			mmap.addReadWrite(0x1d, readINPT5, function( val ) {
+				ENAM0 = !!(val & 0x02);
+			});
+
+			mmap.addReadWrite(0x1e, VOID, function( val ) {
+				ENAM1 = !!(val & 0x02);
+			});
+
+			mmap.addReadWrite(0x1f, VOID, function( val ) {
+				newENABL = !!(val & 0x02);
+			});
+
+			mmap.addReadWrite(0x20, readCXM0P, function( val ) {
+				HMP0 = val >>> 4;
+			});
+
+			mmap.addReadWrite(0x21, readCXM1P, function( val ) {
+				HMP1 = val >>> 4;
+			});
+
+			mmap.addReadWrite(0x22, readCXP0FB, function( val ) {
+				HMM0 = val >>> 4;
+			});
+
+			mmap.addReadWrite(0x23, readCXP1FB, function( val ) {
+				HMM1 = val >>> 4;
+			});
+
+			mmap.addReadWrite(0x24, readCXM0FB, function( val ) {
+				HMBL = val >>> 4;
+			});
+
+			mmap.addReadWrite(0x25, readCXM1FB, function( val ) {
+				VDELP0 = !!(val & 0x01);
+			});
+
+			mmap.addReadWrite(0x26, readCXBLPF, function( val ) {
+				VDELP1 = !!(val & 0x01);
+			});
+
+			mmap.addReadWrite(0x27, readCXPPMM, function( val ) {
+				VDELBL = !!(val & 0x01);
+			});
+
+			mmap.addReadWrite(0x28, readINPT0, function( val ) {
+				RESMP0 = !!(val & 0x02);
+			});
+
+			mmap.addReadWrite(0x29, readINPT1, function( val ) {
+				RESMP1 = !!(val & 0x02);
+			});
+
+			mmap.addReadWrite(0x2a, readINPT2, function() {
 				p0Pos = hmove(p0Pos, HMP0);
 				p1Pos = hmove(p1Pos, HMP1);
 				m0Pos = hmove(m0Pos, HMM0);
 				m1Pos = hmove(m1Pos, HMM1);
 				blPos = hmove(blPos, HMBL);
-			}, MEM_LOCATIONS.INPT2 );
+			});
 
-			// clear all the horizintal movement registers when HMCLR is strobed
-			mmap.addStrobe( MEM_LOCATIONS.HMCLR, function() {
+			mmap.addReadWrite(0x2b, readINPT3, function() {
 				HMP0 = HMP1 = HMM0 = HMM1 = HMBL = 0;
-			}, MEM_LOCATIONS.INPT3 );
+			});
 
-			// clear all the collision registers when CXCLR is strobed
-			mmap.addStrobe( MEM_LOCATIONS.CXCLR, function() {
+			mmap.addReadWrite(0x2c, readINPT4, function( val ) {
 				M0_P0 = false;
 				M0_P1 = false;
 				M1_P1 = false;
@@ -441,173 +582,27 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 				BL_PF = false;
 				M0_M1 = false;
 				P0_P1 = false;
-			}, MEM_LOCATIONS.INPT4 );
+			});
 
-			// store the new GRP0 value and copy the old one
-			mmap.addWriteOnly( MEM_LOCATIONS.GRP0, function( val ) {
-				newGRP0 = val;
-				oldGRP1 = newGRP1;
-			}, MEM_LOCATIONS.INPT3 );
-
-			// store the new GRP1 value and copy the old one
-			mmap.addWriteOnly( MEM_LOCATIONS.GRP1, function( val ) {
-				newGRP1  = val;
-				oldGRP0  = newGRP0;
-				oldENABL = newENABL;
-			}, MEM_LOCATIONS.INPT4 );
-
-			// store the VSYNC value when stored by the CPU
-			mmap.addWriteOnly( MEM_LOCATIONS.VSYNC, function( val ) {
-				VSYNC = !!(val & 0x02);
-			}, MEM_LOCATIONS.CXM0P );
-
-			mmap.addWriteOnly(MEM_LOCATIONS.RSYNC, VOID, MEM_LOCATIONS.CXP1FB);
-
-			mmap.addWriteOnly( MEM_LOCATIONS.VBLANK, function( val ) {
-				VBLANK = !!(val & 0x02);
-				if (VBLANK === false) {
-					yStart = y;
-				}
-			}, MEM_LOCATIONS.CXM1P );
-
-			mmap.addWriteOnly( MEM_LOCATIONS.NUSIZ0, function( val ) {
-				NUSIZ0       = val & 0x07;
-				MISSLE_SIZE0 = 0x01 << ((val >>> 4) & 0x03);
-			}, MEM_LOCATIONS.CXM0FB );
-
-			mmap.addWriteOnly( MEM_LOCATIONS.NUSIZ1, function( val ) {
-				NUSIZ1       = val & 0x07;
-				MISSLE_SIZE1 = 0x01 << ((val >>> 4) & 0x03);
-			}, MEM_LOCATIONS.CXM1FB );
-
-			mmap.addWriteOnly(MEM_LOCATIONS.CTRLPF, function( val ) {
-				BALL_SIZE = 0x01 << ((val >>> 4) & 0x03);
-				REFLECT   = !!(val & 0x01);
-				SCORE     = !!(val & 0x02);
-				PRIORITY  = !!(val & 0x04);
-			}, MEM_LOCATIONS.INPT2 );
-
-			mmap.addWriteOnly( MEM_LOCATIONS.PF0, function( val ) {
-				PF0 = val >>> 4;
-			}, MEM_LOCATIONS.INPT5 );
-
-			mmap.addWriteOnly( MEM_LOCATIONS.PF1, function( val ) {
-				PF1 = val;
-			} );
-
-			mmap.addWriteOnly( MEM_LOCATIONS.PF2, function( val ) {
-				PF2 = val;
-			} );
-
-			mmap.addWriteOnly( MEM_LOCATIONS.ENAM0, function( val ) {
-				ENAM0 = !!(val & 0x02);
-			}, MEM_LOCATIONS.INPT5 );
-
-			mmap.addWriteOnly( MEM_LOCATIONS.ENAM1, function( val ) {
-				ENAM1 = !!(val & 0x02);
-			} );
-
-			mmap.addWriteOnly( MEM_LOCATIONS.ENABL, function( val ) {
-				newENABL = !!(val & 0x02);
-			} );
-
-			mmap.addWriteOnly( MEM_LOCATIONS.COLUBK, function( val ) {
-				COLUBK    = val;
-				COLUBKrgb = COLOR_PALETTE[(val & 0xf0) >>> 4][(val & 0x0f) >>> 1];
-			}, MEM_LOCATIONS.INPT1 );
-
-			mmap.addWriteOnly( MEM_LOCATIONS.COLUPF, function( val ) {
-				COLUPF    = val;
-				COLUPFrgb = COLOR_PALETTE[(val & 0xf0) >>> 4][(val & 0x0f) >>> 1];
-			}, MEM_LOCATIONS.INPT2 );
-
-			mmap.addWriteOnly( MEM_LOCATIONS.COLUP0, function( val ) {
-				COLUP0    = val;
-				COLUP0rgb = COLOR_PALETTE[(val & 0xf0) >>> 4][(val & 0x0f) >>> 1];
-			}, MEM_LOCATIONS.CXBLPF );
-
-			mmap.addWriteOnly( MEM_LOCATIONS.COLUP1, function( val ) {
-				COLUP1    = val;
-				COLUP1rgb = COLOR_PALETTE[(val & 0xf0) >>> 4][(val & 0x0f) >>> 1];
-			}, MEM_LOCATIONS.CXPPMM );
-
-			mmap.addWriteOnly( MEM_LOCATIONS.REFP0, function( val ) {
-				REFP0 = !!(val & 0x08);
-			}, MEM_LOCATIONS.INPT3 );
-
-			mmap.addWriteOnly( MEM_LOCATIONS.REFP1, function( val ) {
-				REFP1 = !!(val & 0x08);
-			}, MEM_LOCATIONS.INPT4 );
-
-			mmap.addWriteOnly( MEM_LOCATIONS.VDELP0, function( val ) {
-				VDELP0 = !!(val & 0x01);
-			}, MEM_LOCATIONS.CXM1FB );
-
-			mmap.addWriteOnly( MEM_LOCATIONS.VDELP1, function( val ) {
-				VDELP1 = !!(val & 0x01);
-			}, MEM_LOCATIONS.CXBLPF );
-
-			mmap.addWriteOnly( MEM_LOCATIONS.VDELBL, function( val ) {
-				VDELBL = !!(val & 0x01);
-			}, MEM_LOCATIONS.CXPPMM );
-
-			mmap.addWriteOnly( MEM_LOCATIONS.HMP0, function( val ) {
-				HMP0 = val >>> 4;
-			}, MEM_LOCATIONS.CXM0P );
-
-			mmap.addWriteOnly( MEM_LOCATIONS.HMP1, function( val ) {
-				HMP1 = val >>> 4;
-			}, MEM_LOCATIONS.CXM1P );
-			
-			mmap.addWriteOnly(MEM_LOCATIONS.HMM0, function( val ) {
-				HMM0 = val >>> 4;
-			}, MEM_LOCATIONS.CXP0FB );
-
-			mmap.addWriteOnly(MEM_LOCATIONS.HMM1, function( val ) {
-				HMM1 = val >>> 4;
-			}, MEM_LOCATIONS.CXP1FB );
-
-			mmap.addWriteOnly(MEM_LOCATIONS.HMBL, function( val ) {
-				HMBL = val >>> 4;
-			}, MEM_LOCATIONS.CXM0FB );
-
-			mmap.addWriteOnly( MEM_LOCATIONS.RESMP0, function( val ) {
-				RESMP0 = !!(val & 0x02);
-			}, MEM_LOCATIONS.INPT0 );
-
-			mmap.addWriteOnly( MEM_LOCATIONS.RESMP1, function( val ) {
-				RESMP1 = !!(val & 0x02);
-			}, MEM_LOCATIONS.INPT1 );
-
-			mmap.addWriteOnly( MEM_LOCATIONS.AUDC0, function( val ) {
-				AUDC0 = val & 0x0f;
-			}, MEM_LOCATIONS.CXM1FB );
-
-			mmap.addWriteOnly( MEM_LOCATIONS.AUDC1, function( val ) {
-				AUDC1 = val & 0x0f;
-			}, MEM_LOCATIONS.CXBLPF );
-
-			mmap.addWriteOnly( MEM_LOCATIONS.AUDF0, function( val ) {
-				AUDF0 = val & 0x1f;
-			}, MEM_LOCATIONS.CXPPMM );
-
-			mmap.addWriteOnly( MEM_LOCATIONS.AUDF1, function( val ) {
-				AUDF1 = val & 0x1f;
-			}, MEM_LOCATIONS.INPT0 );
-
-			mmap.addWriteOnly( MEM_LOCATIONS.AUDV0, function( val ) {
-				AUDV0 = val & 0x0f;
-			}, MEM_LOCATIONS.INPT1 );
-
-			mmap.addWriteOnly( MEM_LOCATIONS.AUDV1, function( val ) {
-				AUDV1 = val & 0x0f;
-			}, MEM_LOCATIONS.INPT2 );
-
-			mmap.addReadWrite(0x2e, 0x2f, VOID, VOID);
-			mmap.addReadWrite(0x30, function() {
-				return 
-			}, VOID);
-			mmap.addReadWrite(0x3e, 0X3f, VOID, VOID);
+			mmap.addReadWrite(0x2d, readINPT5, VOID);
+			mmap.addReadWrite(0x2e, VOID, VOID);
+			mmap.addReadWrite(0x2f, VOID, VOID);
+			mmap.addReadWrite(0x30, readCXM0P, VOID);
+			mmap.addReadWrite(0x31, readCXM1P, VOID);
+			mmap.addReadWrite(0x32, readCXP0FB, VOID);
+			mmap.addReadWrite(0x33, readCXP1FB, VOID);
+			mmap.addReadWrite(0x34, readCXM0FB, VOID);
+			mmap.addReadWrite(0x35, readCXM1FB, VOID);
+			mmap.addReadWrite(0x36, readCXBLPF, VOID);
+			mmap.addReadWrite(0x37, readCXPPMM, VOID);
+			mmap.addReadWrite(0x38, readINPT0, VOID);
+			mmap.addReadWrite(0x39, readINPT1, VOID);
+			mmap.addReadWrite(0x3a, readINPT2, VOID);
+			mmap.addReadWrite(0x3b, readINPT3, VOID);
+			mmap.addReadWrite(0x3c, readINPT4, VOID);
+			mmap.addReadWrite(0x3d, readINPT5, VOID);
+			mmap.addReadWrite(0x3e, VOID, VOID);
+			mmap.addReadWrite(0x3f, VOID, VOID);
 
 			// Add mirrored memory addresses to Memory Map
 			mmap.addMirror(0x40, 0x7f, 0x40);

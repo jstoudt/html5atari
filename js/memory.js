@@ -8,9 +8,6 @@
  */
 
 function MemoryMap( bitWidth ) {
-	this._strobes   = {};
-	this._readonly  = {};
-	this._writeonly = {};
 	this._readwrite = {};
 	this._mirrors   = {};
 	this._journal   = [];
@@ -22,11 +19,7 @@ MemoryMap.prototype.writeByte = function( val, addr ) {
 		addr = this.resolveMirror(addr);
 	}
 
-	if (addr in this._strobes) {
-		this._strobes[addr].fn();
-	} else if (addr in this._writeonly) {
-		this._writeonly[addr].fn(val & 0xff);
-	} else if (addr in this._readwrite) {
+	if (addr in this._readwrite) {
 		this._readwrite[addr].write(val, addr);
 	} else {
 		console.warn('Writing to unsupported memory address: $' +
@@ -40,20 +33,8 @@ MemoryMap.prototype.readByte = function( addr ) {
 		addr = this.resolveMirror(addr);
 	}
 
-	if (addr in this._readonly) {
-		return this._readonly[addr](addr);
-	}
-
-	if (addr in this._writeonly && this._writeonly[addr].read) {
-		return this.readByte(this._writeonly[addr].read);
-	}
-
 	if (addr in this._readwrite) {
 		return this._readwrite[addr].read(addr);
-	}
-
-	if (addr in this._strobes && this._strobes[addr].read) {
-		return this.readByte(this._strobes[addr].read);
 	}
 
 	throw new Error('Cannot read from unsupported memory address: $' +
@@ -66,71 +47,6 @@ MemoryMap.prototype.readWord = function( addr ) {
 		hi = this.readByte((addr + 1) & 0xffff);
 
 	return (hi << 8) | lo;
-};
-
-// Indicates that the byte at the specified address location is a strobe
-// rather than a conventional read-write byte on the memory bus
-MemoryMap.prototype.addStrobe = function( addr, fn, read ) {
-	if (!(addr in this._strobes)) {
-		this._strobes[addr] = {};
-	}
-
-	this._strobes[addr].fn   = fn;
-	this._strobes[addr].read = read;
-};
-
-MemoryMap.prototype.removeStrobe = function( addr ) {
-	if (addr in this._strobes) {
-		delete this._strobes[addr];
-	}
-};
-
-MemoryMap.prototype.isStrobe = function( addr ) {
-	return !!(addr in this._strobes);
-};
-
-// Marks the given address as a location to which the CPU cannot write to
-// via the journalCommit function
-MemoryMap.prototype.addReadOnly = function( startAddr, endAddr, fn ) {
-	var i;
-
-	if (arguments.length === 2 && typeof endAddr === 'function') {
-		this._readonly[startAddr] = endAddr;
-	} else {
-		for (i = startAddr; i <= endAddr; i++) {
-			this._readonly[i] = fn;
-		}
-	}
-};
-
-// Removes the given address as a read-only address location
-MemoryMap.prototype.removeReadOnly = function( addr ) {
-	if (addr in this._readonly) {
-		delete this._readonly[addr];
-	}
-};
-
-// returns true if the given address is in the readonly list, and false
-// otherwise
-MemoryMap.prototype.isReadOnly = function( addr ) {
-	return !!(addr in this._readonly);
-};
-
-MemoryMap.prototype.addWriteOnly = function( addr, fn, read ) {
-	this._writeonly[addr] = {
-		fn:   fn,
-		read: read
-	};
-};
-
-MemoryMap.prototype.removeWriteOnly = function( addr ) {
-	if (addr in this._writeonly) {
-		delete this._writeonly[addr];
-	}
-};
-
-MemoryMap.prototype.isWriteOnly = function( addr ) {
-	return !!(addr in this._writeonly);
 };
 
 MemoryMap.prototype.addReadWrite = function( startAddr, endAddr, readFn, writeFn ) {
@@ -194,9 +110,7 @@ MemoryMap.prototype.journalCommit = function() {
 		l = this._journal.length;
 
 	for (; i < l; i++) {
-		if (this.isReadOnly(this._journal[i].addr) === false) {
-			this.writeByte(this._journal[i].val, this._journal[i].addr);
-		}
+		this.writeByte(this._journal[i].val, this._journal[i].addr);
 	}
 
 	this._journal = [];

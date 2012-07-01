@@ -30,9 +30,9 @@ function ROM( program, mmap ) {
 			throw new Error('Unsupported ROM type detected');
 	}
 
-	mmap.addReadOnly(0xf000, 0xffff, function( addr ) {
+	mmap.addReadWrite(0xf000, 0xffff, function( addr ) {
 		return program[addr - 0xf000];
-	});
+	}, VOID);
 }
 
 ROM.prototype.ROM_TYPE = {
