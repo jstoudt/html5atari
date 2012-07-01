@@ -233,6 +233,22 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 			]
 		],
 
+		readCXM0P = function() {
+			var val = M0_P0 === true ? 0x40 : 0x00;
+			if (M0_P1 === true) {
+				val |= 0x80;
+			}
+			return val;
+		},
+
+		readCXM1P = function() {
+			var val = M1_P1 === true ? 0x40 : 0x00;
+			if (M1_P0 === true) {
+				val |= 0x80;
+			}
+			return val;
+		},
+
 		initMemoryMap = function() {
 			function hmove(x, d) {
 				// if d is negative, move that many pixels to the right
@@ -260,20 +276,10 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 			// create a new memory map object
 			mmap = new MemoryMap();
 
-			mmap.addReadOnly( MEM_LOCATIONS.CXM0P, function() {
-				var val = M0_P0 === true ? 0x40 : 0x00;
-				if (M0_P1 === true) {
-					val |= 0x80;
-				}
-				return val;
-			} );
+			mmap.addReadOnly( MEM_LOCATIONS.CXM0P, readCXM0P);
 
 			mmap.addReadOnly( MEM_LOCATIONS.CXM1P, function() {
-				var val = M1_P1 === true ? 0x40 : 0x00;
-				if (M1_P0 === true) {
-					val |= 0x80;
-				}
-				return val;
+
 			} );
 
 			mmap.addReadOnly( MEM_LOCATIONS.CXP0FB, function() {
@@ -596,6 +602,12 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 			mmap.addWriteOnly( MEM_LOCATIONS.AUDV1, function( val ) {
 				AUDV1 = val & 0x0f;
 			}, MEM_LOCATIONS.INPT2 );
+
+			mmap.addReadWrite(0x2e, 0x2f, VOID, VOID);
+			mmap.addReadWrite(0x30, function() {
+				return 
+			}, VOID);
+			mmap.addReadWrite(0x3e, 0X3f, VOID, VOID);
 
 			// Add mirrored memory addresses to Memory Map
 			mmap.addMirror(0x40, 0x7f, 0x40);

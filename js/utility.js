@@ -147,10 +147,10 @@ var MEM_LOCATIONS = {
 	CXBLPF: 0x36,		CXPPMM: 0x37,
 
 	// These are TIA Input Read Registers
-	INPT0:  0x38,		INPT1:  0x39,
-	INPT2:  0x3a,		INPT3:  0x3b,
-	INPT4:  0x3c, // fire button for P0
-	INPT5:  0x3d, // fire button for P1
+	INPT0:  0x28,		INPT1:  0x29,
+	INPT2:  0x2a,		INPT3:  0x2b,
+	INPT4:  0x2c, // fire button for P0
+	INPT5:  0x2d, // fire button for P1
 
 
 	// Port A data register for joysticks

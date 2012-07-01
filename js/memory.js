@@ -7,7 +7,6 @@
  * Represents the memory bus used in 6502-based systems.
  */
 
-
 function MemoryMap( bitWidth ) {
 	this._strobes   = {};
 	this._readonly  = {};
@@ -29,6 +28,9 @@ MemoryMap.prototype.writeByte = function( val, addr ) {
 		this._writeonly[addr].fn(val & 0xff);
 	} else if (addr in this._readwrite) {
 		this._readwrite[addr].write(val, addr);
+	} else {
+		console.warn('Writing to unsupported memory address: $' +
+			Number(addr).toString(16));
 	}
 };
 
