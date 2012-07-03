@@ -18,7 +18,8 @@
 		resetSwitch           = document.getElementById('reset-switch'),
 		keymap                = null,
 		activeROM             = null,
-		debugWindow           = null;
+		debugWindow           = null,
+		rafId                 = null;
 
 	function handleGameKeys( event ) {
 		var keyCode = event.keyCode,
@@ -50,14 +51,43 @@
 		}
 	}
 
+	function pollGamepads() {
+		var p, i, gamepads, map, pad, btn,
+			dirs = [ 'up', 'left', 'right', 'down' ];
+
+		if (navigator.webkitGamepads) {
+			rafId = reqAnimFrame(pollGamepads);
+			gamepads = navigator.webkitGamepads;
+
+			for (p = 0; p <= 1; p++) {
+				map = keymap[p];
+				if (map.input === 'gamepad') {
+					pad = map.fire.pad;
+					btn = map.fire.btn;
+
+					TIA.setInputValue(p + 4, !gamepads[pad].buttons[btn]);
+
+					for (i = 0; i < dirs.length; i++) {
+						pad = map[dirs[i]].pad;
+						btn = map[dirs[i]].btn;
+
+						RIOT.setJoystickValue(p, dirs[i], !gamepads[pad].buttons[btn]);
+					}
+				}
+			}
+		}
+	}
+
 	function addGameKeyListeners() {
 		window.addEventListener('keydown', handleGameKeys, false);
 		window.addEventListener('keyup', handleGameKeys, false);
+		rafId = reqAnimFrame(pollGamepads);
 	}
 
 	function removeGameKeyListeners() {
 		window.removeEventListener('keydown', handleGameKeys);
 		window.removeEventListener('keyup', handleGameKeys);
+		cancelAnimFrame(rafId);
 	}
 
 	function toggleDebugWindow() {
@@ -83,22 +113,18 @@
 
 	function populateRomsList() {
 		var ol = document.getElementById('roms-list'),
-			p = ol.parentNode.getElementsByTagName('p')[0],
+			p = $(ol).siblings('p').get(0),
 			roms = localStorage.roms ? JSON.parse(localStorage.roms) : [],
 			i, li, a;
 
 		if (roms.length < 1) {
-			ol.classList.add('hidden');
-			p.classList.remove('hidden');
+			$(ol).addClass('hidden');
+			$(p).removeClass('hidden');
 			return;
 		}
 
-		ol.classList.remove('hidden');
-		p.classList.add('hidden');
-
-		while (ol.childNodes.length) {
-			ol.removeChild(ol.childNodes[0]);
-		}
+		$(ol).removeClass('hidden').empty();
+		$(p).addClass('hidden');
 
 		for (i = 0; i < roms.length; i++) {
 			li = document.createElement('li');
@@ -114,21 +140,58 @@
 		var keymap = JSON.parse(localStorage.keymap),
 			map = keymap[0];
 		
-		document.getElementById('p0-source').textContent = map.input;
-		document.getElementById('p0-fire').textContent   = KEYCODES[map.fire];
-		document.getElementById('p0-up').textContent     = KEYCODES[map.up];
-		document.getElementById('p0-left').textContent   = KEYCODES[map.left];
-		document.getElementById('p0-right').textContent  = KEYCODES[map.right];
-		document.getElementById('p0-down').textContent   = KEYCODES[map.down];
+		$('#p0-source').text(map.input);
+		if (map.input === 'keyboard') {
+			$('#p0-fire').text(KEYCODES[map.fire]);
+			$('#p0-up').text(KEYCODES[map.up]);
+			$('#p0-left').text(KEYCODES[map.left]);
+			$('#p0-right').text(KEYCODES[map.right]);
+			$('#p0-down').text(KEYCODES[map.down]);
+		} else {
+			$('#p0-fire').text('JOY:' + map.fire.pad + ' BTN:' + map.fire.btn);
+			$('#p0-up').text('JOY:' + map.up.pad + ' BTN:' + map.up.btn);
+			$('#p0-left').text('JOY:' + map.left.pad + ' BTN:' + map.left.btn);
+			$('#p0-right').text('JOY:' + map.right.pad + ' BTN:' + map.right.btn);
+			$('#p0-down').text('JOY:' + map.down.pad + ' BTN:' + map.down.btn);
+		}
 		
 		map = keymap[1];
 
-		document.getElementById('p1-source').textContent = map.input;
-		document.getElementById('p1-fire').textContent   = KEYCODES[map.fire];
-		document.getElementById('p1-up').textContent     = KEYCODES[map.up];
-		document.getElementById('p1-left').textContent   = KEYCODES[map.left];
-		document.getElementById('p1-right').textContent  = KEYCODES[map.right];
-		document.getElementById('p1-down').textContent   = KEYCODES[map.down];
+		$('#p1-source').text(map.input);
+		if (map.input === 'keyboard') {
+			$('#p1-fire').text(KEYCODES[map.fire]);
+			$('#p1-up').text(KEYCODES[map.up]);
+			$('#p1-left').text(KEYCODES[map.left]);
+			$('#p1-right').text(KEYCODES[map.right]);
+			$('#p1-down').text(KEYCODES[map.down]);
+		} else {
+			$('#p1-fire').text('JOY:' + map.fire.pad + ' BTN:' + map.fire.btn);
+			$('#p1-up').text('JOY:' + map.up.pad + ' BTN:' + map.up.btn);
+			$('#p1-left').text('JOY:' + map.left.pad + ' BTN:' + map.left.btn);
+			$('#p1-right').text('JOY:' + map.right.pad + ' BTN:' + map.right.btn);
+			$('#p1-down').text('JOY:' + map.down.pad + ' BTN:' + map.down.btn);
+		}
+	}
+
+	function populateGamepads() {
+		var count = 0,
+			ol = document.getElementById('gamepad-list'),
+			i = 0,
+			gamepad;
+
+		$(ol).empty();
+
+		if (navigator.webkitGamepads) {
+			for (; i < navigator.webkitGamepads.length; i++) {
+				gamepad = navigator.webkitGamepads[i];
+				if (typeof gamepad !== 'undefined') {
+					$(ol).append('<li>' + gamepad.id + '</li>');
+					count++;
+				}
+			}
+		}
+
+		$('#no-gamepads').css('display', count ? 'none' : 'block');
 	}
 
 	function loadRom( name, rom ) {
@@ -141,22 +204,15 @@
 
 		CPU6507.loadProgram(activeROM);
 
-		powerSwitch.removeAttribute('disabled');
 		powerSwitch.value = 0;
-		colorSwitch.removeAttribute('disabled');
-		selectSwitch.removeAttribute('disabled');
-		resetSwitch.removeAttribute('disabled');
-		leftDifficultySwitch.removeAttribute('disabled');
-		rightDifficultySwitch.removeAttribute('disabled');
 
-		cartSlot.classList.add('file-loaded');
-		cartSlot.innerHTML = cleanRomName(name) + ' loaded';
+		$('.switch input[type=range]').removeAttr('disabled');
 
-		if (localStorage.roms) {
-			roms = JSON.parse(localStorage.roms);
-		} else {
-			roms = [];
-		}
+		$(cartSlot)
+			.addClass('file-loaded')
+			.html(cleanRomName(name) + ' loaded');
+
+		roms = localStorage.roms ? JSON.parse(localStorage.roms) : [];
 
 		curRom = {
 			name: name,
@@ -204,6 +260,7 @@
 
 		populateRomsList();
 		populateKeymaps();
+		populateGamepads();
 
 		// ROMs panel toggle button
 		romToggleButton.addEventListener('click', function( event ) {
@@ -252,6 +309,9 @@
 
 		// start and stop the emulator when the power switch is toggled
 		powerSwitch.addEventListener('input', function( event ) {
+			var p0EditKeymap = document.getElementById('p0-edit-keymap'),
+				p1EditKeymap = document.getElementById('p1-edit-keymap');
+
 			event.stopPropagation();
 			event.preventDefault();
 
@@ -265,6 +325,10 @@
 						leftDifficultySwitch.value === '1');
 					RIOT.setConsoleSwitch('difficulty1',
 						rightDifficultySwitch.value === '1');
+
+					// don't allow users to edit keymaps while game is running
+					p0EditKeymap.style.display = 'none';
+					p1EditKeymap.style.display = 'none';
 
 					// add the key listeners to the DOM for game input
 					addGameKeyListeners();
@@ -281,6 +345,10 @@
 
 				// re-intialize the emulator
 				TIA.init(television);
+
+				p0EditKeymap.style.display = 'block';
+				p1EditKeymap.style.display = 'block';
+
 
 				// reload the ROM after initialization
 				CPU6507.loadProgram(activeROM);
@@ -412,6 +480,49 @@
 
 		}, false);
 
+		$('#wizard').overlay({
+			top: '20%',
+
+			mask: {
+				color: '#000',
+				loadSpeed: 300,
+				opacity: 0.8
+			},
+
+			// keep the overlay open when the user clicks around it
+			closeOnClick: false,
+
+			// stop polling for gamepad data while the overlay is open
+			onBeforeLoad: function() {
+				cancelAnimFrame(rafId);
+			},
+
+			// start polling the gamepads for input again when the overlay closes
+			onClose: function() {
+				rafId = reqAnimFrame(pollGamepads);
+				populateKeymaps();
+			}
+		});
+
+		$('#p0-edit-keymap').click(function() {
+			$('#wizard').overlay().load();
+			return false;
+		});
+
+		$('#p1-edit-keymap').click(function() {
+			$('#wizard').overlay().load();
+			return false;
+		});
+
+		$('#cancel-wizard').click(function() {
+			$('#wizard').overlay().close();
+			return false;
+		});
+
 	}, false);
 
 })(window, document, KEYCODES);
+
+
+// Included script for Twitter buttons
+!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src="//platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");

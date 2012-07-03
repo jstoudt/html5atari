@@ -119,18 +119,6 @@
 
 		i            = 0,
 		
-		reqAnimFrame = window.requestAnimationFrame ||
-			window.webkitRequestAnimationFrame ||
-			window.mozRequestAnimationFrame ||
-			window.oRequestAnimationFrame ||
-			window.msRequestAnimationFrame,
-
-		cancelAnimFrame = window.cancelAnimationFrame ||
-			window.webkitCancelAnimationFrame ||
-			window.mozCancelAnimationFrame ||
-			window.oCancelAnimationFrame ||
-			window.msCancelAnimationFrame,
-
 		sr = {
 			N: document.getElementById('N'),
 			V: document.getElementById('V'),

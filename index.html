@@ -109,6 +109,11 @@
 			</dl>
 			<a id="p1-edit-keymap" class="edit-keymap">Edit controls&hellip;</a>
 		</div>
+		<div class="gamepads">
+			<h4>Gamepads Detected</h4>
+			<ol id="gamepad-list"></ol>
+			<p id="no-gamepads">No gamepads have been detected</p>
+		</div>
 	</div>
 
 	<footer>
@@ -136,6 +141,18 @@
 		</div>
 	</footer>
 
+	<div id="wizard" class="overlay">
+		<button id="cancel-wizard">Cancel</button>
+	</div>
+
+	<script src="//ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+	<script>
+		if (!window.jQuery) {
+			document.write('<script src="js/jquery-1.7.2.js"></' + 'script>');
+		}
+	</script>
+	
+	<script src="//cdn.jquerytools.org/1.2.7/all/jquery.tools.min.js"></script>
 	<script src="js/utility.js"></script>
 	<script src="js/memory.js"></script>
 	<script src="js/rom.js"></script>
@@ -144,10 +161,6 @@
 	<script src="js/6507.js"></script>
 	<script src="js/script.js"></script>
 
-	<!-- Included script for Twitter buttons -->
-	<script>
-		!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src="//platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");
-	</script>
 <!--
 	<script>
 		window.onload = function() {

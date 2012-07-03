@@ -140,19 +140,6 @@ var MEM_LOCATIONS = {
 	HMOVE:  0x2a,		HMCLR:  0x2b,
 	CXCLR:  0x2c,
 
-	// These are TIA Collision Read Registers
-	CXM0P:  0x30,		CXM1P:  0x31,
-	CXP0FB: 0x32,		CXP1FB: 0x33,
-	CXM0FB: 0x34,		CXM1FB: 0x35,
-	CXBLPF: 0x36,		CXPPMM: 0x37,
-
-	// These are TIA Input Read Registers
-	INPT0:  0x28,		INPT1:  0x29,
-	INPT2:  0x2a,		INPT3:  0x2b,
-	INPT4:  0x2c, // fire button for P0
-	INPT5:  0x2d, // fire button for P1
-
-
 	// Port A data register for joysticks
 	// bits 4-7 for P0, bits 0-3 for P1
 	SWCHA:  0x280,
@@ -222,3 +209,16 @@ var Base64 = {
 		return output;
 	}
 };
+
+// A shim for requestAnimationFrame and cancelAnimationFrame
+var reqAnimFrame = window.requestAnimationFrame ||
+	window.webkitRequestAnimationFrame ||
+	window.mozRequestAnimationFrame ||
+	window.oRequestAnimationFrame ||
+	window.msRequestAnimationFrame;
+
+var cancelAnimFrame = window.cancelAnimationFrame ||
+	window.webkitCancelAnimationFrame ||
+	window.mozCancelAnimationFrame ||
+	window.oCancelAnimationFrame ||
+	window.msCancelAnimationFrame;

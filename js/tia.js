@@ -26,18 +26,6 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 			stop: []
 		},
 
-		reqAnimFrame = window.requestAnimationFrame ||
-			window.webkitRequestAnimationFrame ||
-			window.mozRequestAnimationFrame ||
-			window.oRequestAnimationFrame ||
-			window.msRequestAnimationFrame,
-
-		cancelAnimFrame = window.cancelAnimationFrame ||
-			window.webkitCancelAnimationFrame ||
-			window.mozCancelAnimationFrame ||
-			window.oCancelAnimationFrame ||
-			window.msCancelAnimationFrame,
-
 		rafId = null,
 
 		// the number of frames written to the canvas
@@ -318,107 +306,86 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 		},
 
 		initMemoryMap = function() {
-			function hmove(x, d) {
-				// if d is negative, move that many pixels to the right
-				if (d & 0x08) {
-					x += (~d & 0x0f) + 1;
-
-					// wrap around if we went passed the right of the canvas
-					if (x > 159) {
-						x -= 160;
-					}
-				} else { // d is nonnegative - move to the left
-					x -= d;
-
-					// wrap around if we passed the left side of the canvas
-					if (x < 0) {
-						x += 160;
-					}
-				}
-
-				return x;
-			}
-
 			var i;
 
 			// create a new memory map object
 			mmap = new MemoryMap();
 
-			mmap.addReadWrite(0x00, readCXM0P, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.VSYNC, readCXM0P, function( val ) {
 				VSYNC = !!(val & 0x02);
 			});
 
-			mmap.addReadWrite(0x01, readCXM1P, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.VBLANK, readCXM1P, function( val ) {
 				VBLANK = !!(val & 0x02);
 				if (VBLANK === false) {
 					yStart = y;
 				}
 			});
 
-			mmap.addReadWrite(0x02, readCXP0FB, function() {
+			mmap.addReadWrite(MEM_LOCATIONS.WSYNC, readCXP0FB, function() {
 				RDY = true;
 			});
 
-			mmap.addReadWrite(0x03, readCXP1FB, VOID);
+			mmap.addReadWrite(MEM_LOCATIONS.RSYNC, readCXP1FB, VOID);
 
-			mmap.addReadWrite(0x04, readCXM0FB, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.NUSIZ0, readCXM0FB, function( val ) {
 				NUSIZ0       = val & 0x07;
 				MISSLE_SIZE0 = 0x01 << ((val >>> 4) & 0x03);
 			});
 
-			mmap.addReadWrite(0x05, readCXM1FB, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.NUSIZ1, readCXM1FB, function( val ) {
 				NUSIZ1       = val & 0x07;
 				MISSLE_SIZE1 = 0x01 << ((val >>> 4) & 0x03);
 			});
 
-			mmap.addReadWrite(0x06, readCXBLPF, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.COLUP0, readCXBLPF, function( val ) {
 				COLUP0    = val;
 				COLUP0rgb = COLOR_PALETTE[(val & 0xf0) >>> 4][(val & 0x0f) >>> 1];
 			});
 
-			mmap.addReadWrite(0x07, readCXPPMM, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.COLUP1, readCXPPMM, function( val ) {
 				COLUP1    = val;
 				COLUP1rgb = COLOR_PALETTE[(val & 0xf0) >>> 4][(val & 0x0f) >>> 1];
 			});
 
-			mmap.addReadWrite(0x08, readINPT0, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.COLUPF, readINPT0, function( val ) {
 				COLUPF    = val;
 				COLUPFrgb = COLOR_PALETTE[(val & 0xf0) >>> 4][(val & 0x0f) >>> 1];
 			});
 
-			mmap.addReadWrite(0x09, readINPT1, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.COLUBK, readINPT1, function( val ) {
 				COLUBK    = val;
 				COLUBKrgb = COLOR_PALETTE[(val & 0xf0) >>> 4][(val & 0x0f) >>> 1];
 			});
 
-			mmap.addReadWrite(0x0a, readINPT2, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.CTRLPF, readINPT2, function( val ) {
 				BALL_SIZE = 0x01 << ((val >>> 4) & 0x03);
 				REFLECT   = !!(val & 0x01);
 				SCORE     = !!(val & 0x02);
 				PRIORITY  = !!(val & 0x04);
 			});
 
-			mmap.addReadWrite(0x0b, readINPT3, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.REFP0, readINPT3, function( val ) {
 				REFP0 = !!(val & 0x08);
 			});
 
-			mmap.addReadWrite(0x0c, readINPT4, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.REFP1, readINPT4, function( val ) {
 				REFP1 = !!(val & 0x08);
 			});
 
-			mmap.addReadWrite(0x0d, readINPT5, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.PF0, readINPT5, function( val ) {
 				PF0 = val >>> 4;
 			});
 
-			mmap.addReadWrite(0x0e, VOID, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.PF1, VOID, function( val ) {
 				PF1 = val;
 			});
 
-			mmap.addReadWrite(0x0f, VOID, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.PF2, VOID, function( val ) {
 				PF2 = val;
 			});
 
-			mmap.addReadWrite(0x10, readCXM0P, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.RESP0, readCXM0P, function( val ) {
 				p0Pos = x + 8;
 				if (p0Pos < 0) {
 					p0Pos = 2;
@@ -428,7 +395,7 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 				p0Start = false;
 			});
 
-			mmap.addReadWrite(0x11, readCXM1P, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.RESP1, readCXM1P, function( val ) {
 				p1Pos = x + 8;
 				if (p1Pos < 0) {
 					p1Pos = 2;
@@ -438,7 +405,7 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 				p1Start = false;
 			});
 
-			mmap.addReadWrite(0x12, readCXP0FB, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.RESM0, readCXP0FB, function( val ) {
 				m0Pos = x + 7;
 				if (m0Pos < 0) {
 					m0Pos = 2;
@@ -448,7 +415,7 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 				m0Start = false;
 			});
 
-			mmap.addReadWrite(0x13, readCXP1FB, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.RESM1, readCXP1FB, function( val ) {
 				m1Pos = x + 7;
 				if (m1Pos < 0) {
 					m1Pos = 2;
@@ -458,7 +425,7 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 				m1Start = false;
 			});
 
-			mmap.addReadWrite(0x14, readCXM0FB, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.RESBL, readCXM0FB, function( val ) {
 				blPos = x + 7;
 				if (blPos < 0) {
 					blPos = 2;
@@ -467,94 +434,115 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 				}
 			});
 
-			mmap.addReadWrite(0x15, readCXM1FB, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.AUDC0, readCXM1FB, function( val ) {
 				AUDC0 = val & 0x0f;
 			});
 
-			mmap.addReadWrite(0x16, readCXBLPF, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.AUDC1, readCXBLPF, function( val ) {
 				AUDC1 = val & 0x0f;
 			});
 
-			mmap.addReadWrite(0x17, readCXPPMM, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.AUDF0, readCXPPMM, function( val ) {
 				AUDF0 = val & 0x1f;
 			});
 
-			mmap.addReadWrite(0x18, readINPT0, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.AUDF1, readINPT0, function( val ) {
 				AUDF1 = val & 0x1f;
 			});
 
-			mmap.addReadWrite(0x19, readINPT1, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.AUDV0, readINPT1, function( val ) {
 				AUDV0 = val & 0x0f;
 			});
 
-			mmap.addReadWrite(0x1a, readINPT2, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.AUDV1, readINPT2, function( val ) {
 				AUDV1 = val & 0x0f;
 			});
 
-			mmap.addReadWrite(0x1b, readINPT3, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.GRP0, readINPT3, function( val ) {
 				newGRP0 = val;
 				oldGRP1 = newGRP1;
 			});
 
-			mmap.addReadWrite(0x1c, readINPT4, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.GRP1, readINPT4, function( val ) {
 				newGRP1  = val;
 				oldGRP0  = newGRP0;
 				oldENABL = newENABL;
 			});
 
-			mmap.addReadWrite(0x1d, readINPT5, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.ENAM0, readINPT5, function( val ) {
 				ENAM0 = !!(val & 0x02);
 			});
 
-			mmap.addReadWrite(0x1e, VOID, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.ENAM1, VOID, function( val ) {
 				ENAM1 = !!(val & 0x02);
 			});
 
-			mmap.addReadWrite(0x1f, VOID, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.ENABL, VOID, function( val ) {
 				newENABL = !!(val & 0x02);
 			});
 
-			mmap.addReadWrite(0x20, readCXM0P, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.HMP0, readCXM0P, function( val ) {
 				HMP0 = val >>> 4;
 			});
 
-			mmap.addReadWrite(0x21, readCXM1P, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.HMP1, readCXM1P, function( val ) {
 				HMP1 = val >>> 4;
 			});
 
-			mmap.addReadWrite(0x22, readCXP0FB, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.HMM0, readCXP0FB, function( val ) {
 				HMM0 = val >>> 4;
 			});
 
-			mmap.addReadWrite(0x23, readCXP1FB, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.HMM1, readCXP1FB, function( val ) {
 				HMM1 = val >>> 4;
 			});
 
-			mmap.addReadWrite(0x24, readCXM0FB, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.HMBL, readCXM0FB, function( val ) {
 				HMBL = val >>> 4;
 			});
 
-			mmap.addReadWrite(0x25, readCXM1FB, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.VDELP0, readCXM1FB, function( val ) {
 				VDELP0 = !!(val & 0x01);
 			});
 
-			mmap.addReadWrite(0x26, readCXBLPF, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.VDELP1, readCXBLPF, function( val ) {
 				VDELP1 = !!(val & 0x01);
 			});
 
-			mmap.addReadWrite(0x27, readCXPPMM, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.VDELBL, readCXPPMM, function( val ) {
 				VDELBL = !!(val & 0x01);
 			});
 
-			mmap.addReadWrite(0x28, readINPT0, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.RESMP0, readINPT0, function( val ) {
 				RESMP0 = !!(val & 0x02);
 			});
 
-			mmap.addReadWrite(0x29, readINPT1, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.RESMP1, readINPT1, function( val ) {
 				RESMP1 = !!(val & 0x02);
 			});
 
-			mmap.addReadWrite(0x2a, readINPT2, function() {
+			mmap.addReadWrite(MEM_LOCATIONS.HMOVE, readINPT2, function() {
+				function hmove(x, d) {
+					// if d is negative, move that many pixels to the right
+					if (d & 0x08) {
+						x += (~d & 0x0f) + 1;
+
+						// wrap around if we went passed the right of the canvas
+						if (x > 159) {
+							x -= 160;
+						}
+					} else { // d is nonnegative - move to the left
+						x -= d;
+
+						// wrap around if we passed the left side of the canvas
+						if (x < 0) {
+							x += 160;
+						}
+					}
+
+					return x;
+				}
+
 				p0Pos = hmove(p0Pos, HMP0);
 				p1Pos = hmove(p1Pos, HMP1);
 				m0Pos = hmove(m0Pos, HMM0);
@@ -562,11 +550,11 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 				blPos = hmove(blPos, HMBL);
 			});
 
-			mmap.addReadWrite(0x2b, readINPT3, function() {
+			mmap.addReadWrite(MEM_LOCATIONS.HMCLR, readINPT3, function() {
 				HMP0 = HMP1 = HMM0 = HMM1 = HMBL = 0;
 			});
 
-			mmap.addReadWrite(0x2c, readINPT4, function( val ) {
+			mmap.addReadWrite(MEM_LOCATIONS.CXCLR, readINPT4, function( val ) {
 				M0_P0 = false;
 				M0_P1 = false;
 				M1_P1 = false;
@@ -625,17 +613,17 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 				buf[i]     = 0;
 				buf[i + 1] = 0;
 				buf[i + 2] = 0;
-				buf[i + 3] = 0xff;
+				buf[i + 3] = 255;
 
 				i += 4;
 			}
 		},
 
 		drawStaticFrame = function() {
-			var color,
-				i = 0,
+			var i = 0,
 				data  = pixelBuffer.data,
-				len   = data.length;
+				len   = data.length,
+				color;
 
 			for (; i < len; i += 4) {
 				color = Math.floor(Math.random() * 0xff);

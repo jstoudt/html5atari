@@ -15,7 +15,7 @@ table {
 td {
 	width: 2em;
 	height: 24px;
-	font-family: monospace,monospace;
+	font-family: monospace;
 	line-height: 24px;
 	text-align: center;
 	border: 1px solid #000;
@@ -44,7 +44,6 @@ label {
 
 .cpu-right {
 	width: 435px;
-
 }
 
 .register {
@@ -56,6 +55,10 @@ label {
 	font: 11px/24px monospace;
 	border: 1px solid #000;
 	margin-right: 20px;
+}
+
+.wide {
+	width: 7em;
 }
 
 .swatch {
@@ -79,7 +82,7 @@ label {
 	margin-top: 37px;
 }
 
-#frame-rate {
+.frame-rate {
 	width: 6em;
 	margin: 0 0.5em 0 5.5em;
 }
@@ -201,10 +204,6 @@ fieldset {
 	label {
 		width: 60px;
 	}
-
-	.wide {
-		width: 7em;
-	}
 }
 
 .playfield {
@@ -212,10 +211,6 @@ fieldset {
 
 	label {
 		width: 60px;
-	}
-
-	.wide {
-		width: 7em;
 	}
 }
 
