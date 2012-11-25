@@ -1,5 +1,12 @@
 @import "_normalize";
 
+/* Color Definitions */
+$red: #b04433;
+$yellow: #af8837;
+$white: #fff;
+$green: #0e1;
+$silver: #606060;
+
 /* Mixins Go Here ! */
 
 @mixin borderRadius($xr, $yr: $xr) {
@@ -37,29 +44,30 @@
 
 /* End of Mixins */
 
-$red: #b04433;
-$yellow: #af8837;
-
 .hidden {
 	display: none;
 }
 
 body {
-	color: #fff;
-	background: -webkit-linear-gradient(top, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0) 300px, rgba(0, 0, 0, 1) 500px),
-		url(../images/black-noise.png);
-	background: -moz-linear-gradient(top, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0) 300px, rgba(0, 0, 0, 1) 500px),
-		url(../images/black-noise.png);
-	background: -o-linear-gradient(top, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0) 300px, rgba(0, 0, 0, 1) 500px),
-		url(../images/black-noise.png);
-	background: -ms-linear-gradient(top, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0) 300px, rgba(0, 0, 0, 1) 500px),
-		url(../images/black-noise.png);
-	background: linear-gradient(top, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0) 300px, rgba(0, 0, 0, 1) 500px),
-		url(../images/black-noise.png);
+	color: $yellow;
+	overflow-x: hidden;
 	font: 12px/1 'Syncopate', sans-serif;
 	letter-spacing: -1px;
+	text-rendering: optimizeLegibility;
 	margin: 0;
-	overflow-x: hidden;
+
+	&.landing {
+		background: -webkit-linear-gradient(top, rgba(#000, 0), rgba(#000, 0) 300px, rgba(#000, 1) 500px),
+			url(../images/black-noise.png);
+		background: -moz-linear-gradient(top, rgba(#000, 0), rgba(#000, 0) 300px, rgba(#000, 1) 500px),
+			url(../images/black-noise.png);
+		background: -o-linear-gradient(top, rgba(#000, 0), rgba(#000, 0) 300px, rgba(#000, 1) 500px),
+			url(../images/black-noise.png);
+		background: -ms-linear-gradient(top, rgba(#000, 0), rgba(#000, 0) 300px, rgba(#000, 1) 500px),
+			url(../images/black-noise.png);
+		background: linear-gradient(top, rgba(#000, 0), rgba(#000, 0) 300px, rgba(#000, 1) 500px),
+			url(../images/black-noise.png);
+	}
 }
 
 a {
@@ -74,10 +82,11 @@ header {
 	height: 75px;
 
 	h1 {
+		color: $white;
 		font: 48px/75px 'Press Start 2P', monospace;
 		text-align: center;
 		text-shadow: 4px 4px 2px #aaa;
-		letter-spacing: 7px;
+		letter-spacing: .11em;
 		margin: 0;
 	}
 }
@@ -111,10 +120,9 @@ header {
 
 		h2 {
 			height: 25px;
-			color: #fff;
+			color: $white;
 			font-size: 17px;
 			line-height: 25px;
-			vertical-align: text-bottom;
 			margin: 0;
 		}
 
@@ -133,11 +141,10 @@ header {
 			width: 330px;
 			height: 50px;
 			max-height: 50px;
-			background: #060606;
 			overflow: hidden;
-			border: 6px ridge #555;
+			border: 6px ridge #666;
 			@include borderRadius(10px);
-			color: #c0c0c0;
+			color: #ddd;
 			font-weight: bold;
 			font-size: 13px;
 			margin: 5px auto 0;
@@ -146,11 +153,11 @@ header {
 		}
 
 		.drag-over {
-			border-color: #fff;
+			border-color: $white;
 		}
 
 		.file-loaded {
-			border-color: #0e1;
+			border-color: $green;
 		}
 
 		.switch {
@@ -200,10 +207,9 @@ header {
 					appearance: none;
 					width: 10px;
 					height: 10px;
-					background: -webkit-radial-gradient(circle, #eee, #606060);
-					background: radial-gradient(circle, #eee, #606060);
-					border: 1px solid #606060;
-					@include borderRadius(6px);
+					background: -webkit-radial-gradient(circle, #eee, $silver);
+					background: radial-gradient(circle, #eee, $silver);
+					@include borderRadius(5px);
 				}
 			}
 		}
@@ -488,14 +494,13 @@ header {
 
 footer {
 	width: 100%;
-	bottom: 0;
 	height: 115px;
 	padding-top: 10px;
 	@include boxShadow(0, -8px, 10px, 8px, rgba(203, 138, 95, 0.75));
 	background: url(../images/wood_pattern.jpg);
 
 	.content {
-		width: 790px;
+		width: 720px;
 		margin: 0 auto;
 		padding-top: 10px;
 
@@ -508,19 +513,15 @@ footer {
 		}
 
 		ul {
-			width: 350px;
+			width: 360px;
 			list-style: none;
 			margin: 0 auto;
 			padding: 10px 0 0;
 
 			li {
-				width: 100px;
-				display: inline-block;
-				margin: 6px 2px;
-			}
-
-			.follow {
-				width: 200px;
+				float: left;
+				width: 150px;
+				margin: 6px 25px 6px 0;
 			}
 		}
 	}

@@ -15,36 +15,38 @@ function MemoryMap( bitWidth ) {
 
 // Changes the memory at the specified address location to the specified value
 MemoryMap.prototype.writeByte = function( val, addr ) {
-	if (addr in this._mirrors) {
-		addr = this.resolveMirror(addr);
+	if ( addr in this._mirrors ) {
+		addr = this.resolveMirror( addr );
 	}
 
-	if (addr in this._readwrite) {
-		this._readwrite[addr].write(val, addr);
+	if ( addr in this._readwrite ) {
+		this._readwrite[addr].write( val, addr );
 	} else {
-		console.warn('Writing to unsupported memory address: $' +
-			Number(addr).toString(16));
+		if ( window.console ) {
+			window.console.warn( 'Writing to unsupported memory address: $' +
+				Number( addr ).toString( 16 ) );
+		}
 	}
 };
 
 // Returns the byte in memory at the specified address location
 MemoryMap.prototype.readByte = function( addr ) {
-	if (addr in this._mirrors) {
-		addr = this.resolveMirror(addr);
+	if ( addr in this._mirrors ) {
+		addr = this.resolveMirror( addr );
 	}
 
-	if (addr in this._readwrite) {
-		return this._readwrite[addr].read(addr);
+	if ( addr in this._readwrite ) {
+		return this._readwrite[addr].read( addr );
 	}
 
-	throw new Error('Cannot read from unsupported memory address: $' +
-		Number(addr).toString(16));
+	throw new Error( 'Cannot read from unsupported memory address: $' +
+		Number( addr ).toString( 16 ) );
 };
 
 // Returns the 2-byte little-endian word stored at the specified location
 MemoryMap.prototype.readWord = function( addr ) {
-	var lo = this.readByte(addr),
-		hi = this.readByte((addr + 1) & 0xffff);
+	var lo = this.readByte( addr ),
+		hi = this.readByte( ( addr + 1 ) & 0xffff );
 
 	return (hi << 8) | lo;
 };
@@ -52,13 +54,13 @@ MemoryMap.prototype.readWord = function( addr ) {
 MemoryMap.prototype.addReadWrite = function( startAddr, endAddr, readFn, writeFn ) {
 	var i = startAddr;
 
-	if (arguments.length === 3 && typeof endAddr === 'function') {
+	if ( arguments.length === 3 && typeof endAddr === 'function' ) {
 		writeFn = readFn;
 		readFn  = endAddr;
 		endAddr = startAddr;
 	}
 
-	for (; i <= endAddr; i++) {
+	for ( ; i <= endAddr; i++ ) {
 		this._readwrite[i] = {
 			read:  readFn,
 			write: writeFn

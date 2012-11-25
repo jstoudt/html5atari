@@ -1,3 +1,5 @@
+/*global Utility:false, CPU6507:false,RIOT:false*/
+
 /**
  * tia.js -- Television Interface Adaptor
  * Author: Jason T. Stoudt
@@ -10,7 +12,9 @@
 var TIA = (function(MEM_LOCATIONS, undefined) {
 
 		// the memory map to be shared between TIA & CPU
-	var mmap,
+	var mmap = null,
+
+		riot,
 
 		// the array of pixel colors representing the video output
 		pixelBuffer,
@@ -306,7 +310,8 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 		},
 
 		initMemoryMap = function() {
-			var i;
+			var VOID = Utility.VOID,
+				i;
 
 			// create a new memory map object
 			mmap = new MemoryMap();
@@ -625,8 +630,8 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 				len   = data.length,
 				color;
 
-			for (; i < len; i += 4) {
-				color = Math.floor(Math.random() * 0xff);
+			for ( ; i < len; i += 4 ) {
+				color = Math.floor( Math.random() * 0xff );
 
 				data[i]     = color; // red channel
 				data[i + 1] = color; // green channel
@@ -634,19 +639,19 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 				data[i + 3] = 255;   // alpha channel (always opaque)
 			}
 
-			canvasContext.putImageData(pixelBuffer, 0, 0);
+			canvasContext.putImageData( pixelBuffer, 0, 0 );
 
 			numFrames++;
 
-			rafId = reqAnimFrame(drawStaticFrame);
+			rafId = window.requestAnimationFrame( drawStaticFrame );
 		},
 
 		isPlayfieldAt = function( x ) {
-			if (x >= 20) {
+			if ( x >= 20 ) {
 				x = REFLECT === true ? 39 - x : x - 20;
 			}
 
-			return !!(x >= 12 ? PF2 & (1 << (x - 12)) :
+			return !!( x >= 12 ? PF2 & ( 1 << ( x - 12 ) ) :
 				x >= 4 ? PF1 & (0x80 >>> (x - 4)) :
 				PF0 & (0x01 << x));
 		},
@@ -682,7 +687,7 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 				ref   = REFP1;
 				gr    = VDELP1 === true ? oldGRP1 : newGRP1;
 			}
-			
+
 			if (clock === 8 && nusiz === 0x05) {
 				if (p === 0 && RESMP0 === true) {
 					m0Pos = x;
@@ -960,7 +965,7 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 			if (VBLANK === false && x >= 0) {
 				writePixel(y - yStart);
 			}
-			
+
 			tiaCycles++;
 
 			// increment the color clock to draw the pixel at the next position
@@ -1000,7 +1005,7 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 					vsyncCount = 0;
 					y = 0;
 					pixelBufferIndex = 0;
-					rafId = reqAnimFrame(runMainLoop);
+					rafId = window.requestAnimationFrame( runMainLoop );
 					canvasContext.putImageData(pixelBuffer, 0, 0);
 					numFrames++;
 					clearPixelBuffer();
@@ -1013,34 +1018,35 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 	return {
 
 		init: function( canvas ) {
-			
-			var canvasWidth  = parseInt(canvas.width, 10),
-				canvasHeight = parseInt(canvas.height, 10);
+
+			var canvasWidth  = parseInt( canvas.width, 10 ),
+				canvasHeight = parseInt( canvas.height, 10 );
 
 			// store a reference to the canvas's context
-			canvasContext = canvas.getContext('2d');
+			canvasContext = canvas.getContext( '2d' );
 
 			// create a pixel buffer to hold the raw data
-			pixelBuffer = canvasContext.createImageData(canvasWidth,
-				canvasHeight);
+			pixelBuffer = canvasContext.createImageData( canvasWidth,
+				canvasHeight );
 
 			// reset the started flag
 			started = false;
 
 			// cancel any frame drawing taking place
-			cancelAnimFrame(rafId);
+			window.cancelAnimationFrame( rafId );
 
 			// start drawing static frames on the canvas
-			rafId = reqAnimFrame(drawStaticFrame);
+			rafId = window.requestAnimationFrame( drawStaticFrame );
 
 			// Initialize the memory map
 			initMemoryMap();
 
 			// pass the memory map on to the CPU
-			CPU6507.init(mmap);
+			CPU6507.init( mmap );
 
 			// initialize and pass the memory map to the RIOT
-			RIOT.init(mmap);
+			riot = new RIOT( mmap );
+//			RIOT.init( mmap );
 
 			// initialize the TIA clock
 			tiaClock = 0;
@@ -1066,12 +1072,12 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 			var i = 0,
 				l = handlers.start.length;
 
-			cancelAnimFrame(rafId);
+			window.cancelAnimationFrame( rafId );
 
 			// loop through and execute each of the handlers that have been
 			// binded to the start event
 			for (; i < l; i++) {
-				handlers.start[i]();
+				handlers.start[ i ]();
 			}
 
 			// reset the frame counter
@@ -1080,7 +1086,7 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 			tiaCycles = 0;
 
 			// schecule the start of the main loop
-			rafId = reqAnimFrame(runMainLoop);
+			rafId = window.requestAnimationFrame( runMainLoop );
 
 			// set the flag to tell the external modules that the system
 			// has started
@@ -1101,7 +1107,7 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 					numFrames++;
 				}
 				if (proc === true) {
-					cancelAnimFrame(rafId);
+					window.cancelAnimationFrame( rafId );
 					canvasContext.putImageData(pixelBuffer, 0, 0);
 					break;
 				}
@@ -1112,7 +1118,7 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 			var i = 0,
 				l = handlers.stop.length;
 
-			cancelAnimFrame(rafId);
+			window.cancelAnimationFrame( rafId );
 
 			started = false;
 
@@ -1269,4 +1275,4 @@ var TIA = (function(MEM_LOCATIONS, undefined) {
 
 	};
 
-})(MEM_LOCATIONS);
+})(Utility.MEM_LOCATIONS);

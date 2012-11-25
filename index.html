@@ -8,7 +8,7 @@
 
 	<link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body class="landing">
 	<header>
 		<h1>html5atari.com</h1>
 	</header>
@@ -89,7 +89,7 @@
 				<dt>Down</dt>
 				<dd id="p0-down"></dd>
 			</dl>
-			<a id="p0-edit-keymap" class="edit-keymap">Edit controls&hellip;</a>
+			<a class="edit-keymap" data-player="0">Edit controls&hellip;</a>
 		</div>
 		<div class="column">
 			<h4>Player 2</h4>
@@ -107,7 +107,7 @@
 				<dt>Down</dt>
 				<dd id="p1-down"></dd>
 			</dl>
-			<a id="p1-edit-keymap" class="edit-keymap">Edit controls&hellip;</a>
+			<a class="edit-keymap" data-player="1">Edit controls&hellip;</a>
 		</div>
 		<div class="gamepads">
 			<h4>Gamepads Detected</h4>
@@ -120,23 +120,13 @@
 		<div class="content">
 			<img class="atari-logo" alt="Atari" src="images/atari-logo.png" width="76" height="85">
 			<img class="html5-logo" alt="HTML5" src="images/html5-logo.png" width="85" height="85">
-
-			<ul class="gh-btns">
+			<ul>
 				<li>
-					<a href="https://twitter.com/share" class="twitter-share-button" data-via="JasonStoudt" data-count="none" data-hashtags="html5atari">Tweet</a>
-
-				</li>
-				<li class="follow">
-					<a href="https://twitter.com/JasonStoudt" class="twitter-follow-button" data-show-count="false" data-width="350">Follow @JasonStoudt</a>
+					<a href="https://twitter.com/intent/tweet?button_hashtag=html5atari" data-lang="en" class="twitter-hashtag-button" data-related="JasonStoudt" data-text="Play your favorite Atari 2600 games in your browser now!" data-url="http://html5atari.com/">Tweet #html5atari</a>
 				</li>
 				<li>
-					<iframe src="http://markdotto.github.com/github-buttons/github-btn.html?user=jstoudt&repo=html5atari&type=fork"
-  allowtransparency="true" frameborder="0" scrolling="0" width="57px" height="20px"></iframe>
-  				</li>
-				<li>
-					<iframe src="http://markdotto.github.com/github-buttons/github-btn.html?user=jstoudt&type=follow"
-  allowtransparency="true" frameborder="0" scrolling="0" width="132px" height="20px"></iframe>
-  				</li>
+					<a href="https://twitter.com/JasonStoudt" class="twitter-follow-button" data-show-count="false" data-lang="en">Follow @JasonStoudt</a>
+				</li>
 			</ul>
 		</div>
 	</footer>
@@ -151,16 +141,18 @@
 			document.write('<script src="js/jquery-1.7.2.js"></' + 'script>');
 		}
 	</script>
-	
+
 	<script src="//cdn.jquerytools.org/1.2.7/all/jquery.tools.min.js"></script>
 	<script src="js/utility.js"></script>
+	<!--
+	<script src="js/wizard.js"></script>
+	-->
 	<script src="js/memory.js"></script>
 	<script src="js/rom.js"></script>
 	<script src="js/tia.js"></script>
 	<script src="js/riot.js"></script>
 	<script src="js/6507.js"></script>
 	<script src="js/script.js"></script>
-
 <!--
 	<script>
 		window.onload = function() {
@@ -169,7 +161,7 @@
 			iframe.height = '1';
 			iframe.src = 'about:blank';
 			document.body.appendChild(iframe);
-			
+
 			setTimeout(function() {
 				var innerWindow = iframe.contentWindow;
 

@@ -1,3 +1,5 @@
+/*global Utility:false, MemoryMap:false*/
+
 /**
  * rom.js
  * Author: Jason T. Stoudt
@@ -9,7 +11,7 @@
 
 function ROM( program, mmap ) {
 	if (!(program instanceof Uint8Array)) {
-		throw new Error('Program must be an instance of Uint8Array.');
+		throw new Error('Parameter program is not an instance of Uint8Array.');
 	}
 
 	if (!(mmap instanceof MemoryMap)) {
@@ -21,10 +23,10 @@ function ROM( program, mmap ) {
 
 	switch (program.length) {
 		case 2048:
-			this._romType = this.ROM_TYPE['2K'];
+			this._romType = this.ROM_TYPE[ '2K' ];
 			break;
 		case 4096:
-			this._romType = this.ROM_TYPE['4K'];
+			this._romType = this.ROM_TYPE[ '4K' ];
 			break;
 		default:
 			throw new Error('Unsupported ROM type detected');
@@ -32,7 +34,7 @@ function ROM( program, mmap ) {
 
 	mmap.addReadWrite(0xf000, 0xffff, function( addr ) {
 		return program[addr - 0xf000];
-	}, VOID);
+	}, Utility.VOID);
 }
 
 ROM.prototype.ROM_TYPE = {
