@@ -21,7 +21,8 @@
 		keymap                = null,
 		activeROM             = null,
 		debugWindow           = null,
-		rafId                 = null;
+		rafId                 = null,
+		tia                   = null;
 
 	function handleGameKeys( e ) {
 		var keyCode = e.keyCode,
@@ -119,6 +120,10 @@
 	}
 
 	function populateRomsList() {
+
+		// TODO: skip this function for the time being
+		return;
+
 		var ol = document.getElementById('roms-list'),
 			p = $(ol).siblings('p').get(0),
 			roms = localStorage.roms ? JSON.parse(localStorage.roms) : [],
@@ -147,15 +152,20 @@
 		// create a reference to the keycodes utility array
 		var KEYCODES = Utility.KEYCODES,
 			map,
-			setInnerTextById = function( id, text ) {
-				var el = document.getElementById( id );
+			setElementText = function( id, text ) {
+				var txtNode = document.createTextNode( text ),
+					el = document.getElementById( id ),
+					parent;
 				if ( el ) {
-					if ( el.textContent ) {
-						el.textContent = text;
-					} else if ( el.innerText ) {
-						el.innerText = text;
+					parent = el.parentNode;
+					while ( parent.hasChildNodes() ) {
+						parent.removeChild( parent.firstChild );
 					}
+					el.appendChild( txtNode );
 				}
+			},
+			getJoyString = function( mapElement ) {
+				return 'JOY:' + mapElement.pad + ' BTN:' + mapElement.btn;
 			};
 
 		// store the default key mappings if one does not already exist
@@ -168,43 +178,38 @@
 
 		map = keymap[0];
 
-		setInnerTextById( 'p0-source', map.input );
+		setElementText( 'p0-source', map.input );
 
 		if (map.input === 'keyboard') {
-			setInnerTextById( 'p0-fire', KEYCODES[map.fire] );
-			setInnerTextById( 'p0-up', KEYCODES[map.up] );
-			setInnerTextById( 'p0-left', KEYCODES[map.left] );
-			setInnerTextById( 'p0-right', KEYCODES[map.right] );
-			setInnerTextById( 'p0-down', KEYCODES[map.down] );
+			setElementText( 'p0-fire', KEYCODES[ map.fire ]);
+			setElementText( 'p0-up', KEYCODES[ map.up ]);
+			setElementText( 'p0-left', KEYCODES[ map.left ]);
+			setElementText( 'p0-right', KEYCODES[ map.right ]);
+			setElementText( 'p0-down', KEYCODES[ map.down ]);
 		} else {
-			setInnerTextById( 'p0-fire',
-				'JOY:' + map.fire.pad + ' BTN:' + map.fire.btn );
-			setInnerTextById( 'p0-up',
-				'JOY:' + map.up.pad + ' BTN:' + map.up.btn );
-			setInnerTextById( 'p0-left',
-				'JOY:' + map.left.pad + ' BTN:' + map.left.btn );
-			setInnerTextById( 'p0-right',
-				'JOY:' + map.right.pad + ' BTN:' + map.right.btn );
-			setInnerTextById( 'p0-down',
-				'JOY:' + map.down.pad + ' BTN:' + map.down.btn );
+			setElementText(	'p0-fire', getJoyString( map.fire ));
+			setElementText( 'p0-up', getJoyString( map.up ));
+			setElementText(	'p0-left', getJoyString( map.left ));
+			setElementText(	'p0-right', getJoyString( map.right ));
+			setElementText( 'p0-down', getJoyString( map.down ));
 		}
 
 		map = keymap[1];
 
-		setInnerTextById( 'p1-source', map.input );
+		setElementText( 'p1-source', map.input );
 
 		if (map.input === 'keyboard') {
-			$('#p1-fire').text(KEYCODES[map.fire]);
-			$('#p1-up').text(KEYCODES[map.up]);
-			$('#p1-left').text(KEYCODES[map.left]);
-			$('#p1-right').text(KEYCODES[map.right]);
-			$('#p1-down').text(KEYCODES[map.down]);
+			setElementText( 'p1-fire', KEYCODES[ map.fire ]);
+			setElementText( 'p1-up', KEYCODES[ map.up ]);
+			setElementText( 'p1-left', KEYCODES[ map.left ]);
+			setElementText( 'p1-right', KEYCODES[ map.right ]);
+			setElementText( 'p1-down', KEYCODES[ map.down ]);
 		} else {
-			$('#p1-fire').text('JOY:' + map.fire.pad + ' BTN:' + map.fire.btn);
-			$('#p1-up').text('JOY:' + map.up.pad + ' BTN:' + map.up.btn);
-			$('#p1-left').text('JOY:' + map.left.pad + ' BTN:' + map.left.btn);
-			$('#p1-right').text('JOY:' + map.right.pad + ' BTN:' + map.right.btn);
-			$('#p1-down').text('JOY:' + map.down.pad + ' BTN:' + map.down.btn);
+			setElementText( 'p1-fire', getJoyString( map.fire ));
+			setElementText( 'p1-up', getJoyString( map.up ));
+			setElementText( 'p1-left', getJoyString( map.left ));
+			setElementText( 'p1-right', getJoyString( map.right ));
+			setElementText( 'p1-down', getJoyString( map.down ));
 		}
 	}
 
@@ -242,22 +247,24 @@
 	}
 
 	function loadRom( name, rom ) {
-		var roms, i, curRom;
+		var roms, i, curRom, switches;
 
 		activeROM = rom;
 
-		TIA.stop();
-		TIA.init(television);
+		tia.stop();
+		tia = new TIA( television );
 
-		CPU6507.loadProgram(activeROM);
+		tia.cpu.loadProgram(activeROM);
 
 		powerSwitch.value = 0;
 
-		$('.switch input[type=range]').removeAttr('disabled');
+		switches = document.querySelectorAll( '.switch [type=range]' );
+		for ( i = 0; i < switches.length; i++ ) {
+			switches[i].removeAttribute( 'disabled' );
+		}
 
-		$(cartSlot)
-			.addClass('file-loaded')
-			.html(cleanRomName(name) + ' loaded');
+		cartSlot.classList.add( 'file-loaded' );
+		cartSlot.innerHTML = cleanRomName( name ) + ' loaded';
 
 		roms = localStorage.roms ? JSON.parse(localStorage.roms) : [];
 
@@ -296,7 +303,7 @@
 
 	document.addEventListener('DOMContentLoaded', function() {
 		// initialize the emulator system and pass in the canvas
-		TIA.init(television);
+		tia = new TIA( television );
 
 		populateRomsList();
 		populateKeymaps();
@@ -357,7 +364,7 @@
 
 		// when this page is unloaded, close the debug window if open
 		window.addEventListener( 'unload', function() {
-			if ( debugWindow && debugWindow instanceof Window ) {
+			if ( debugWindow && debugWindow.close ) {
 				debugWindow.close();
 			}
 		}, false );
@@ -371,14 +378,14 @@
 			e.preventDefault();
 
 			if (powerSwitch.value === '1') {
-				if (!TIA.isStarted()) {
+				if ( !tia.started ) {
 					// sync the console switches with the RIOT
-					RIOT.setConsoleSwitch(' color', colorSwitch.value === '1' );
-					RIOT.setConsoleSwitch(' select', selectSwitch.value === '1' );
-					RIOT.setConsoleSwitch( 'reset', resetSwitch.value === '1' );
-					RIOT.setConsoleSwitch( 'difficulty0',
+					tia.riot.setConsoleSwitch(' color', colorSwitch.value === '1' );
+					tia.riot.setConsoleSwitch(' select', selectSwitch.value === '1' );
+					tia.riot.setConsoleSwitch( 'reset', resetSwitch.value === '1' );
+					tia.riot.setConsoleSwitch( 'difficulty0',
 						leftDifficultySwitch.value === '1' );
-					RIOT.setConsoleSwitch( 'difficulty1',
+					tia.riot.setConsoleSwitch( 'difficulty1',
 						rightDifficultySwitch.value === '1' );
 
 					// don't allow users to edit keymaps while game is running
@@ -391,17 +398,17 @@
 					addGameKeyListeners();
 
 					// and start the emulator
-					TIA.start();
+					tia.start();
 				}
 			} else {
 				// turn the emulator off
-				TIA.stop();
+				tia.stop();
 
 				// remove the game key listeners from the DOM
 				removeGameKeyListeners();
 
 				// re-intialize the emulator
-				TIA.init(television);
+				tia.init(television);
 
 				// allow the user to edit the keymap once again
 				nlist = document.querySelectorAll( '.edit-keymap' );
@@ -543,12 +550,6 @@
 			reader.readAsArrayBuffer(romFile);
 
 		}, false);
-
-		// fix the twitter buttons' incorrect width styles
-		setTimeout(function() {
-			$('.twitter-follow-button, .twitter-hashtag-button')
-				.css('width', '150px');
-		}, 75);
 
 	}, false);
 

@@ -10,6 +10,7 @@
  */
 
 function RIOT( memory ) {
+
 	var MEM_LOCATIONS = Utility.MEM_LOCATIONS,
 		VOID = Utility.VOID,
 		intimList   = [ 0x284, 0x286, 0x28c, 0x28e ],
@@ -137,16 +138,15 @@ function RIOT( memory ) {
 	}
 
 	this.timer = Math.floor( Math.random() * 0xffffffff );
-
-};
+}
 
 
 RIOT.prototype._readINTIM = function() {
-	return (this.timer < 0 ? this.timer :
+	return ( this.timer < 0 ? this.timer :
 		this.intervalMode === 'TIM1T' ? this.timer :
 		this.intervalMode === 'TIM8T' ? this.timer >>> 3 :
 		this.intervalMode === 'TIM64T' ? this.timer >>> 6 :
-		this.timer >>> 10) & 0xff;
+		this.timer >>> 10 ) & 0xff;
 };
 
 RIOT.prototype._readTIMINT = function() {
@@ -182,7 +182,7 @@ RIOT.prototype._readSWCHA = function() {
 	if (this.P1_LEFT === true) {
 		val |= 0x04;
 	}
-	if (thisi.P1_DOWN === true) {
+	if (this.P1_DOWN === true) {
 		val |= 0x02;
 	}
 	if (this.P1_UP === true) {
@@ -257,6 +257,31 @@ RIOT.prototype._writeTIM64T = function( val ) {
 RIOT.prototype._writeT1024T = function( val ) {
 	this.intervalMode = 'T1024T';
 	this.timer = val << 10;
+};
+
+RIOT.prototype.cycle = function() {
+	// decrement the timer
+	this.timer--;
+};
+
+RIOT.prototype.setConsoleSwitch = function( name, val ) {
+	switch( name ) {
+		case 'difficulty0':
+			this.P0DIFFICULTY = !!val;
+			break;
+		case 'difficulty1':
+			this.P1DIFFICULTY = !!val;
+			break;
+		case 'color':
+			this.COLOR = !!val;
+			break;
+		case 'select':
+			this.SELECT = !!val;
+			break;
+		case 'reset':
+			this.RESET = !!val;
+			break;
+	}
 };
 
 /*

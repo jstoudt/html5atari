@@ -20,9 +20,10 @@ MemoryMap.prototype.writeByte = function( val, addr ) {
 	}
 
 	if ( addr in this._readwrite ) {
-		this._readwrite[addr].write( val, addr );
+		//this._readwrite[addr].write( val, addr );
+		this._readwrite[addr].write.call(this._readwrite[addr], val, addr);
 	} else {
-		if ( window.console ) {
+		if ( window.console && window.console.warn ) {
 			window.console.warn( 'Writing to unsupported memory address: $' +
 				Number( addr ).toString( 16 ) );
 		}
